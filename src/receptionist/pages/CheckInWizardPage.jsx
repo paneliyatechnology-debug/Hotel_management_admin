@@ -137,17 +137,19 @@ export default function CheckInWizardPage({
         const ext = res.extractedData;
         setCheckInData((prev) => ({
           ...prev,
-          fullName: ext.fullName || prev.fullName,
+          fullName: prev.fullName?.trim() ? prev.fullName : (ext.fullName || ""),
           govtIdType: ext.idType || typeToScan,
           govtIdNumber: ext.idNumber || prev.govtIdNumber,
-          address: ext.address || prev.address,
-          city: ext.city || prev.city,
-          state: ext.state || prev.state,
+          address: prev.address?.trim() ? prev.address : (ext.address || prev.address || ""),
+          city: prev.city?.trim() ? prev.city : (ext.city || prev.city || ""),
+          state: prev.state?.trim() ? prev.state : (ext.state || prev.state || ""),
+          pincode: prev.pincode?.trim() ? prev.pincode : (ext.pincode || prev.pincode || ""),
+          dateOfBirth: prev.dateOfBirth ? prev.dateOfBirth : (ext.dob || prev.dateOfBirth || ""),
           hasVerifiedId: true,
           idVerified: true,
           verificationSource: res.source,
           confidenceScore: ext.confidenceScore,
-          verificationNotes: `Verified via ${res.source === "LIVE_SUREPASS" ? "Surepass OCR Engine" : "Surepass Instant Validator"}`,
+          verificationNotes: `Verified via ${res.source === "LIVE_SUREPASS" ? "Surepass OCR Engine" : res.source === "LOCAL_OCR" ? "High-Precision Real OCR Engine" : "Surepass Instant Validator"}`,
         }));
 
         setOcrFeedback({
@@ -198,10 +200,10 @@ export default function CheckInWizardPage({
         const ext = res.extractedData;
         setCheckInData((prev) => ({
           ...prev,
-          fullName: ext.fullName || prev.fullName,
+          fullName: prev.fullName?.trim() ? prev.fullName : (ext.fullName || ""),
           govtIdType: "DRIVING_LICENSE",
           govtIdNumber: ext.idNumber || prev.govtIdNumber,
-          address: ext.address || prev.address,
+          address: prev.address?.trim() ? prev.address : (ext.address || prev.address || ""),
           hasVerifiedId: true,
           idVerified: true,
           verificationSource: res.source,
@@ -1264,7 +1266,7 @@ export default function CheckInWizardPage({
                     size="small"
                     label="Last 4 Digits of Card *"
                     placeholder="e.g. 4242"
-                    inputProps={{ maxLength: 4 }}
+                    slotProps={{ htmlInput: { maxLength: 4 } }}
                     value={checkInData.paymentReference || ""}
                     onChange={(e) => setCheckInData({ ...checkInData, paymentReference: e.target.value })}
                   />

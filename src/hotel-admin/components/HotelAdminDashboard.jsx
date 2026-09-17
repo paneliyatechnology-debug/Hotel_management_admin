@@ -13,6 +13,8 @@ import StaffTeamPage from "../pages/StaffTeamPage";
 import RoomTypesPage from "../pages/RoomTypesPage";
 import SubscriptionPage from "../pages/SubscriptionPage";
 
+import { useSocket } from "@/shared/context/SocketContext";
+
 export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }) {
   const { themeConfig } = useAppTheme();
 
@@ -91,12 +93,8 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
     };
   }
 
-  useEffect(() => {
-    fetchAllData();
-  }, []);
-
-  const fetchAllData = async () => {
-    setLoading(true);
+  const fetchAllData = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const [dashRes, roomsRes, typesRes, staffRes, guestsRes, profileRes, bookRes] = await Promise.allSettled([
         apiRequest(API_ENDPOINTS.HOTEL_ADMIN.DASHBOARD),
@@ -135,6 +133,27 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchAllData();
+  }, []);
+
+  // Real-Time Socket Auto-Sync across all operational mutations
+  useSocket(
+    [
+      "ROOM_UPDATED",
+      "BOOKING_CREATED",
+      "BOOKING_UPDATED",
+      "GUEST_CHECKED_OUT",
+      "PAYMENT_RECORDED",
+      "GUEST_UPDATED",
+      "DASHBOARD_SYNC",
+      "HANDOVER_SETTLED",
+    ],
+    () => {
+      fetchAllData(true);
+    }
+  );
 
   const showToast = (message, severity = "success") => {
     setNotification({ show: true, message, severity });

@@ -49,7 +49,6 @@ export default function UnifiedLogin({ onLoginSuccess }) {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMsg, setForgotMsg] = useState("");
   const [forgotError, setForgotError] = useState("");
-  const [forgotOtpHint, setForgotOtpHint] = useState("");
 
   // Force Change Password Dialog State (for mustChangePassword)
   const [changePassOpen, setChangePassOpen] = useState(false);
@@ -112,7 +111,6 @@ export default function UnifiedLogin({ onLoginSuccess }) {
   const handleSendOtp = async () => {
     setForgotError("");
     setForgotMsg("");
-    setForgotOtpHint("");
 
     if (!forgotEmail || !forgotEmail.includes("@")) {
       setForgotError("Please enter a valid registered email address.");
@@ -127,9 +125,6 @@ export default function UnifiedLogin({ onLoginSuccess }) {
         body: { email: forgotEmail },
       });
 
-      if (res.otp) {
-        setForgotOtpHint(res.otp);
-      }
       setForgotMsg(res.message || "6-digit OTP has been dispatched to your email.");
       setForgotStep(2);
     } catch (err) {
@@ -182,7 +177,6 @@ export default function UnifiedLogin({ onLoginSuccess }) {
         setForgotOtp("");
         setForgotNewPassword("");
         setForgotConfirmPassword("");
-        setForgotOtpHint("");
       }, 1200);
     } catch (err) {
       setForgotError(err.message || "Invalid or expired OTP. Please try again.");
@@ -421,14 +415,6 @@ export default function UnifiedLogin({ onLoginSuccess }) {
               <Typography variant="body2" sx={{ color: themeConfig.textMuted, mb: 2 }}>
                 Enter the 6-digit verification OTP sent to <strong>{forgotEmail}</strong> and your new password.
               </Typography>
-
-              {forgotOtpHint && (
-                <Alert severity="info" sx={{ mb: 2, py: 0.5 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 700, display: "block" }}>
-                    Demo OTP: <span style={{ letterSpacing: 2, fontSize: "1.05rem" }}>{forgotOtpHint}</span>
-                  </Typography>
-                </Alert>
-              )}
 
               {forgotMsg && (
                 <Alert severity="success" sx={{ mb: 2 }}>

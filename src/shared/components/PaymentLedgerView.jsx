@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useSocket } from "@/shared/context/SocketContext";
 import {
   Box,
   Typography,
@@ -47,7 +48,7 @@ import {
   MeetingRoom,
 } from "@mui/icons-material";
 import { useAppTheme } from "@/shared/context/ThemeContext";
-import { apiRequest } from "@/config/api";
+import { apiRequest, API_ENDPOINTS } from "@/config/api";
 import EmptyState from "@/shared/components/EmptyState";
 import { downloadPaymentReceiptPDF, downloadDailyLedgerPDF } from "@/shared/utils/pdfGenerator";
 
@@ -116,10 +117,10 @@ export default function PaymentLedgerView({
   const activeUpiId = hotelSettings?.upiId || "jatinkakadiya234-1@okicici";
   const hotelName = user?.hotel?.name || "Grand Royale Luxury Resort";
 
-  const fetchPayments = async () => {
-    setLoading(true);
+  const fetchPayments = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
-      const endpoint = apiEndpoint || "/api/v1/receptionist/payments";
+      const endpoint = apiEndpoint || API_ENDPOINTS.RECEPTIONIST.PAYMENTS;
       const params = new URLSearchParams();
       if (selectedMethod && selectedMethod !== "ALL") params.append("paymentMethod", selectedMethod);
       if (selectedType && selectedType !== "ALL") params.append("paymentType", selectedType);
@@ -143,6 +144,14 @@ export default function PaymentLedgerView({
   useEffect(() => {
     fetchPayments();
   }, [selectedMethod, selectedType, timeRange]);
+
+  // Real-Time Socket Auto-Sync on new transactions
+  useSocket(
+    ["PAYMENT_RECORDED", "BOOKING_CREATED", "GUEST_CHECKED_OUT", "HANDOVER_SETTLED", "DASHBOARD_SYNC"],
+    () => {
+      fetchPayments(true);
+    }
+  );
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();

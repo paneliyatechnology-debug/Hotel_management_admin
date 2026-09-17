@@ -261,10 +261,14 @@ function AdminAppContent() {
   );
 }
 
+import { SocketProvider } from "@/shared/context/SocketContext";
+
 function AdminApp() {
   return (
     <AppThemeProvider>
-      <AdminAppContent />
+      <SocketProvider>
+        <AdminAppContent />
+      </SocketProvider>
     </AppThemeProvider>
   );
 }

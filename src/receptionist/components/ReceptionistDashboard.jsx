@@ -33,6 +33,8 @@ import CheckInWizardPage from "../pages/CheckInWizardPage";
 import GovtIdCompliancePage from "../pages/GovtIdCompliancePage";
 import PosSettlementPage from "../pages/PosSettlementPage";
 
+import { useSocket } from "@/shared/context/SocketContext";
+
 export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange }) {
   const { themeConfig } = useAppTheme();
 
@@ -79,12 +81,8 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
   const [posChargeDialog, setPosChargeDialog] = useState({ open: false, booking: null, serviceType: "ROOM_SERVICE", amount: 650, description: "Breakfast & Sparkling Water" });
   const [invoiceModal, setInvoiceModal] = useState({ open: false, booking: null });
 
-  useEffect(() => {
-    fetchFrontDeskData();
-  }, []);
-
-  const fetchFrontDeskData = async () => {
-    setLoading(true);
+  const fetchFrontDeskData = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const [dashRes, roomsRes, bookRes, guestRes] = await Promise.allSettled([
         apiRequest(API_ENDPOINTS.RECEPTIONIST.DASHBOARD),
@@ -111,6 +109,26 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchFrontDeskData();
+  }, []);
+
+  // Real-Time Socket Auto-Sync across all operational mutations
+  useSocket(
+    [
+      "ROOM_UPDATED",
+      "BOOKING_CREATED",
+      "BOOKING_UPDATED",
+      "GUEST_CHECKED_OUT",
+      "PAYMENT_RECORDED",
+      "GUEST_UPDATED",
+      "DASHBOARD_SYNC",
+    ],
+    () => {
+      fetchFrontDeskData(true);
+    }
+  );
 
   const showToast = (message, severity = "success") => {
     setNotification({ show: true, message, severity });
