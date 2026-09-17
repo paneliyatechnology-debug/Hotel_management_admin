@@ -1,0 +1,115 @@
+/* [project]/src/app/globals.css [app-client] (css) */
+:root {
+  --bg-primary: var(--color-bg-main, #f8fafc);
+  --bg-secondary: var(--color-bg-card, #fff);
+  --bg-card: var(--color-bg-card, #fff);
+  --bg-hover: var(--color-primary-glow, #0000000d);
+  --accent-gold: var(--color-primary, #3368a0);
+  --accent-gold-light: var(--color-primary-light, #66a3bf);
+  --text-main: var(--color-text-main, #14253b);
+  --text-muted: var(--color-text-muted, #526b85);
+  --border-color: var(--color-border, #c8dfdb);
+  --status-success: #10b981;
+  --status-warning: #f59e0b;
+  --status-info: #3b82f6;
+  --status-danger: #ef4444;
+  --shadow-3d-sm: 0 2px 4px #0c273b0a, 0 4px 8px #0c273b0a, inset 0 1px 0 #ffffffe6;
+  --shadow-3d-card: 0 10px 25px -5px #0c273b14, 0 8px 10px -6px #0c273b0a, inset 0 1px 1px #fffffff2;
+  --shadow-3d-hover: 0 20px 35px -8px #0c273b24, 0 10px 15px -5px #0c273b0f, inset 0 1px 2px #fff;
+  --shadow-3d-btn: 0 4px 12px #0b8ee047, inset 0 1px 0 #ffffff59, inset 0 -2px 0 #00000026;
+  --shadow-3d-inset: inset 0 2px 4px #0c273b0f, inset 0 -1px 0 #fffc;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-bg-main, #f8fafc);
+  color: var(--color-text-main, #14253b);
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.card-3d {
+  box-shadow: var(--shadow-3d-card);
+  background: linear-gradient(135deg, #fffffffa 0%, #f8fcfef0 100%);
+  border: 1px solid #fffc;
+  border-radius: 20px;
+  transition: all .25s cubic-bezier(.16, 1, .3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-3d:before {
+  content: "";
+  background: linear-gradient(90deg, #0000, #ffffffe6, #0000);
+  height: 1px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.card-3d-interactive:hover {
+  box-shadow: var(--shadow-3d-hover);
+  transform: translateY(-4px)scale(1.008);
+}
+
+.btn-3d {
+  box-shadow: var(--shadow-3d-btn);
+  border-radius: 12px;
+  font-weight: 700;
+  transition: all .2s cubic-bezier(.16, 1, .3, 1);
+  position: relative;
+}
+
+.btn-3d:hover {
+  filter: brightness(1.05);
+  transform: translateY(-2px);
+}
+
+.btn-3d:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 4px #00000026, inset 0 2px 4px #0003;
+}
+
+.inset-3d {
+  box-shadow: var(--shadow-3d-inset);
+  background: #00000005;
+  border-radius: 14px;
+}
+
+@keyframes pulse3D {
+  0% {
+    transform: scale(.95);
+    box-shadow: 0 0 #10b981b3;
+  }
+
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px #10b98100;
+  }
+
+  100% {
+    transform: scale(.95);
+    box-shadow: 0 0 #10b98100;
+  }
+}
+
+.live-pulse-3d {
+  background-color: #10b981;
+  border-radius: 50%;
+  width: 10px;
+  height: 10px;
+  animation: 2s infinite pulse3D;
+}
+
+/*# sourceMappingURL=src_app_globals_css_1igg3k2._.single.css.map*/

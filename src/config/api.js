@@ -75,6 +75,8 @@ export const API_ENDPOINTS = {
     CHECKOUT: (bookingId) => `${API_BASE_URL}/api/v1/receptionist/bookings/${bookingId}/check-out`,
     PAYMENTS: `${API_BASE_URL}/api/v1/receptionist/payments`,
     RECORD_PAYMENT: `${API_BASE_URL}/api/v1/receptionist/payments`,
+    KYC_OCR_VERIFY: `${API_BASE_URL}/api/v1/receptionist/kyc/ocr-verify`,
+    KYC_VERIFY_DL: `${API_BASE_URL}/api/v1/receptionist/kyc/verify-driving-license`,
   },
 };
 

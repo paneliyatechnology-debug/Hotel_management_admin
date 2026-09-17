@@ -758,14 +758,21 @@ export default function GovtIdCompliancePage({
               )}
 
               <Box sx={{ p: 2, borderRadius: "12px", bgcolor: "#F0FDF4", border: "1px solid #A7F3D0" }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <CheckCircle sx={{ color: "#059669", fontSize: 18 }} />
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: "#059669" }}>
-                    Official Tourism / Police Compliance Seal Stamped
-                  </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <CheckCircle sx={{ color: "#059669", fontSize: 18 }} />
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: "#059669" }}>
+                      Official Tourism / Police Compliance Seal Stamped
+                    </Typography>
+                  </Box>
+                  <Chip
+                    label="Surepass KYC Verified"
+                    size="small"
+                    sx={{ bgcolor: "#DCFCE7", color: "#166534", fontWeight: 800, fontSize: "0.7rem", height: 22 }}
+                  />
                 </Box>
-                <Typography variant="caption" sx={{ color: "#047857", display: "block", mt: 0.5 }}>
-                  This guest record has been verified against government-issued credentials and stamped for local hotel compliance audits.
+                <Typography variant="caption" sx={{ color: "#047857", display: "block", mt: 0.8 }}>
+                  {dossierModal.guest.idProof?.verificationNotes || "This guest record has been verified against government-issued credentials (Surepass Zero-OTP OCR) and stamped for local hotel compliance audits."}
                 </Typography>
               </Box>
             </Box>
