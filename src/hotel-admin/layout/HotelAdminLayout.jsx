@@ -1,0 +1,36 @@
+"use client";
+
+import DashboardLayout from "@/shared/layout/DashboardLayout";
+import {
+  Dashboard as DashboardIcon,
+  Person,
+  People,
+  Layers,
+  Stars,
+  Settings,
+  Payments,
+} from "@mui/icons-material";
+
+export const HOTEL_ADMIN_NAV = [
+  { label: "Dashboard & Home", shortLabel: "Overview", path: "overview", icon: <DashboardIcon fontSize="small" /> },
+  { label: "Daily Collections Hub", shortLabel: "Collections", path: "daily-collections", icon: <Payments fontSize="small" /> },
+  { label: "Guest Directory", shortLabel: "Guests", path: "guests", icon: <Person fontSize="small" /> },
+  { label: "Hotel Staff Team", shortLabel: "Staff", path: "staff", icon: <People fontSize="small" /> },
+  { label: "Room Types & Tariffs", shortLabel: "Rooms", path: "rooms", icon: <Layers fontSize="small" /> },
+  { label: "Subscription & Trial", shortLabel: "Plans", path: "subscriptions", icon: <Stars fontSize="small" /> },
+  { label: "Profile & Settings", shortLabel: "Settings", path: "settings", icon: <Settings fontSize="small" /> },
+];
+
+export default function HotelAdminLayout({ user, activeTab, onTabChange, onLogout, children }) {
+  return (
+    <DashboardLayout
+      user={user}
+      navItems={HOTEL_ADMIN_NAV}
+      activeTab={activeTab}
+      onTabChange={onTabChange}
+      onLogout={onLogout}
+    >
+      {children}
+    </DashboardLayout>
+  );
+}

@@ -1,0 +1,546 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Box, Alert } from "@mui/material";
+import { useAppTheme } from "@/shared/context/ThemeContext";
+import { API_ENDPOINTS, apiRequest } from "@/config/api";
+import ConfirmDialog from "@/shared/components/ConfirmDialog";
+import SettingsView from "@/shared/components/SettingsView";
+import HotelOverviewPage from "../pages/HotelOverviewPage";
+import DailyCollectionsPage from "../pages/DailyCollectionsPage";
+import GuestDirectoryPage from "../pages/GuestDirectoryPage";
+import StaffTeamPage from "../pages/StaffTeamPage";
+import RoomTypesPage from "../pages/RoomTypesPage";
+import SubscriptionPage from "../pages/SubscriptionPage";
+
+export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }) {
+  const { themeConfig } = useAppTheme();
+
+  const [hotelSettings, setHotelSettings] = useState(
+    user?.hotel?.settings || { checkInTime: "14:00", checkOutTime: "12:00", timezone: "Asia/Kolkata" }
+  );
+  const [dashboardData, setDashboardData] = useState(null);
+  const [rooms, setRooms] = useState([]);
+  const [roomTypes, setRoomTypes] = useState([]);
+  const [guests, setGuests] = useState([]);
+  const [staffList, setStaffList] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState({ show: false, message: "", severity: "success" });
+
+  // Filters & Searches
+  const [guestSearch, setGuestSearch] = useState("");
+  const [guestFilter, setGuestFilter] = useState("ALL");
+  const [staffSearch, setStaffSearch] = useState("");
+  const [staffRoleFilter, setStaffRoleFilter] = useState("ALL");
+  const [selectedFloor, setSelectedFloor] = useState("ALL");
+  const [selectedStatus, setSelectedStatus] = useState("ALL");
+
+  // Modals & Drawers
+  const [guestModal, setGuestModal] = useState({ open: false, mode: "ADD", data: getInitialGuestForm() });
+  const [viewGuestModal, setViewGuestModal] = useState({ open: false, guest: null });
+  const [staffModal, setStaffModal] = useState({ open: false, mode: "ADD", data: getInitialStaffForm() });
+  const [viewStaffModal, setViewStaffModal] = useState({ open: false, staff: null });
+  const [roomModal, setRoomModal] = useState({ open: false, mode: "ADD", data: getInitialRoomForm() });
+  const [typeModal, setTypeModal] = useState({ open: false, mode: "ADD", data: { name: "", basePrice: 4000, maxAdults: 2, maxChildren: 1, description: "" } });
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, title: "", message: "", onConfirm: null });
+
+  function getInitialRoomForm() {
+    return {
+      _id: "",
+      roomNumber: "",
+      roomType: roomTypes[0]?._id || "",
+      floor: 1,
+      seatingCapacity: 2,
+      customPricePerNight: "",
+      status: "AVAILABLE",
+      notes: "",
+    };
+  }
+
+  function getInitialGuestForm() {
+    return {
+      _id: "",
+      name: "",
+      email: "",
+      phone: "",
+      idType: "AADHAAR",
+      idNumber: "",
+      address: "",
+      roomAssigned: "101",
+      checkInDate: new Date().toISOString().split("T")[0],
+      checkOutDate: new Date(Date.now() + 86400000 * 2).toISOString().split("T")[0],
+      totalAmount: 7000,
+      status: "IN-HOUSE",
+    };
+  }
+
+  function getInitialStaffForm() {
+    return {
+      _id: "",
+      name: "",
+      email: "",
+      phone: "",
+      role: "RECEPTIONIST",
+      shift: "Morning (07:00 - 15:00)",
+      idType: "AADHAAR",
+      idNumber: "",
+      salary: 28000,
+      status: "ACTIVE",
+      password: "",
+    };
+  }
+
+  useEffect(() => {
+    fetchAllData();
+  }, []);
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    try {
+      const [dashRes, roomsRes, typesRes, staffRes, guestsRes, profileRes, bookRes] = await Promise.allSettled([
+        apiRequest(API_ENDPOINTS.HOTEL_ADMIN.DASHBOARD),
+        apiRequest(API_ENDPOINTS.HOTEL_ADMIN.ROOMS),
+        apiRequest(API_ENDPOINTS.HOTEL_ADMIN.ROOM_TYPES),
+        apiRequest(API_ENDPOINTS.HOTEL_ADMIN.RECEPTIONISTS),
+        apiRequest(API_ENDPOINTS.RECEPTIONIST.GUESTS),
+        apiRequest(API_ENDPOINTS.HOTEL_ADMIN.PROFILE),
+        apiRequest(API_ENDPOINTS.RECEPTIONIST.BOOKINGS),
+      ]);
+
+      if (profileRes.status === "fulfilled" && profileRes.value?.data?.settings) {
+        setHotelSettings(profileRes.value.data.settings);
+      }
+      if (dashRes.status === "fulfilled" && dashRes.value?.data) {
+        setDashboardData(dashRes.value.data);
+      }
+      if (roomsRes.status === "fulfilled" && (roomsRes.value?.data || Array.isArray(roomsRes.value))) {
+        setRooms(roomsRes.value.data || roomsRes.value || []);
+      }
+      if (typesRes.status === "fulfilled" && (typesRes.value?.data || Array.isArray(typesRes.value))) {
+        setRoomTypes(typesRes.value.data || typesRes.value || []);
+      }
+      if (staffRes.status === "fulfilled" && (staffRes.value?.data || Array.isArray(staffRes.value))) {
+        setStaffList(staffRes.value.data || staffRes.value || []);
+      }
+      if (guestsRes.status === "fulfilled" && (guestsRes.value?.data || Array.isArray(guestsRes.value))) {
+        setGuests(guestsRes.value.data || guestsRes.value || []);
+      }
+      if (bookRes.status === "fulfilled" && (bookRes.value?.data || Array.isArray(bookRes.value))) {
+        setBookings(bookRes.value.data || bookRes.value || []);
+      }
+    } catch (err) {
+      console.error("Data load error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showToast = (message, severity = "success") => {
+    setNotification({ show: true, message, severity });
+    setTimeout(() => setNotification({ show: false, message: "", severity: "success" }), 4000);
+  };
+
+  // Guest CRUD Handlers
+  const handleSaveGuest = async (e) => {
+    e.preventDefault();
+    const guestName = guestModal.data.name || guestModal.data.fullName;
+    const guestPhone = guestModal.data.phone || guestModal.data.mobileNumber;
+    if (!guestName || !guestPhone) {
+      showToast("Guest name and phone number are required", "error");
+      return;
+    }
+
+    try {
+      const payload = {
+        fullName: guestName,
+        mobileNumber: guestPhone,
+        email: guestModal.data.email || "",
+        address: guestModal.data.address || "",
+        idType: guestModal.data.idType || "AADHAAR",
+        idNumber: guestModal.data.idNumber || "PENDING",
+      };
+
+      const res = await apiRequest(API_ENDPOINTS.RECEPTIONIST.GUESTS, {
+        method: "POST",
+        body: payload,
+      });
+
+      if (res.data) {
+        const savedGuest = {
+          ...res.data,
+          name: res.data.fullName,
+          phone: res.data.mobileNumber,
+          idType: res.data.idProof?.idType || payload.idType,
+          idNumber: res.data.idProof?.idNumber || payload.idNumber,
+        };
+        const existingIdx = guests.findIndex((g) => g._id === savedGuest._id || g.mobileNumber === savedGuest.mobileNumber);
+        if (existingIdx >= 0) {
+          const updated = [...guests];
+          updated[existingIdx] = savedGuest;
+          setGuests(updated);
+        } else {
+          setGuests([savedGuest, ...guests]);
+        }
+        await fetchAllData();
+        showToast("Guest record saved to database successfully!");
+      }
+      setGuestModal({ open: false, mode: "ADD", data: getInitialGuestForm() });
+    } catch (err) {
+      showToast(err.message || "Failed to save guest record", "error");
+    }
+  };
+
+  const handleDeleteGuest = (guest) => {
+    setConfirmDelete({
+      open: true,
+      title: "Delete Guest Record",
+      message: `Are you sure you want to delete guest record for "${guest.name || guest.fullName}"? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await apiRequest(API_ENDPOINTS.RECEPTIONIST.DELETE_GUEST(guest._id), {
+            method: "DELETE",
+          });
+          await fetchAllData();
+          showToast("Guest record deleted from database.");
+        } catch (err) {
+          showToast(err.message || "Failed to delete guest", "error");
+        } finally {
+          setConfirmDelete({ open: false, title: "", message: "", onConfirm: null });
+        }
+      },
+    });
+  };
+
+  // Staff CRUD Handlers
+  const handleSaveStaff = async (e) => {
+    e.preventDefault();
+    if (!staffModal.data.name || !staffModal.data.email || !staffModal.data.phone) {
+      showToast("Name, Email, and Phone are required for staff", "error");
+      return;
+    }
+
+    try {
+      const payload = {
+        name: staffModal.data.name,
+        email: staffModal.data.email,
+        phone: staffModal.data.phone,
+        role: staffModal.data.role || "RECEPTIONIST",
+        employeeId: staffModal.data.idNumber || undefined,
+      };
+
+      const res = await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.RECEPTIONISTS, {
+        method: "POST",
+        body: payload,
+      });
+
+      if (res.data) {
+        setStaffList([res.data, ...staffList]);
+        showToast(res.message || "New staff member onboarded and credentials emailed!");
+      }
+      setStaffModal({ open: false, mode: "ADD", data: getInitialStaffForm() });
+    } catch (err) {
+      showToast(err.message || "Failed to create staff account", "error");
+    }
+  };
+
+  const handleToggleStaffStatus = async (staff) => {
+    const nextStatus = staff.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+    try {
+      await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.UPDATE_RECEPTIONIST_STATUS(staff._id), {
+        method: "PUT",
+        body: { status: nextStatus },
+      });
+      setStaffList(staffList.map((s) => (s._id === staff._id ? { ...s, status: nextStatus } : s)));
+      showToast(`Staff member '${staff.name}' is now ${nextStatus}.`);
+    } catch (err) {
+      showToast(err.message || "Failed to update staff status", "error");
+    }
+  };
+
+  const handleDeleteStaff = (staff) => {
+    setConfirmDelete({
+      open: true,
+      title: "Remove Staff Member",
+      message: `Are you sure you want to remove "${staff.name}" (${staff.role || "Receptionist"}) from the hotel staff directory?`,
+      onConfirm: async () => {
+        try {
+          await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.DELETE_RECEPTIONIST(staff._id), {
+            method: "DELETE",
+          });
+          setStaffList(staffList.filter((s) => s._id !== staff._id));
+          showToast("Staff member removed from database.");
+        } catch (err) {
+          showToast(err.message || "Failed to remove staff member", "error");
+        } finally {
+          setConfirmDelete({ open: false, title: "", message: "", onConfirm: null });
+        }
+      },
+    });
+  };
+
+  // Individual Rooms CRUD Handlers
+  const handleSaveRoom = async (e) => {
+    e.preventDefault();
+    if (!roomModal.data.roomNumber || !roomModal.data.roomType) {
+      showToast("Room number and room category are required", "error");
+      return;
+    }
+
+    try {
+      const payload = {
+        roomNumber: roomModal.data.roomNumber,
+        roomType: roomModal.data.roomType,
+        floor: Number(roomModal.data.floor) || 1,
+        seatingCapacity: Number(roomModal.data.seatingCapacity) || 2,
+        customPricePerNight: roomModal.data.customPricePerNight ? Number(roomModal.data.customPricePerNight) : undefined,
+        status: roomModal.data.status || "AVAILABLE",
+        notes: roomModal.data.notes || "",
+      };
+
+      if (roomModal.mode === "EDIT" && roomModal.data._id) {
+        const res = await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.UPDATE_ROOM(roomModal.data._id), {
+          method: "PUT",
+          body: payload,
+        });
+        if (res.data) {
+          setRooms(rooms.map((r) => (r._id === roomModal.data._id ? res.data : r)));
+          showToast(`Room ${res.data.roomNumber} updated successfully!`);
+        }
+      } else {
+        const res = await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.ROOMS, {
+          method: "POST",
+          body: payload,
+        });
+        if (res.data) {
+          setRooms([res.data, ...rooms]);
+          showToast(`Room ${res.data.roomNumber} created successfully!`);
+        }
+      }
+      setRoomModal({ open: false, mode: "ADD", data: getInitialRoomForm() });
+    } catch (err) {
+      showToast(err.message || "Failed to save room", "error");
+    }
+  };
+
+  const handleDeleteRoom = (room) => {
+    setConfirmDelete({
+      open: true,
+      title: "Remove Room",
+      message: `Are you sure you want to remove Room "${room.roomNumber}" (Floor ${room.floor})?`,
+      onConfirm: async () => {
+        try {
+          await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.DELETE_ROOM(room._id), {
+            method: "DELETE",
+          });
+          setRooms(rooms.filter((r) => r._id !== room._id));
+          showToast(`Room ${room.roomNumber} removed.`);
+        } catch (err) {
+          showToast(err.message || "Failed to delete room", "error");
+        } finally {
+          setConfirmDelete({ open: false, title: "", message: "", onConfirm: null });
+        }
+      },
+    });
+  };
+
+  const handleUpdateRoomStatus = async (room, newStatus) => {
+    try {
+      await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.UPDATE_ROOM_STATUS(room._id), {
+        method: "PUT",
+        body: { status: newStatus },
+      });
+      setRooms(rooms.map((r) => (r._id === room._id ? { ...r, status: newStatus } : r)));
+      showToast(`Room ${room.roomNumber} status set to ${newStatus}.`);
+    } catch (err) {
+      showToast(err.message || "Failed to update room status", "error");
+    }
+  };
+
+  // Room Type CRUD Handlers
+  const handleSaveRoomType = async (e) => {
+    e.preventDefault();
+    if (!typeModal.data.name || !typeModal.data.basePrice) {
+      showToast("Category name and base price are required", "error");
+      return;
+    }
+
+    try {
+      const payload = {
+        name: typeModal.data.name,
+        description: typeModal.data.description || "",
+        basePrice: Number(typeModal.data.basePrice),
+        capacity: {
+          adults: Number(typeModal.data.maxAdults || 2),
+          children: Number(typeModal.data.maxChildren || 1),
+        },
+      };
+
+      const res = await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.ROOM_TYPES, {
+        method: "POST",
+        body: payload,
+      });
+
+      if (res.data) {
+        setRoomTypes([res.data, ...roomTypes]);
+        showToast("Room category saved to database successfully!");
+      }
+      setTypeModal({ open: false, mode: "ADD", data: { name: "", basePrice: 4000, maxAdults: 2, maxChildren: 1, description: "" } });
+    } catch (err) {
+      showToast(err.message || "Failed to save room category", "error");
+    }
+  };
+
+  const handleDeleteRoomType = (roomType) => {
+    setConfirmDelete({
+      open: true,
+      title: "Archive Room Category",
+      message: `Are you sure you want to soft-delete / archive "${roomType.name}"? Active bookings and revenue records will remain safe.`,
+      onConfirm: async () => {
+        try {
+          const res = await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.DELETE_ROOM_TYPE(roomType._id), {
+            method: "DELETE",
+          });
+          setRoomTypes(roomTypes.filter((rt) => rt._id !== roomType._id));
+          showToast(res.message || "Room category archived successfully.");
+        } catch (err) {
+          showToast(err.message || "Failed to delete room category", "error");
+        } finally {
+          setConfirmDelete({ open: false, title: "", message: "", onConfirm: null });
+        }
+      },
+    });
+  };
+
+  return (
+    <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, bgcolor: themeConfig.bgMain, minHeight: "100%" }}>
+      {/* Toast Notification */}
+      {notification.show && (
+        <Alert
+          severity={notification.severity}
+          sx={{
+            position: "fixed",
+            top: 24,
+            right: 24,
+            zIndex: 9999,
+            boxShadow: themeConfig.shadowModal,
+            borderRadius: 0,
+            bgcolor: notification.severity === "success" ? "#FAF9F6" : "#FFF5F5",
+            border: `1px solid ${notification.severity === "success" ? themeConfig.success : themeConfig.danger}`,
+          }}
+        >
+          {notification.message}
+        </Alert>
+      )}
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        open={confirmDelete.open}
+        title={confirmDelete.title}
+        message={confirmDelete.message}
+        onConfirm={confirmDelete.onConfirm}
+        onClose={() => setConfirmDelete({ open: false, title: "", message: "", onConfirm: null })}
+      />
+
+      {/* ROUTE 0: OVERVIEW & DASHBOARD */}
+      {activeNav === 0 && (
+        <HotelOverviewPage
+          user={user}
+          dashboardData={dashboardData}
+          rooms={rooms}
+          guests={guests}
+          bookings={bookings}
+          hotelSettings={hotelSettings}
+          selectedFloor={selectedFloor}
+          setSelectedFloor={setSelectedFloor}
+          selectedStatus={selectedStatus}
+          setSelectedStatus={setSelectedStatus}
+          onRefresh={fetchAllData}
+          onTabChange={onTabChange}
+        />
+      )}
+
+      {/* ROUTE 1: DAILY COLLECTIONS & CASH DRAWER HANDOVER */}
+      {activeNav === 1 && (
+        <DailyCollectionsPage
+          user={user}
+          hotelSettings={hotelSettings}
+          onRefreshOverview={fetchAllData}
+        />
+      )}
+
+      {/* ROUTE 2: GUEST DIRECTORY */}
+      {activeNav === 2 && (
+        <GuestDirectoryPage
+          guests={guests}
+          guestSearch={guestSearch}
+          setGuestSearch={setGuestSearch}
+          guestFilter={guestFilter}
+          setGuestFilter={setGuestFilter}
+          guestModal={guestModal}
+          setGuestModal={setGuestModal}
+          viewGuestModal={viewGuestModal}
+          setViewGuestModal={setViewGuestModal}
+          hotelSettings={hotelSettings}
+          onSaveGuest={handleSaveGuest}
+          onDeleteGuest={handleDeleteGuest}
+          getInitialGuestForm={getInitialGuestForm}
+        />
+      )}
+
+      {/* ROUTE 3: STAFF TEAM */}
+      {activeNav === 3 && (
+        <StaffTeamPage
+          staffList={staffList}
+          staffSearch={staffSearch}
+          setStaffSearch={setStaffSearch}
+          staffRoleFilter={staffRoleFilter}
+          setStaffRoleFilter={setStaffRoleFilter}
+          staffModal={staffModal}
+          setStaffModal={setStaffModal}
+          viewStaffModal={viewStaffModal}
+          setViewStaffModal={setViewStaffModal}
+          onSaveStaff={handleSaveStaff}
+          onDeleteStaff={handleDeleteStaff}
+          onToggleStaffStatus={handleToggleStaffStatus}
+          getInitialStaffForm={getInitialStaffForm}
+        />
+      )}
+
+      {/* ROUTE 4: ROOMS & CATEGORIES MASTER */}
+      {activeNav === 4 && (
+        <RoomTypesPage
+          rooms={rooms}
+          roomTypes={roomTypes}
+          roomModal={roomModal}
+          setRoomModal={setRoomModal}
+          typeModal={typeModal}
+          setTypeModal={setTypeModal}
+          onSaveRoom={handleSaveRoom}
+          onDeleteRoom={handleDeleteRoom}
+          onUpdateRoomStatus={handleUpdateRoomStatus}
+          onSaveRoomType={handleSaveRoomType}
+          onDeleteRoomType={handleDeleteRoomType}
+          getInitialRoomForm={getInitialRoomForm}
+        />
+      )}
+
+      {/* ROUTE 5: SUBSCRIPTION & 30-DAY TRIAL */}
+      {activeNav === 5 && (
+        <SubscriptionPage
+          user={user}
+          subscription={dashboardData?.subscription || user?.hotel?.subscription}
+          onRefresh={fetchAllData}
+        />
+      )}
+
+      {/* ROUTE 6: SETTINGS & THEMES */}
+      {activeNav === 6 && (
+        <SettingsView
+          user={{ ...user, hotel: { ...user?.hotel, settings: hotelSettings } }}
+          onUpdateHotelSettings={(newSettings) => setHotelSettings(newSettings)}
+        />
+      )}
+    </Box>
+  );
+}
