@@ -40,9 +40,17 @@ import {
   AutoAwesome,
   History,
   Security,
+  CloudUpload,
+  DocumentScanner,
+  FlashOn,
+  Fingerprint,
+  Image as ImageIcon,
+  Delete,
+  Refresh,
 } from "@mui/icons-material";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { formatTime12Hour } from "@/shared/utils/timeUtils";
+import { apiRequest, API_ENDPOINTS } from "@/config/api";
 
 const CHECKIN_STEPS = [
   "Guest Profile",
@@ -84,6 +92,141 @@ export default function CheckInWizardPage({
   };
 
   const nights = calculateNights(checkInData.checkInDate, checkInData.checkOutDate);
+
+  // Surepass Zero-OTP OCR & KYC State
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [frontImage, setFrontImage] = useState("");
+  const [backImage, setBackImage] = useState("");
+  const [ocrFeedback, setOcrFeedback] = useState(null);
+  const [dlDob, setDlDob] = useState(checkInData.dob || "");
+
+  // Upload helper for Front/Back photo
+  const handleImageFileChange = (e, target) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const b64 = event.target.result;
+      if (target === "front") setFrontImage(b64);
+      if (target === "back") setBackImage(b64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Trigger Zero-OTP Surepass OCR Verification
+  const handleOcrVerification = async (forcedType) => {
+    const typeToScan = forcedType || checkInData.govtIdType || "AADHAAR";
+    setOcrLoading(true);
+    setOcrFeedback(null);
+
+    try {
+      const res = await apiRequest(API_ENDPOINTS.RECEPTIONIST.KYC_OCR_VERIFY, {
+        method: "POST",
+        body: JSON.stringify({
+          idType: typeToScan,
+          frontImage,
+          backImage,
+          idNumber: checkInData.govtIdNumber,
+          dob: dlDob || checkInData.dob,
+          mobileNumber: checkInData.mobile,
+          guestId: checkInData.guestId,
+        }),
+      });
+
+      if (res?.success && res.extractedData) {
+        const ext = res.extractedData;
+        setCheckInData((prev) => ({
+          ...prev,
+          fullName: ext.fullName || prev.fullName,
+          govtIdType: ext.idType || typeToScan,
+          govtIdNumber: ext.idNumber || prev.govtIdNumber,
+          address: ext.address || prev.address,
+          city: ext.city || prev.city,
+          state: ext.state || prev.state,
+          hasVerifiedId: true,
+          idVerified: true,
+          verificationSource: res.source,
+          confidenceScore: ext.confidenceScore,
+          verificationNotes: `Verified via ${res.source === "LIVE_SUREPASS" ? "Surepass OCR Engine" : "Surepass Instant Validator"}`,
+        }));
+
+        setOcrFeedback({
+          success: true,
+          message: res.message || "Document verified and guest details auto-filled successfully!",
+          data: ext,
+          source: res.source,
+        });
+      } else {
+        setOcrFeedback({
+          success: false,
+          message: res?.message || "Verification failed. Please check the document image.",
+        });
+      }
+    } catch (err) {
+      setOcrFeedback({
+        success: false,
+        message: err?.message || "Error connecting to Surepass verification service.",
+      });
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
+  // Direct DL Verification with Number + DOB (No OTP)
+  const handleDirectDlVerify = async () => {
+    if (!checkInData.govtIdNumber || !dlDob) {
+      setOcrFeedback({
+        success: false,
+        message: "Please enter both Driving License Number and Date of Birth (YYYY-MM-DD).",
+      });
+      return;
+    }
+    setOcrLoading(true);
+    setOcrFeedback(null);
+    try {
+      const res = await apiRequest(API_ENDPOINTS.RECEPTIONIST.KYC_VERIFY_DL, {
+        method: "POST",
+        body: JSON.stringify({
+          dlNumber: checkInData.govtIdNumber,
+          dob: dlDob,
+          mobileNumber: checkInData.mobile,
+          guestId: checkInData.guestId,
+        }),
+      });
+
+      if (res?.success && res.extractedData) {
+        const ext = res.extractedData;
+        setCheckInData((prev) => ({
+          ...prev,
+          fullName: ext.fullName || prev.fullName,
+          govtIdType: "DRIVING_LICENSE",
+          govtIdNumber: ext.idNumber || prev.govtIdNumber,
+          address: ext.address || prev.address,
+          hasVerifiedId: true,
+          idVerified: true,
+          verificationSource: res.source,
+        }));
+        setOcrFeedback({
+          success: true,
+          message: "Driving License verified from National Registry (Parivahan)!",
+          data: ext,
+          source: res.source,
+        });
+      } else {
+        setOcrFeedback({
+          success: false,
+          message: res?.message || "Driving License not found or invalid details.",
+        });
+      }
+    } catch (err) {
+      setOcrFeedback({
+        success: false,
+        message: err?.message || "Error verifying Driving License.",
+      });
+    } finally {
+      setOcrLoading(false);
+    }
+  };
 
   // Phone number lookup & repeat guest logic (Auto-detects when full 10-digit number matches)
   const handlePhoneChange = async (val) => {
@@ -472,34 +615,292 @@ export default function CheckInWizardPage({
             </Alert>
           )}
 
-          {/* Show ID inputs if first-time guest or user chose to update document */}
+          {/* Show ID inputs and Surepass Zero-OTP scanner if first-time guest or user chose to update document */}
           {(!checkInData.isRepeatGuest || !checkInData.hasVerifiedId || checkInData.reusePreviousId === false) && (
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <FormControl fullWidth>
-                  <InputLabel>Govt ID Document</InputLabel>
-                  <Select
-                    value={checkInData.govtIdType || "AADHAAR"}
-                    label="Govt ID Document"
-                    onChange={(e) => setCheckInData({ ...checkInData, govtIdType: e.target.value })}
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+              {/* Document Type Selector */}
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Govt ID Document</InputLabel>
+                    <Select
+                      value={checkInData.govtIdType || "AADHAAR"}
+                      label="Govt ID Document"
+                      onChange={(e) => {
+                        setCheckInData({ ...checkInData, govtIdType: e.target.value });
+                        setOcrFeedback(null);
+                      }}
+                    >
+                      <MenuItem value="AADHAAR">🪪 Aadhaar Card (UIDAI)</MenuItem>
+                      <MenuItem value="DRIVING_LICENSE">🚗 Driving License (MoRTH)</MenuItem>
+                      <MenuItem value="PASSPORT">🛂 International Passport</MenuItem>
+                      <MenuItem value="VOTER_ID">🗳️ Voter ID (ECI)</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Govt ID Number *"
+                    placeholder={checkInData.govtIdType === "DRIVING_LICENSE" ? "e.g. GJ0520180012345" : "e.g. 5421 8890 1234"}
+                    value={checkInData.govtIdNumber || ""}
+                    onChange={(e) => setCheckInData({ ...checkInData, govtIdNumber: e.target.value })}
+                  />
+                </Grid>
+              </Grid>
+
+              {/* Driving License DOB field if DL selected */}
+              {checkInData.govtIdType === "DRIVING_LICENSE" && (
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField
+                      fullWidth
+                      label="Driver Date of Birth (DOB) *"
+                      type="date"
+                      value={dlDob}
+                      onChange={(e) => setDlDob(e.target.value)}
+                      slotProps={{ inputLabel: { shrink: true } }}
+                      helperText="Required for National Parivahan Registry check"
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }} sx={{ display: "flex", alignItems: "center" }}>
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      startIcon={<FlashOn />}
+                      disabled={ocrLoading || !checkInData.govtIdNumber || !dlDob}
+                      onClick={handleDirectDlVerify}
+                      className="btn-3d"
+                      sx={{
+                        py: 1.6,
+                        borderRadius: "12px",
+                        fontWeight: 800,
+                        borderColor: themeConfig.primary,
+                        color: themeConfig.primaryDark,
+                      }}
+                    >
+                      {ocrLoading ? "Verifying Registry..." : "Verify DL via Parivahan Registry (No Image)"}
+                    </Button>
+                  </Grid>
+                </Grid>
+              )}
+
+              {/* Surepass OCR Photo Scanner Card */}
+              <Paper
+                className="card-3d"
+                sx={{
+                  p: 3,
+                  borderRadius: "20px",
+                  bgcolor: "#FFFFFF",
+                  border: `1.5px dashed ${checkInData.idVerified ? "#10B981" : themeConfig.primary}`,
+                  background: checkInData.idVerified
+                    ? "linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%)"
+                    : "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
+                }}
+              >
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2, flexWrap: "wrap", gap: 1.5 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+                    <Avatar sx={{ bgcolor: themeConfig.champagne, color: themeConfig.primary, width: 38, height: 38 }}>
+                      <DocumentScanner />
+                    </Avatar>
+                    <div>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.textMain }}>
+                        Surepass Instant Document OCR & Auto-Fill (Zero OTP)
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
+                        Upload or snap front & back photo. The system will extract verified Name, ID, DOB, & Address automatically.
+                      </Typography>
+                    </div>
+                  </Box>
+
+                  {checkInData.idVerified && (
+                    <Chip
+                      icon={<CheckCircle sx={{ "&&": { color: "#059669" } }} />}
+                      label="Surepass Verified ✅"
+                      sx={{ bgcolor: "#ECFDF5", color: "#059669", fontWeight: 900, border: "1px solid #10B981" }}
+                    />
+                  )}
+                </Box>
+
+                {/* Upload Zones (Front & Back) */}
+                <Grid container spacing={2}>
+                  {/* Front Photo */}
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: "14px",
+                        border: "1px solid",
+                        borderColor: frontImage ? "#10B981" : themeConfig.border,
+                        bgcolor: frontImage ? "rgba(16, 185, 129, 0.04)" : themeConfig.champagne,
+                        textAlign: "center",
+                        position: "relative",
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMain, display: "block", mb: 1 }}>
+                        🪪 ID Card Front Photo
+                      </Typography>
+
+                      {frontImage ? (
+                        <Box sx={{ position: "relative" }}>
+                          <img
+                            src={frontImage}
+                            alt="ID Front"
+                            style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: "10px" }}
+                          />
+                          <Button
+                            size="small"
+                            color="error"
+                            startIcon={<Delete />}
+                            onClick={() => setFrontImage("")}
+                            sx={{ mt: 1, fontSize: "0.75rem", textTransform: "none", fontWeight: 700 }}
+                          >
+                            Remove Front
+                          </Button>
+                        </Box>
+                      ) : (
+                        <Button
+                          component="label"
+                          variant="outlined"
+                          startIcon={<CloudUpload />}
+                          sx={{
+                            borderRadius: "10px",
+                            borderStyle: "dashed",
+                            textTransform: "none",
+                            fontWeight: 700,
+                            py: 1.5,
+                            width: "100%",
+                          }}
+                        >
+                          Upload / Snap Front Image
+                          <input type="file" accept="image/*" hidden onChange={(e) => handleImageFileChange(e, "front")} />
+                        </Button>
+                      )}
+                    </Box>
+                  </Grid>
+
+                  {/* Back Photo */}
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: "14px",
+                        border: "1px solid",
+                        borderColor: backImage ? "#10B981" : themeConfig.border,
+                        bgcolor: backImage ? "rgba(16, 185, 129, 0.04)" : themeConfig.champagne,
+                        textAlign: "center",
+                        position: "relative",
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMain, display: "block", mb: 1 }}>
+                        📄 ID Card Back Photo (For Address & Pincode)
+                      </Typography>
+
+                      {backImage ? (
+                        <Box sx={{ position: "relative" }}>
+                          <img
+                            src={backImage}
+                            alt="ID Back"
+                            style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: "10px" }}
+                          />
+                          <Button
+                            size="small"
+                            color="error"
+                            startIcon={<Delete />}
+                            onClick={() => setBackImage("")}
+                            sx={{ mt: 1, fontSize: "0.75rem", textTransform: "none", fontWeight: 700 }}
+                          >
+                            Remove Back
+                          </Button>
+                        </Box>
+                      ) : (
+                        <Button
+                          component="label"
+                          variant="outlined"
+                          startIcon={<CloudUpload />}
+                          sx={{
+                            borderRadius: "10px",
+                            borderStyle: "dashed",
+                            textTransform: "none",
+                            fontWeight: 700,
+                            py: 1.5,
+                            width: "100%",
+                          }}
+                        >
+                          Upload / Snap Back Image (Optional)
+                          <input type="file" accept="image/*" hidden onChange={(e) => handleImageFileChange(e, "back")} />
+                        </Button>
+                      )}
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                {/* Scan Button Action */}
+                <Box sx={{ mt: 2.5, display: "flex", justifyContent: "center" }}>
+                  <Button
+                    variant="contained"
+                    disabled={ocrLoading || (!frontImage && !checkInData.govtIdNumber)}
+                    onClick={() => handleOcrVerification(checkInData.govtIdType)}
+                    className="btn-3d"
+                    startIcon={ocrLoading ? <Refresh sx={{ animation: "spin 1s linear infinite" }} /> : <FlashOn />}
+                    sx={{
+                      background: `linear-gradient(135deg, ${themeConfig.primary} 0%, ${themeConfig.primaryDark} 100%)`,
+                      borderRadius: "14px",
+                      px: 4,
+                      py: 1.4,
+                      fontWeight: 900,
+                      fontSize: "0.9rem",
+                      boxShadow: `0 6px 18px ${themeConfig.primaryGlow}`,
+                    }}
                   >
-                    <MenuItem value="AADHAAR">Aadhaar Card (UIDAI)</MenuItem>
-                    <MenuItem value="PASSPORT">International Passport</MenuItem>
-                    <MenuItem value="DRIVING_LICENSE">Driving License</MenuItem>
-                    <MenuItem value="VOTER_ID">Voter ID</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  fullWidth
-                  label="Govt ID Number *"
-                  placeholder="e.g. 5421 8890 1234"
-                  value={checkInData.govtIdNumber}
-                  onChange={(e) => setCheckInData({ ...checkInData, govtIdNumber: e.target.value })}
-                />
-              </Grid>
-            </Grid>
+                    {ocrLoading ? "Scanning & Verifying with Surepass..." : "⚡ Scan & Auto-Fill Profile (Surepass Zero OTP)"}
+                  </Button>
+                </Box>
+
+                {/* OCR Result Feedback Box */}
+                {ocrFeedback && (
+                  <Box
+                    sx={{
+                      mt: 2.5,
+                      p: 2,
+                      borderRadius: "14px",
+                      bgcolor: ocrFeedback.success ? "#F0FDF4" : "#FEF2F2",
+                      border: `1px solid ${ocrFeedback.success ? "#86EFAC" : "#FECACA"}`,
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                      {ocrFeedback.success ? (
+                        <CheckCircle sx={{ color: "#059669", fontSize: 20 }} />
+                      ) : (
+                        <Security sx={{ color: "#DC2626", fontSize: 20 }} />
+                      )}
+                      <Typography variant="body2" sx={{ fontWeight: 800, color: ocrFeedback.success ? "#065F46" : "#991B1B" }}>
+                        {ocrFeedback.message}
+                      </Typography>
+                    </Box>
+
+                    {ocrFeedback.success && ocrFeedback.data && (
+                      <Grid container spacing={1.5} sx={{ mt: 0.5, fontSize: "0.82rem" }}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <Typography variant="caption" sx={{ color: "#047857", fontWeight: 700 }}>Verified Name:</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 800, color: "#065F46" }}>{ocrFeedback.data.fullName}</Typography>
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <Typography variant="caption" sx={{ color: "#047857", fontWeight: 700 }}>Document Number:</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 800, fontFamily: "monospace", color: "#065F46" }}>{ocrFeedback.data.idNumber}</Typography>
+                        </Grid>
+                        {ocrFeedback.data.address && (
+                          <Grid size={{ xs: 12 }}>
+                            <Typography variant="caption" sx={{ color: "#047857", fontWeight: 700 }}>Extracted Permanent Address:</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: "#065F46" }}>{ocrFeedback.data.address}</Typography>
+                          </Grid>
+                        )}
+                      </Grid>
+                    )}
+                  </Box>
+                )}
+              </Paper>
+            </Box>
           )}
 
           <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
@@ -508,7 +909,7 @@ export default function CheckInWizardPage({
             </Button>
             <Button
               variant="contained"
-              disabled={!checkInData.govtIdNumber && !checkInData.reusePreviousId}
+              disabled={!checkInData.govtIdNumber && !checkInData.reusePreviousId && !checkInData.hasVerifiedId}
               onClick={() => setActiveStep(2)}
               className="btn-3d"
               endIcon={<ArrowForward />}
