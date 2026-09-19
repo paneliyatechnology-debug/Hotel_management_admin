@@ -340,15 +340,22 @@ export function downloadTaxInvoicePDF(booking = {}, hotel = {}) {
 
     <div class="info-grid">
       <div class="info-block">
-        <h4>Billed To (Guest Details)</h4>
+        <h4>Billed To (Primary Guest)</h4>
         <p>${guest.fullName || guest.name || "Valued Guest"}</p>
         <span>📞 ${guest.mobileNumber || guest.phone || "N/A"} &bull; ✉️ ${guest.email || "N/A"}</span>
         <span>Govt ID: ${guest.idProof?.idType || guest.govtIdType || "Aadhaar"}: ${guest.idProof?.idNumber || guest.govtIdNumber || "XXXX-XXXX-4512"}</span>
+        ${booking.accompanyingGuests && booking.accompanyingGuests.length > 0 ? `
+          <div style="margin-top:6px;font-size:11px;color:#334155;">
+            <strong>Accompanying Guests (${booking.accompanyingGuests.length}):</strong><br/>
+            ${booking.accompanyingGuests.map(m => `&bull; ${m.name} (${m.relationship || "Family"}${m.idNumber ? ` - ${m.idType}: ${m.idNumber}` : ""})`).join("<br/>")}
+          </div>
+        ` : ""}
       </div>
       <div class="info-block">
         <h4>Stay &amp; Room Allocation</h4>
         <p>Room #${booking.roomNumber || room.roomNumber || "101"} (${roomType.name || "Deluxe Suite"})</p>
-        <span>Check-In: <strong>${booking.checkInDate || "Today"}</strong> &bull; Check-Out: <strong>${booking.checkOutDate || "Tomorrow"}</strong></span>
+        <span>Check-In: <strong>${booking.checkInDate || "Today"} (${booking.checkInTime || "14:00"})</strong></span>
+        <span>Check-Out: <strong>${booking.checkOutDate || "Tomorrow"} (12:00 PM)</strong></span>
         <span>Booking Folio: #${booking.bookingNumber || "BK-8921"}</span>
       </div>
     </div>

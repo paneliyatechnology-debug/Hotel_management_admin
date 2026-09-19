@@ -464,6 +464,22 @@ export default function InHouseFoliosPage({
                                 <Phone sx={{ fontSize: 11 }} /> {guestPhone}
                               </Typography>
                             )}
+                            {b.accompanyingGuests && b.accompanyingGuests.length > 0 && (
+                              <Tooltip title={b.accompanyingGuests.map((m) => `${m.name} (${m.relationship || 'Family'})`).join(', ')}>
+                                <Chip
+                                  label={`+${b.accompanyingGuests.length} Member(s)`}
+                                  size="small"
+                                  sx={{
+                                    height: 18,
+                                    fontSize: "0.65rem",
+                                    fontWeight: 800,
+                                    bgcolor: "rgba(11, 142, 224, 0.1)",
+                                    color: themeConfig.primary,
+                                    mt: 0.3,
+                                  }}
+                                />
+                              </Tooltip>
+                            )}
                           </div>
                         </Box>
                       </TableCell>
@@ -489,9 +505,9 @@ export default function InHouseFoliosPage({
 
                       {/* Stay Duration */}
                       <TableCell sx={{ color: themeConfig.textMuted, fontSize: "0.78rem", whiteSpace: "nowrap" }}>
-                        <div><strong>In:</strong> {b.checkInDate || "Today"} ({checkInTimeFormatted})</div>
+                        <div><strong>In:</strong> {b.checkInDate || "Today"} ({b.checkInTime ? formatTime12Hour(b.checkInTime) : checkInTimeFormatted})</div>
                         <div>
-                          <strong>Out:</strong> {b.checkOutDate || "Tomorrow"} ({checkOutTimeFormatted})
+                          <strong>Out:</strong> {b.checkOutDate || "Tomorrow"} (12:00 PM)
                           {isCheckoutToday && b.status === "CHECKED_IN" && (
                             <Chip
                               label="Due Today"
@@ -908,17 +924,35 @@ export default function InHouseFoliosPage({
           {detailsModal.booking && (
             <Box sx={{ pt: 1, display: "flex", flexDirection: "column", gap: 2 }}>
               <Paper sx={{ p: 2, borderRadius: "14px", bgcolor: themeConfig.champagne, border: `1px solid ${themeConfig.border}` }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
                   <div>
                     <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.textMain }}>
                       {detailsModal.booking.guest?.name || detailsModal.booking.guest?.fullName}
                     </Typography>
                     <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
-                      Room {detailsModal.booking.roomNumber || detailsModal.booking.room?.roomNumber} &bull; Check-in: {detailsModal.booking.checkInDate} &bull; Check-out: {detailsModal.booking.checkOutDate}
+                      Room {detailsModal.booking.roomNumber || detailsModal.booking.room?.roomNumber} &bull; Check-in: {detailsModal.booking.checkInDate} ({detailsModal.booking.checkInTime ? formatTime12Hour(detailsModal.booking.checkInTime) : checkInTimeFormatted}) &bull; Check-out: {detailsModal.booking.checkOutDate} (12:00 PM)
                     </Typography>
                   </div>
                   <StatusChip status={detailsModal.booking.status} size="small" />
                 </Box>
+
+                {detailsModal.booking.accompanyingGuests && detailsModal.booking.accompanyingGuests.length > 0 && (
+                  <Box sx={{ mt: 1.5, pt: 1, borderTop: `1px dashed ${themeConfig.border}` }}>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.primaryDark, display: "block", mb: 0.5 }}>
+                      👥 Accompanying Members ({detailsModal.booking.accompanyingGuests.length}):
+                    </Typography>
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                      {detailsModal.booking.accompanyingGuests.map((m, idx) => (
+                        <Chip
+                          key={idx}
+                          size="small"
+                          label={`${m.name} (${m.relationship || "Family"}${m.idNumber ? ` • ${m.idType}: ${m.idNumber}` : ""})`}
+                          sx={{ bgcolor: "#FFFFFF", color: themeConfig.textMain, fontSize: "0.72rem", border: `1px solid ${themeConfig.border}` }}
+                        />
+                      ))}
+                    </Box>
+                  </Box>
+                )}
               </Paper>
 
               <Typography variant="subtitle2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>

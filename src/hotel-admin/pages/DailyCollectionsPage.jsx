@@ -51,6 +51,7 @@ import {
 } from "@mui/icons-material";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
+import { useSocket } from "@/shared/context/SocketContext";
 import EmptyState from "@/shared/components/EmptyState";
 import { downloadDailyLedgerPDF, downloadHandoverVoucherPDF } from "@/shared/utils/pdfGenerator";
 
@@ -115,6 +116,15 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
   useEffect(() => {
     fetchDailyData(page, rowsPerPage, searchQuery, methodFilter, handoverPage, handoverRowsPerPage);
   }, [page, rowsPerPage, methodFilter, handoverPage, handoverRowsPerPage]);
+
+  // Real-time Socket.io Sync for Instant Payment & Shift Handover Updates
+  useSocket(
+    ["PAYMENT_RECORDED", "HANDOVER_SETTLED", "DASHBOARD_SYNC", "BOOKING_CREATED", "GUEST_CHECKED_OUT"],
+    (payload, eventName) => {
+      console.log(`⚡ [DailyCollectionsPage] Real-time sync triggered by ${eventName}`);
+      fetchDailyData(page, rowsPerPage, searchQuery, methodFilter, handoverPage, handoverRowsPerPage);
+    }
+  );
 
   const handleSearchSubmit = (e) => {
     if (e) e.preventDefault();

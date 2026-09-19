@@ -48,6 +48,21 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState({ show: false, message: "", severity: "success" });
 
+  // Helper for current local date in YYYY-MM-DD
+  const getTodayLocalDate = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper for current time in HH:MM
+  const getCurrentLocalTime = () => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
+
   // 5-Step Check-in Stepper State
   const [activeStep, setActiveStep] = useState(0);
   const [checkInData, setCheckInData] = useState({
@@ -66,13 +81,31 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
     idStatus: "Verified",
     roomType: "Deluxe King Room",
     roomNumber: "101",
-    checkInDate: new Date().toISOString().split("T")[0],
-    checkOutDate: new Date(Date.now() + 86400000).toISOString().split("T")[0],
-    adults: 2,
+    roomId: "",
+    roomIds: [],
+    selectedRooms: [],
+    selectedRoomNumbers: [],
+    checkInDate: getTodayLocalDate(),
+    checkInTime: getCurrentLocalTime(),
+    checkOutDate: (() => {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    })(),
+    checkOutTime: "12:00",
+    numberOfNights: 1,
+    adults: 1,
     children: 0,
-    rate: 4500,
-    total: 4500,
-    paid: 4500,
+    accompanyingGuests: [],
+    rate: 3000,
+    discountAmount: 0,
+    collectSecurityDeposit: false,
+    securityDepositAmount: 1000,
+    total: 3000,
+    paid: 3000,
     due: 0,
     paymentMethod: "UPI",
   });
@@ -95,7 +128,35 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
         setDashboardData(dashRes.value.data);
       }
       if (roomsRes.status === "fulfilled" && (roomsRes.value?.data || Array.isArray(roomsRes.value))) {
-        setRooms(roomsRes.value.data || roomsRes.value || []);
+        const roomList = roomsRes.value.data || roomsRes.value || [];
+        setRooms(roomList);
+        const avail = roomList.filter((r) => r.status === "AVAILABLE");
+        if (avail.length > 0) {
+          const firstRoom = avail[0];
+          const rt = typeof firstRoom.roomType === "object" ? firstRoom.roomType : null;
+          const tariff = firstRoom.customPricePerNight || rt?.basePrice || firstRoom.basePrice || 3000;
+          setCheckInData((prev) => {
+            if (prev.roomId && prev.roomId !== firstRoom._id) return prev;
+            const baseTot = tariff * (prev.numberOfNights || 1);
+            const isVip = Boolean(prev.isRepeatGuest || (prev.totalVisits && prev.totalVisits >= 2));
+            const disc = isVip ? Math.round(baseTot * 0.10) : (prev.discountAmount || 0);
+            const netTot = Math.max(0, baseTot - disc) + (prev.collectSecurityDeposit ? (Number(prev.securityDepositAmount) || 1000) : 0);
+            return {
+              ...prev,
+              roomId: firstRoom._id,
+              roomIds: [firstRoom._id],
+              roomNumber: String(firstRoom.roomNumber),
+              selectedRooms: [firstRoom],
+              selectedRoomNumbers: [String(firstRoom.roomNumber)],
+              roomType: rt?.name || firstRoom.type || "Deluxe King Room",
+              rate: tariff,
+              discountAmount: disc,
+              total: netTot,
+              paid: netTot,
+              due: 0,
+            };
+          });
+        }
       }
       if (bookRes.status === "fulfilled" && (bookRes.value?.data || Array.isArray(bookRes.value))) {
         setBookings(bookRes.value.data || bookRes.value || []);
@@ -137,6 +198,14 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
 
   const handleFinalCheckIn = async () => {
     try {
+      const resolvedRoomIds = (checkInData.roomIds && checkInData.roomIds.length > 0)
+        ? checkInData.roomIds
+        : checkInData.roomId
+        ? [checkInData.roomId]
+        : [];
+
+      const secDepAmt = checkInData.collectSecurityDeposit ? (Number(checkInData.securityDepositAmount) || 1000) : 0;
+
       const payload = {
         guestId: checkInData.guestId,
         fullName: checkInData.fullName,
@@ -146,17 +215,23 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
         govtIdType: checkInData.govtIdType || "AADHAAR",
         govtIdNumber: checkInData.govtIdNumber || "PENDING",
         reusePreviousId: checkInData.reusePreviousId !== false,
-        roomId: checkInData.roomId,
-        roomNumber: checkInData.roomNumber,
-        checkInDate: checkInData.checkInDate,
+        roomId: checkInData.roomId || resolvedRoomIds[0],
+        roomIds: resolvedRoomIds,
+        roomNumber: checkInData.selectedRoomNumbers?.join(", ") || checkInData.roomNumber,
+        checkInDate: checkInData.isCustomCheckInTime ? checkInData.checkInDate : getTodayLocalDate(),
+        checkInTime: checkInData.isCustomCheckInTime ? checkInData.checkInTime : getCurrentLocalTime(),
         checkOutDate: checkInData.checkOutDate,
-        adults: checkInData.adults || 1,
+        checkOutTime: "12:00",
+        adults: checkInData.adults || (1 + (checkInData.accompanyingGuests?.length || 0)),
         children: checkInData.children || 0,
+        accompanyingGuests: checkInData.accompanyingGuests || [],
+        discountAmount: checkInData.discountAmount || 0,
+        securityDepositAmount: secDepAmt,
         advancePaymentAmount: checkInData.paid !== undefined ? checkInData.paid : checkInData.total || 0,
         paymentMethod: checkInData.paymentMethod || "CASH",
         transactionId: checkInData.transactionId || "",
         paymentReference: checkInData.paymentReference || "",
-        paymentNote: `${checkInData.paymentMethod || "CASH"} settlement at check-in`,
+        paymentNote: `${checkInData.paymentMethod || "CASH"} settlement at check-in${secDepAmt > 0 ? ` (Includes ₹${secDepAmt} security deposit)` : ""}`,
         isInstantCheckIn: true,
       };
 
@@ -165,7 +240,7 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
         body: payload,
       });
 
-      showToast(res.message || `Guest ${checkInData.fullName} successfully checked in to Room ${checkInData.roomNumber}!`);
+      showToast(res.message || `Guest ${checkInData.fullName} successfully checked in to Room ${payload.roomNumber}!`);
       await fetchFrontDeskData();
       setActiveStep(0);
       setCheckInData({
@@ -176,11 +251,30 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
         govtIdType: "AADHAAR",
         govtIdNumber: "",
         roomNumber: "",
-        checkInDate: new Date().toISOString().split("T")[0],
-        checkOutDate: new Date(Date.now() + 86400000).toISOString().split("T")[0],
-        rate: 3500,
-        total: 3500,
-        paid: 3500,
+        roomId: "",
+        roomIds: [],
+        selectedRooms: [],
+        checkInDate: getTodayLocalDate(),
+        checkInTime: getCurrentLocalTime(),
+        checkOutDate: (() => {
+          const d = new Date();
+          d.setDate(d.getDate() + 1);
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, "0");
+          const day = String(d.getDate()).padStart(2, "0");
+          return `${y}-${m}-${day}`;
+        })(),
+        checkOutTime: "12:00",
+        numberOfNights: 1,
+        adults: 1,
+        children: 0,
+        accompanyingGuests: [],
+        rate: 3000,
+        discountAmount: 0,
+        collectSecurityDeposit: false,
+        securityDepositAmount: 1000,
+        total: 3000,
+        paid: 3000,
         due: 0,
         paymentMethod: "UPI",
       });

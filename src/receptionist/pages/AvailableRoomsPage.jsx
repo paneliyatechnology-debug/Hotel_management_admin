@@ -26,6 +26,7 @@ import {
   IconButton,
   Tooltip,
   TablePagination,
+  Pagination,
 } from "@mui/material";
 import {
   HowToReg,
@@ -76,6 +77,10 @@ export default function AvailableRoomsPage({
   const [nowTime, setNowTime] = useState(Date.now());
   const [guestPage, setGuestPage] = useState(0);
   const [guestRowsPerPage, setGuestRowsPerPage] = useState(5);
+
+  // Room Matrix Pagination State (8 room boxes per page)
+  const [roomPage, setRoomPage] = useState(1);
+  const roomsPerPage = 8;
 
   // 1-second interval ticker for live housekeeping cleaning countdown
   useEffect(() => {
@@ -143,12 +148,133 @@ export default function AvailableRoomsPage({
     return true;
   });
 
+  // Reset room page when filters change
+  useEffect(() => {
+    setRoomPage(1);
+  }, [roomSearch, selectedFloor, selectedStatus]);
+
+  // Paginated rooms (8 per page)
+  const totalRoomPages = Math.ceil(filteredRooms.length / roomsPerPage) || 1;
+  const paginatedRooms = filteredRooms.slice((roomPage - 1) * roomsPerPage, roomPage * roomsPerPage);
+
   const inTimeFormatted = formatTime12Hour(hotelSettings?.checkInTime || "14:00");
   const outTimeFormatted = formatTime12Hour(hotelSettings?.checkOutTime || "12:00");
   const timezoneStr = hotelSettings?.timezone || "Asia/Kolkata";
   const turnaroundStr = getTurnaroundWindow(hotelSettings?.checkInTime, hotelSettings?.checkOutTime);
 
-  const recentGuests = guests.slice(0, 5);
+  // Helper to extract YYYY-MM-DD from various date formats
+  const parseToIsoDate = (dateVal) => {
+    if (!dateVal) return "";
+    if (typeof dateVal === "string") {
+      if (dateVal.includes("/")) {
+        const parts = dateVal.split("/");
+        if (parts.length === 3) {
+          const day = parts[0].padStart(2, "0");
+          const month = parts[1].padStart(2, "0");
+          const year = parts[2];
+          return `${year}-${month}-${day}`;
+        }
+      }
+      return dateVal.split("T")[0];
+    }
+    try {
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return "";
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    } catch {
+      return "";
+    }
+  };
+
+  const todayStr = (() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  })();
+
+  // Filter ONLY today's check-ins, active in-house stays (staying today or checkout pending), and today's departures
+  // Exclude historical departed stays from 2 or 3 days ago
+  const activeRecentGuests = (() => {
+    // 1. If bookings list is available, prioritize live bookings
+    if (bookings && bookings.length > 0) {
+      const matchedBookings = bookings.filter((b) => {
+        const inDate = parseToIsoDate(b.checkInDate);
+        const outDate = parseToIsoDate(b.checkOutDate);
+        const isCheckedIn = b.status === "CHECKED_IN" || b.status === "IN-HOUSE";
+        const isTodayIn = inDate === todayStr;
+        const isTodayOut = outDate === todayStr;
+        const isPendingCheckout = isCheckedIn && (!outDate || outDate >= todayStr);
+
+        // Include active in-house stays, today's check-ins, or today's departures
+        if (isCheckedIn || isTodayIn || isTodayOut || isPendingCheckout) {
+          return true;
+        }
+
+        // If checked-out / departed, only include if departed TODAY or checked-in TODAY
+        if (b.status === "CHECKED_OUT" || b.status === "DEPARTED") {
+          return isTodayOut || isTodayIn;
+        }
+
+        return false;
+      });
+
+      if (matchedBookings.length > 0) {
+        return matchedBookings.map((b) => {
+          const g = typeof b.guest === "object" ? b.guest : {};
+          return {
+            _id: b._id,
+            name: g?.fullName || g?.name || b.guestName || "Resident Guest",
+            email: g?.email || b.email || "",
+            phone: g?.mobileNumber || g?.phone || b.mobileNumber || "N/A",
+            roomAssigned: b.roomNumber || b.room?.roomNumber || "101",
+            checkInDate: inDateFormattedDate(b.checkInDate) || "Today",
+            status: b.status === "CHECKED_IN" ? "IN-HOUSE" : b.status === "CHECKED_OUT" ? "DEPARTED" : b.status || "IN-HOUSE",
+          };
+        });
+      }
+    }
+
+    // 2. Fallback to guests array with the same filter
+    return (guests || []).filter((g) => {
+      const inDate = parseToIsoDate(g.checkInDate);
+      const outDate = parseToIsoDate(g.checkOutDate);
+      const isTodayIn = inDate === todayStr;
+      const isTodayOut = outDate === todayStr;
+      const isInHouse = g.status === "IN-HOUSE" || g.status === "CHECKED_IN" || g.status === "ACTIVE";
+
+      // If in-house, always keep (active stay)
+      if (isInHouse) return true;
+
+      // If today check-in or today check-out
+      if (isTodayIn || isTodayOut) return true;
+
+      // Exclude departed records from 2 or 3 days ago
+      if (g.status === "DEPARTED" || g.status === "CHECKED_OUT") {
+        return false;
+      }
+
+      // If future checkout
+      if (outDate && outDate >= todayStr) return true;
+
+      return false;
+    });
+  })();
+
+  function inDateFormattedDate(val) {
+    if (!val) return "";
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return String(val);
+      return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+    } catch {
+      return String(val);
+    }
+  }
 
   const handleOpenStatusDialog = (room) => {
     setStatusDialog({
@@ -509,19 +635,20 @@ export default function AvailableRoomsPage({
               />
             </Box>
           ) : (
-            <Box
+            <>
+              <Box
               sx={{
                 display: "grid",
                 gridTemplateColumns: {
                   xs: "repeat(2, 1fr)",
                   sm: "repeat(3, 1fr)",
                   md: "repeat(4, 1fr)",
-                  lg: "repeat(5, 1fr)",
+                  lg: "repeat(4, 1fr)",
                 },
                 gap: 2,
               }}
             >
-              {filteredRooms.map((room) => {
+              {paginatedRooms.map((room) => {
                 let statusBg = "rgba(16, 185, 129, 0.08)";
                 let statusBorder = "#10B981";
                 let statusGlow = "rgba(16, 185, 129, 0.25)";
@@ -669,6 +796,49 @@ export default function AvailableRoomsPage({
                 );
               })}
             </Box>
+
+            {/* Room Matrix 8-per-page Pagination Controls */}
+            {filteredRooms.length > roomsPerPage && (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 2,
+                  mt: 3,
+                  pt: 2.5,
+                  borderTop: `1px solid ${themeConfig.border}`,
+                }}
+              >
+                <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontWeight: 700, fontSize: "0.8rem" }}>
+                  Showing <strong>{(roomPage - 1) * roomsPerPage + 1}</strong> &ndash; <strong>{Math.min(roomPage * roomsPerPage, filteredRooms.length)}</strong> of <strong>{filteredRooms.length}</strong> Rooms (8 per page)
+                </Typography>
+
+                <Pagination
+                  count={totalRoomPages}
+                  page={roomPage}
+                  onChange={(e, p) => setRoomPage(p)}
+                  color="primary"
+                  shape="rounded"
+                  size="medium"
+                  showFirstButton
+                  showLastButton
+                  sx={{
+                    "& .MuiPaginationItem-root": {
+                      fontWeight: 800,
+                      borderRadius: "10px",
+                    },
+                    "& .Mui-selected": {
+                      bgcolor: `${themeConfig.primary} !important`,
+                      color: "#FFFFFF !important",
+                      boxShadow: `0 4px 10px ${themeConfig.primaryGlow || "rgba(11, 142, 224, 0.4)"}`,
+                    },
+                  }}
+                />
+              </Box>
+            )}
+          </>
           )}
         </CardContent>
       </Card>
@@ -751,14 +921,14 @@ export default function AvailableRoomsPage({
                 </TableRow>
               </TableHead>
               <TableBody>
-                {guests.length === 0 ? (
+                {activeRecentGuests.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 3, color: themeConfig.textMuted }}>
-                      No active in-house guests currently registered.
+                    <TableCell colSpan={5} align="center" sx={{ py: 3, color: themeConfig.textMuted, fontWeight: 700 }}>
+                      No active check-ins or in-house guest folios for today.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  guests
+                  activeRecentGuests
                     .slice(guestPage * guestRowsPerPage, guestPage * guestRowsPerPage + guestRowsPerPage)
                     .map((g) => (
                     <TableRow key={g._id || g.name} sx={{ "&:hover": { bgcolor: `${themeConfig.primaryGlow} !important` } }}>
@@ -820,11 +990,11 @@ export default function AvailableRoomsPage({
           </TableContainer>
 
           {/* Table Pagination */}
-          {guests.length > 0 && (
+          {activeRecentGuests.length > 0 && (
             <TablePagination
               rowsPerPageOptions={[5, 10, 25]}
               component="div"
-              count={guests.length}
+              count={activeRecentGuests.length}
               rowsPerPage={guestRowsPerPage}
               page={guestPage}
               onPageChange={(e, newPage) => setGuestPage(newPage)}

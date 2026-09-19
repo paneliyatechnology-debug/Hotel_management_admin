@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import { WarningAmber, CheckCircle } from "@mui/icons-material";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
+import { useSocket } from "@/shared/context/SocketContext";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import SettingsView from "@/shared/components/SettingsView";
 import SuperAdminOverviewPage from "../pages/SuperAdminOverviewPage";
@@ -42,6 +43,10 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
   useEffect(() => {
     fetchHotels();
   }, []);
+
+  useSocket(["HOTEL_REGISTERED", "HOTEL_STATUS_UPDATED", "SUBSCRIPTION_UPDATED", "DASHBOARD_SYNC"], () => {
+    fetchHotels();
+  });
 
   const fetchHotels = async () => {
     try {
