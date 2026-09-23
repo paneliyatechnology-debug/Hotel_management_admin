@@ -43,6 +43,7 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
   );
   const [dashboardData, setDashboardData] = useState(null);
   const [rooms, setRooms] = useState([]);
+  const [roomTypes, setRoomTypes] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [guests, setGuests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,52 +64,71 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   };
 
-  // 5-Step Check-in Stepper State
+  // 4-Step Check-in Stepper State
   const [activeStep, setActiveStep] = useState(0);
-  const [checkInData, setCheckInData] = useState({
-    fullName: "",
-    mobile: "",
-    email: "",
-    gender: "Male",
-    dob: "",
-    nationality: "Indian",
-    address: "",
-    emergencyContact: "",
-    govtIdType: "AADHAAR",
-    govtIdNumber: "",
-    frontImage: "",
-    backImage: "",
-    idStatus: "Verified",
-    roomType: "Deluxe King Room",
-    roomNumber: "101",
-    roomId: "",
-    roomIds: [],
-    selectedRooms: [],
-    selectedRoomNumbers: [],
-    checkInDate: getTodayLocalDate(),
-    checkInTime: getCurrentLocalTime(),
-    checkOutDate: (() => {
-      const d = new Date();
-      d.setDate(d.getDate() + 1);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    })(),
-    checkOutTime: "12:00",
-    numberOfNights: 1,
-    adults: 1,
-    children: 0,
-    accompanyingGuests: [],
-    rate: 3000,
-    discountAmount: 0,
-    collectSecurityDeposit: false,
-    securityDepositAmount: 1000,
-    total: 3000,
-    paid: 3000,
-    due: 0,
-    paymentMethod: "UPI",
+  const [checkInData, setCheckInData] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = sessionStorage.getItem("saved_checkInData");
+        if (saved) {
+          return JSON.parse(saved);
+        }
+      } catch (e) {}
+    }
+    return {
+      fullName: "",
+      mobile: "",
+      email: "",
+      gender: "Male",
+      dob: "",
+      nationality: "Indian",
+      address: "",
+      emergencyContact: "",
+      govtIdType: "AADHAAR",
+      govtIdNumber: "",
+      frontImage: "",
+      backImage: "",
+      idStatus: "Verified",
+      roomType: "",
+      roomNumber: "",
+      roomId: "",
+      roomIds: [],
+      selectedRooms: [],
+      selectedRoomNumbers: [],
+      checkInDate: getTodayLocalDate(),
+      checkInTime: getCurrentLocalTime(),
+      checkOutDate: (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      })(),
+      checkOutTime: "12:00",
+      numberOfNights: 1,
+      adults: 1,
+      children: 0,
+      accompanyingGuests: [],
+      rate: 0,
+      discountAmount: 0,
+      collectSecurityDeposit: false,
+      securityDepositAmount: 1000,
+      total: 0,
+      paid: 0,
+      due: 0,
+      paymentMethod: "UPI",
+    };
   });
+
+  // Sync checkInData to sessionStorage on changes
+  useEffect(() => {
+    if (typeof window !== "undefined" && checkInData) {
+      try {
+        sessionStorage.setItem("saved_checkInData", JSON.stringify(checkInData));
+      } catch (e) {}
+    }
+  }, [checkInData]);
 
   // Dialogs
   const [posChargeDialog, setPosChargeDialog] = useState({ open: false, booking: null, serviceType: "ROOM_SERVICE", amount: 650, description: "Breakfast & Sparkling Water" });
@@ -117,11 +137,12 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
   const fetchFrontDeskData = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      const [dashRes, roomsRes, bookRes, guestRes] = await Promise.allSettled([
+      const [dashRes, roomsRes, bookRes, guestRes, roomTypesRes] = await Promise.allSettled([
         apiRequest(API_ENDPOINTS.RECEPTIONIST.DASHBOARD),
         apiRequest(API_ENDPOINTS.RECEPTIONIST.AVAILABLE_ROOMS),
         apiRequest(API_ENDPOINTS.RECEPTIONIST.BOOKINGS),
         apiRequest(API_ENDPOINTS.RECEPTIONIST.GUESTS),
+        apiRequest(API_ENDPOINTS.RECEPTIONIST.ROOM_TYPES),
       ]);
 
       if (dashRes.status === "fulfilled" && dashRes.value?.data) {
@@ -130,33 +151,9 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
       if (roomsRes.status === "fulfilled" && (roomsRes.value?.data || Array.isArray(roomsRes.value))) {
         const roomList = roomsRes.value.data || roomsRes.value || [];
         setRooms(roomList);
-        const avail = roomList.filter((r) => r.status === "AVAILABLE");
-        if (avail.length > 0) {
-          const firstRoom = avail[0];
-          const rt = typeof firstRoom.roomType === "object" ? firstRoom.roomType : null;
-          const tariff = firstRoom.customPricePerNight || rt?.basePrice || firstRoom.basePrice || 3000;
-          setCheckInData((prev) => {
-            if (prev.roomId && prev.roomId !== firstRoom._id) return prev;
-            const baseTot = tariff * (prev.numberOfNights || 1);
-            const isVip = Boolean(prev.isRepeatGuest || (prev.totalVisits && prev.totalVisits >= 2));
-            const disc = isVip ? Math.round(baseTot * 0.10) : (prev.discountAmount || 0);
-            const netTot = Math.max(0, baseTot - disc) + (prev.collectSecurityDeposit ? (Number(prev.securityDepositAmount) || 1000) : 0);
-            return {
-              ...prev,
-              roomId: firstRoom._id,
-              roomIds: [firstRoom._id],
-              roomNumber: String(firstRoom.roomNumber),
-              selectedRooms: [firstRoom],
-              selectedRoomNumbers: [String(firstRoom.roomNumber)],
-              roomType: rt?.name || firstRoom.type || "Deluxe King Room",
-              rate: tariff,
-              discountAmount: disc,
-              total: netTot,
-              paid: netTot,
-              due: 0,
-            };
-          });
-        }
+      }
+      if (roomTypesRes.status === "fulfilled" && (roomTypesRes.value?.data || Array.isArray(roomTypesRes.value))) {
+        setRoomTypes(roomTypesRes.value.data || roomTypesRes.value || []);
       }
       if (bookRes.status === "fulfilled" && (bookRes.value?.data || Array.isArray(bookRes.value))) {
         setBookings(bookRes.value.data || bookRes.value || []);
@@ -250,10 +247,12 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
         address: "",
         govtIdType: "AADHAAR",
         govtIdNumber: "",
+        roomType: "",
         roomNumber: "",
         roomId: "",
         roomIds: [],
         selectedRooms: [],
+        selectedRoomNumbers: [],
         checkInDate: getTodayLocalDate(),
         checkInTime: getCurrentLocalTime(),
         checkOutDate: (() => {
@@ -269,15 +268,20 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
         adults: 1,
         children: 0,
         accompanyingGuests: [],
-        rate: 3000,
+        rate: 0,
         discountAmount: 0,
         collectSecurityDeposit: false,
         securityDepositAmount: 1000,
-        total: 3000,
-        paid: 3000,
+        total: 0,
+        paid: 0,
         due: 0,
         paymentMethod: "UPI",
       });
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.removeItem("saved_checkInData");
+        } catch (e) {}
+      }
       if (onTabChange) onTabChange(1);
     } catch (err) {
       showToast(err.message || "Failed to process check-in", "error");
@@ -346,6 +350,59 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
     }
   };
 
+  const handleSelectRoomForCheckIn = (room) => {
+    if (!room) return;
+    const rt = typeof room.roomType === "object" && room.roomType !== null
+      ? room.roomType
+      : roomTypes.find((t) => String(t._id) === String(room.roomType));
+    const categoryName = rt?.name || room.category || room.type || `Room ${room.roomNumber}`;
+    const tariff = room.customPricePerNight || rt?.basePrice || room.basePrice || 3000;
+    
+    setCheckInData((prev) => {
+      const n = prev.numberOfNights || 1;
+      const baseTot = tariff * n;
+      const isVip = Boolean(prev.isRepeatGuest || (prev.totalVisits && prev.totalVisits >= 2));
+      const disc = isVip ? Math.round(baseTot * 0.10) : (prev.discountAmount || 0);
+      const netTot = Math.max(0, baseTot - disc) + (prev.collectSecurityDeposit ? (Number(prev.securityDepositAmount) || 1000) : 0);
+      return {
+        ...prev,
+        roomId: room._id,
+        roomIds: [room._id],
+        roomNumber: String(room.roomNumber),
+        selectedRooms: [room],
+        selectedRoomNumbers: [String(room.roomNumber)],
+        roomType: categoryName,
+        floor: room.floor || 1,
+        rate: tariff,
+        discountAmount: disc,
+        total: netTot,
+        paid: netTot,
+        due: 0,
+      };
+    });
+    setActiveStep(0);
+    if (onTabChange) onTabChange(2); // Directly redirect to 4-step Check-in Wizard!
+  };
+
+  const handleDeleteRoom = async (room) => {
+    if (!room) return;
+    if (room.status !== "AVAILABLE") {
+      showToast(`Cannot delete Room ${room.roomNumber} because it is '${room.status}'. Only AVAILABLE rooms can be deleted.`, "error");
+      return;
+    }
+    try {
+      const res = await apiRequest(API_ENDPOINTS.RECEPTIONIST.DELETE_ROOM(room._id), {
+        method: "DELETE",
+      });
+      showToast(res.message || `Room ${room.roomNumber} deleted successfully!`);
+      await fetchFrontDeskData();
+      return res;
+    } catch (err) {
+      showToast(err.message || "Failed to delete room", "error");
+      throw err;
+    }
+  };
+
   const handleAddPosCharge = async () => {
     if (!posChargeDialog.booking) return;
     try {
@@ -391,6 +448,7 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
         <AvailableRoomsPage
           user={user}
           rooms={rooms}
+          roomTypes={roomTypes}
           guests={guests}
           bookings={bookings}
           dashboardData={dashboardData}
@@ -398,6 +456,8 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
           onRefresh={fetchFrontDeskData}
           onNavigateTab={(tab) => onTabChange && onTabChange(tab)}
           onRoomStatusChange={handleRoomStatusToggle}
+          onSelectRoomForCheckIn={handleSelectRoomForCheckIn}
+          onDeleteRoom={handleDeleteRoom}
         />
       )}
 
@@ -412,7 +472,7 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
         />
       )}
 
-      {/* ROUTE 2: 5-STEP CHECK-IN WIZARD */}
+      {/* ROUTE 2: 4-STEP CHECK-IN WIZARD */}
       {activeNav === 2 && (
         <CheckInWizardPage
           activeStep={activeStep}
@@ -421,6 +481,7 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
           setCheckInData={setCheckInData}
           hotelSettings={hotelSettings}
           rooms={rooms}
+          roomTypes={roomTypes}
           guests={guests}
           bookings={bookings}
           onFinalCheckIn={handleFinalCheckIn}
@@ -492,9 +553,9 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
             <TextField
               size="small"
               label="Amount (₹) *"
-              type="number"
-              value={posChargeDialog.amount}
-              onChange={(e) => setPosChargeDialog({ ...posChargeDialog, amount: Number(e.target.value) })}
+              placeholder="e.g. 1500"
+              value={posChargeDialog.amount ?? ""}
+              onChange={(e) => setPosChargeDialog({ ...posChargeDialog, amount: e.target.value })}
               fullWidth
             />
           </Box>

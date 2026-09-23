@@ -1033,10 +1033,10 @@ export default function PaymentLedgerView({
             <TextField
               size="small"
               label="Collection Amount (₹) *"
-              type="number"
               value={collectData.amount}
               onChange={(e) => setCollectData({ ...collectData, amount: e.target.value })}
               fullWidth
+              placeholder="e.g. 5000"
               slotProps={{
                 input: {
                   startAdornment: <InputAdornment position="start">₹</InputAdornment>,

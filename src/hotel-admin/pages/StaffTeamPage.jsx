@@ -700,9 +700,9 @@ export default function StaffTeamPage({
                 <TextField
                   fullWidth
                   size="small"
-                  type="number"
                   value={staffModal.data?.salary ?? 28000}
-                  onChange={(e) => setStaffModal({ ...staffModal, data: { ...staffModal.data, salary: Number(e.target.value) } })}
+                  onChange={(e) => setStaffModal({ ...staffModal, data: { ...staffModal.data, salary: e.target.value } })}
+                  placeholder="e.g. 28000"
                   sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
                 />
               </Grid>

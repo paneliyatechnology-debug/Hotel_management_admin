@@ -171,7 +171,9 @@ function AdminAppContent() {
       const navList = getNavListForUser(user);
       if (navList[tabIndex] !== undefined) {
         const targetPath = tabIndex === 0 ? "/" : `/${navList[tabIndex]}`;
-        router.push(targetPath);
+        if (typeof window !== "undefined") {
+          window.history.pushState(null, "", targetPath);
+        }
       }
     }
   };

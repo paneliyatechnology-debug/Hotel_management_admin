@@ -44,19 +44,37 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
   const [staffModal, setStaffModal] = useState({ open: false, mode: "ADD", data: getInitialStaffForm() });
   const [viewStaffModal, setViewStaffModal] = useState({ open: false, staff: null });
   const [roomModal, setRoomModal] = useState({ open: false, mode: "ADD", data: getInitialRoomForm() });
-  const [typeModal, setTypeModal] = useState({ open: false, mode: "ADD", data: { name: "", basePrice: 4000, maxAdults: 2, maxChildren: 1, description: "" } });
+  const [typeModal, setTypeModal] = useState({ open: false, mode: "ADD", data: getInitialTypeForm() });
   const [confirmDelete, setConfirmDelete] = useState({ open: false, title: "", message: "", onConfirm: null });
 
-  function getInitialRoomForm() {
+  function getInitialRoomForm(prefillCategory = null) {
+    const defaultCat = prefillCategory || roomTypes[0];
     return {
       _id: "",
       roomNumber: "",
-      roomType: roomTypes[0]?._id || "",
+      roomType: defaultCat?._id || "",
       floor: 1,
-      seatingCapacity: 2,
+      seatingCapacity: defaultCat?.capacity?.adults || 2,
+      bedCount: defaultCat?.bedCount || 1,
+      bedType: defaultCat?.bedType || "1 King Size Bed",
       customPricePerNight: "",
       status: "AVAILABLE",
       notes: "",
+      amenities: defaultCat?.amenities?.length ? [...defaultCat.amenities] : ["Free WiFi", "Air Conditioner (AC)", "Smart LED TV", "Attached Bathroom"],
+    };
+  }
+
+  function getInitialTypeForm() {
+    return {
+      _id: "",
+      name: "",
+      basePrice: 4000,
+      maxAdults: 2,
+      maxChildren: 1,
+      bedCount: 1,
+      bedType: "1 King Size Bed",
+      description: "",
+      amenities: ["Free WiFi", "Air Conditioner (AC)", "Smart LED TV", "Attached Bathroom", "Mini Fridge"],
     };
   }
 
@@ -312,9 +330,12 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
         roomType: roomModal.data.roomType,
         floor: Number(roomModal.data.floor) || 1,
         seatingCapacity: Number(roomModal.data.seatingCapacity) || 2,
+        bedCount: Number(roomModal.data.bedCount) || 1,
+        bedType: roomModal.data.bedType || "1 King Size Bed",
         customPricePerNight: roomModal.data.customPricePerNight ? Number(roomModal.data.customPricePerNight) : undefined,
         status: roomModal.data.status || "AVAILABLE",
         notes: roomModal.data.notes || "",
+        amenities: roomModal.data.amenities || [],
       };
 
       if (roomModal.mode === "EDIT" && roomModal.data._id) {
@@ -343,10 +364,26 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
   };
 
   const handleDeleteRoom = (room) => {
+    // 🔒 STRICT CHECK: Room must be in AVAILABLE status
+    if (room.status !== "AVAILABLE") {
+      let statusDesc = room.status;
+      if (room.status === "OCCUPIED") statusDesc = "OCCUPIED (Guest is in-house)";
+      else if (room.status === "RESERVED") statusDesc = "RESERVED (Booking confirmed)";
+      else if (room.status === "CLEANING") statusDesc = "CLEANING (Housekeeping in progress)";
+      else if (room.status === "MAINTENANCE") statusDesc = "MAINTENANCE (Repair work in progress)";
+      else if (room.status === "BLOCKED") statusDesc = "BLOCKED (Locked by admin)";
+
+      showToast(
+        `Cannot delete Room ${room.roomNumber}. It is currently '${statusDesc}'. Rooms must be 'AVAILABLE' to be deleted.`,
+        "error"
+      );
+      return;
+    }
+
     setConfirmDelete({
       open: true,
       title: "Remove Room",
-      message: `Are you sure you want to remove Room "${room.roomNumber}" (Floor ${room.floor})?`,
+      message: `Are you sure you want to remove Room "${room.roomNumber}" (Floor ${room.floor})? Only AVAILABLE rooms can be removed.`,
       onConfirm: async () => {
         try {
           await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.DELETE_ROOM(room._id), {
@@ -393,28 +430,57 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
           adults: Number(typeModal.data.maxAdults || 2),
           children: Number(typeModal.data.maxChildren || 1),
         },
+        bedCount: Number(typeModal.data.bedCount) || 1,
+        bedType: typeModal.data.bedType || "1 King Size Bed",
+        amenities: typeModal.data.amenities || [],
       };
 
-      const res = await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.ROOM_TYPES, {
-        method: "POST",
-        body: payload,
-      });
-
-      if (res.data) {
-        setRoomTypes([res.data, ...roomTypes]);
-        showToast("Room category saved to database successfully!");
+      if (typeModal.mode === "EDIT" && typeModal.data._id) {
+        const res = await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.UPDATE_ROOM_TYPE(typeModal.data._id), {
+          method: "PUT",
+          body: payload,
+        });
+        if (res.data) {
+          setRoomTypes(roomTypes.map((rt) => (rt._id === typeModal.data._id ? res.data : rt)));
+          showToast("Room category updated successfully!");
+        }
+      } else {
+        const res = await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.ROOM_TYPES, {
+          method: "POST",
+          body: payload,
+        });
+        if (res.data) {
+          setRoomTypes([res.data, ...roomTypes]);
+          showToast("Room category created successfully!");
+        }
       }
-      setTypeModal({ open: false, mode: "ADD", data: { name: "", basePrice: 4000, maxAdults: 2, maxChildren: 1, description: "" } });
+      setTypeModal({ open: false, mode: "ADD", data: getInitialTypeForm() });
     } catch (err) {
       showToast(err.message || "Failed to save room category", "error");
     }
   };
 
   const handleDeleteRoomType = (roomType) => {
+    // 🔒 Check if any room under this category is currently not AVAILABLE
+    const linkedRooms = rooms.filter((r) => {
+      const typeId = typeof r.roomType === "object" ? r.roomType?._id : r.roomType;
+      return typeId === roomType._id;
+    });
+    const busyRooms = linkedRooms.filter((r) => r.status !== "AVAILABLE");
+
+    if (busyRooms.length > 0) {
+      const busySummary = busyRooms.map((r) => `Room ${r.roomNumber} (${r.status})`).join(", ");
+      showToast(
+        `Cannot delete Category '${roomType.name}'. ${busyRooms.length} room(s) are currently active/not available (${busySummary}). Ensure all rooms are available and not booked or under housekeeping first.`,
+        "error"
+      );
+      return;
+    }
+
     setConfirmDelete({
       open: true,
       title: "Archive Room Category",
-      message: `Are you sure you want to soft-delete / archive "${roomType.name}"? Active bookings and revenue records will remain safe.`,
+      message: `Are you sure you want to soft-delete / archive category "${roomType.name}"? Active bookings and revenue records will remain safe.`,
       onConfirm: async () => {
         try {
           const res = await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.DELETE_ROOM_TYPE(roomType._id), {

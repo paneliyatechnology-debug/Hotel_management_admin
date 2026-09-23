@@ -6,31 +6,37 @@
  * - "LIVE"  -> https://hotel-management-backend-9qf5.onrender.com
  */
 
-export const ENVIRONMENT = "LIVE"; // 👉 અહીં "LOCAL" અથવા "LIVE" બદલો
+export const ENVIRONMENT = "LOCAL"; // 👉 અહીં "LOCAL" અથવા "LIVE" બદલો
 
 export const LOCAL_API_URL = "http://localhost:5000";
-export const LIVE_API_URL = "https://hotelmanagementbackend-dev.up.railway.app";
+export const LIVE_API_URL = "https://hotel-management-backend-9qf5.onrender.com";
 
 // Active API Base URL (Case-insensitive check for LOCAL / LIVE)
 export const getApiBaseUrl = () => {
-  if (typeof window !== "undefined") {
-    const override = localStorage.getItem("API_ENVIRONMENT");
-    if (override === "LIVE") return LIVE_API_URL;
-    if (override === "LOCAL") return LOCAL_API_URL;
-  }
+  // 1. Direct ENVIRONMENT in this file has primary priority when set
+  const manualEnv = (typeof ENVIRONMENT !== "undefined" && ENVIRONMENT ? ENVIRONMENT : "").trim().toUpperCase();
 
-  const envMode = (
-    (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_MODE) ||
-    ENVIRONMENT ||
-    "LOCAL"
+  // 2. Next.js env variable
+  const processEnv = (
+    typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_MODE
+      ? process.env.NEXT_PUBLIC_API_MODE
+      : ""
   ).trim().toUpperCase();
+
+  const envMode = manualEnv || processEnv || "LOCAL";
+
+  if (typeof window !== "undefined") {
+    // If set to LOCAL in code, remove stale LIVE override from localStorage
+    if (manualEnv === "LOCAL" && localStorage.getItem("API_ENVIRONMENT") === "LIVE") {
+      localStorage.removeItem("API_ENVIRONMENT");
+    }
+    const override = localStorage.getItem("API_ENVIRONMENT");
+    if (override === "LIVE" && envMode === "LIVE") return LIVE_API_URL;
+    if (override === "LOCAL" && envMode === "LOCAL") return LOCAL_API_URL;
+  }
 
   if (envMode === "LIVE") {
     return (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_LIVE_API_URL) || LIVE_API_URL;
-  }
-
-  if (typeof window !== "undefined" && window.location.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
-    return `http://${window.location.hostname}:5000`;
   }
 
   return (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_LOCAL_API_URL) || LOCAL_API_URL;
@@ -80,6 +86,7 @@ export const API_ENDPOINTS = {
   HOTEL_ADMIN: {
     DASHBOARD: `${API_BASE_URL}/api/v1/admin/dashboard`,
     ROOM_TYPES: `${API_BASE_URL}/api/v1/admin/room-types`,
+    UPDATE_ROOM_TYPE: (id) => `${API_BASE_URL}/api/v1/admin/room-types/${id}`,
     DELETE_ROOM_TYPE: (id) => `${API_BASE_URL}/api/v1/admin/room-types/${id}`,
     ROOMS: `${API_BASE_URL}/api/v1/admin/rooms`,
     UPDATE_ROOM: (id) => `${API_BASE_URL}/api/v1/admin/rooms/${id}`,
@@ -98,6 +105,11 @@ export const API_ENDPOINTS = {
   RECEPTIONIST: {
     DASHBOARD: `${API_BASE_URL}/api/v1/receptionist/dashboard`,
     AVAILABLE_ROOMS: `${API_BASE_URL}/api/v1/receptionist/rooms/available`,
+    ROOM_TYPES: `${API_BASE_URL}/api/v1/receptionist/room-types`,
+    ROOMS: `${API_BASE_URL}/api/v1/receptionist/rooms`,
+    CREATE_ROOM: `${API_BASE_URL}/api/v1/receptionist/rooms`,
+    UPDATE_ROOM: (id) => `${API_BASE_URL}/api/v1/receptionist/rooms/${id}`,
+    DELETE_ROOM: (id) => `${API_BASE_URL}/api/v1/receptionist/rooms/${id}`,
     GUESTS: `${API_BASE_URL}/api/v1/receptionist/guests`,
     GUEST_LOOKUP: (query) => `${API_BASE_URL}/api/v1/receptionist/guests/lookup?query=${encodeURIComponent(query)}`,
     DELETE_GUEST: (id) => `${API_BASE_URL}/api/v1/receptionist/guests/${id}`,

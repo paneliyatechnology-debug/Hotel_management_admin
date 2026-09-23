@@ -706,9 +706,9 @@ export default function GuestDirectoryPage({
                 <TextField
                   fullWidth
                   size="small"
-                  type="number"
-                  value={guestModal.data?.totalAmount ?? 0}
-                  onChange={(e) => setGuestModal({ ...guestModal, data: { ...guestModal.data, totalAmount: Number(e.target.value) } })}
+                  value={guestModal.data?.totalAmount ?? ""}
+                  onChange={(e) => setGuestModal({ ...guestModal, data: { ...guestModal.data, totalAmount: e.target.value } })}
+                  placeholder="e.g. 7000"
                   sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
                 />
               </Grid>
