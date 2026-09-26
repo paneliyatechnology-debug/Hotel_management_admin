@@ -94,6 +94,7 @@ export const API_ENDPOINTS = {
     DELETE_ROOM: (id) => `${API_BASE_URL}/api/v1/admin/rooms/${id}`,
     UPDATE_ROOM_STATUS: (id) => `${API_BASE_URL}/api/v1/admin/rooms/${id}/status`,
     RECEPTIONISTS: `${API_BASE_URL}/api/v1/admin/receptionists`,
+    UPDATE_RECEPTIONIST: (id) => `${API_BASE_URL}/api/v1/admin/receptionists/${id}`,
     DELETE_RECEPTIONIST: (id) => `${API_BASE_URL}/api/v1/admin/receptionists/${id}`,
     UPDATE_RECEPTIONIST_STATUS: (id) => `${API_BASE_URL}/api/v1/admin/receptionists/${id}/status`,
     PAYMENTS: `${API_BASE_URL}/api/v1/admin/payments`,

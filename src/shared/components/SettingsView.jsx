@@ -26,6 +26,8 @@ import {
   InputLabel,
   Select,
   CircularProgress,
+  InputAdornment,
+  IconButton,
 } from "@mui/material";
 import {
   Palette,
@@ -56,6 +58,9 @@ import {
   WbSunny,
   NightlightRound,
   CreditCard,
+  Visibility,
+  VisibilityOff,
+  Lock,
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
@@ -96,10 +101,13 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
 
   // Profile Form State
   const [name, setName] = useState(user?.name || "");
-  const [phone, setPhone] = useState(user?.phone || "+91 98765 43210");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState({ show: false, message: "", severity: "success" });
 
   // Hotel Check-In / Check-Out Timings State
@@ -130,19 +138,64 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
   const [timingsMsg, setTimingsMsg] = useState({ show: false, message: "", severity: "success" });
   const [savingTimings, setSavingTimings] = useState(false);
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    if (newPassword && newPassword !== confirmPassword) {
-      setProfileMsg({ show: true, message: "New passwords do not match!", severity: "error" });
-      return;
+    setSavingProfile(true);
+
+    try {
+      if (newPassword) {
+        if (!currentPassword) {
+          setProfileMsg({ show: true, message: "Please enter your current password to change password.", severity: "error" });
+          setSavingProfile(false);
+          return;
+        }
+        if (newPassword.length < 6) {
+          setProfileMsg({ show: true, message: "New password must be at least 6 characters long.", severity: "error" });
+          setSavingProfile(false);
+          return;
+        }
+        if (newPassword !== confirmPassword) {
+          setProfileMsg({ show: true, message: "New passwords do not match!", severity: "error" });
+          setSavingProfile(false);
+          return;
+        }
+
+        await apiRequest(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, {
+          method: "PUT",
+          body: {
+            currentPassword,
+            newPassword,
+          },
+        });
+
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      }
+
+      if (onUpdateProfile) {
+        onUpdateProfile({ name, phone });
+      }
+
+      setProfileMsg({
+        show: true,
+        message: newPassword
+          ? "Profile and password updated successfully!"
+          : "Profile settings saved successfully!",
+        severity: "success",
+      });
+    } catch (err) {
+      setProfileMsg({
+        show: true,
+        message: err.message || "Failed to update profile settings.",
+        severity: "error",
+      });
+    } finally {
+      setSavingProfile(false);
+      setTimeout(() => {
+        setProfileMsg({ show: false, message: "", severity: "success" });
+      }, 4000);
     }
-    setProfileMsg({ show: true, message: "Profile settings saved successfully!", severity: "success" });
-    if (onUpdateProfile) {
-      onUpdateProfile({ name, phone });
-    }
-    setTimeout(() => {
-      setProfileMsg({ show: false, message: "", severity: "success" });
-    }, 3500);
   };
 
   const handleSaveHotelTimings = async (e) => {
@@ -1338,7 +1391,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                     </Typography>
                     <TextField
                       fullWidth
-                      type="password"
+                      type={showCurrentPassword ? "text" : "password"}
                       size="small"
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
@@ -1350,6 +1403,22 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                           boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
                         },
                       }}
+                      slotProps={{
+                        input: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Lock sx={{ color: themeConfig.textMuted, fontSize: 18 }} />
+                            </InputAdornment>
+                          ),
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton onClick={() => setShowCurrentPassword(!showCurrentPassword)} edge="end" size="small">
+                                {showCurrentPassword ? <VisibilityOff sx={{ fontSize: 18 }} /> : <Visibility sx={{ fontSize: 18 }} />}
+                              </IconButton>
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, sm: 4 }}>
@@ -1358,7 +1427,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                     </Typography>
                     <TextField
                       fullWidth
-                      type="password"
+                      type={showNewPassword ? "text" : "password"}
                       size="small"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
@@ -1370,6 +1439,22 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                           boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
                         },
                       }}
+                      slotProps={{
+                        input: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Lock sx={{ color: themeConfig.textMuted, fontSize: 18 }} />
+                            </InputAdornment>
+                          ),
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton onClick={() => setShowNewPassword(!showNewPassword)} edge="end" size="small">
+                                {showNewPassword ? <VisibilityOff sx={{ fontSize: 18 }} /> : <Visibility sx={{ fontSize: 18 }} />}
+                              </IconButton>
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, sm: 4 }}>
@@ -1378,7 +1463,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                     </Typography>
                     <TextField
                       fullWidth
-                      type="password"
+                      type={showConfirmPassword ? "text" : "password"}
                       size="small"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
@@ -1388,6 +1473,22 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                         "& .MuiOutlinedInput-root": {
                           borderRadius: "12px",
                           boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
+                        },
+                      }}
+                      slotProps={{
+                        input: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Lock sx={{ color: themeConfig.textMuted, fontSize: 18 }} />
+                            </InputAdornment>
+                          ),
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end" size="small">
+                                {showConfirmPassword ? <VisibilityOff sx={{ fontSize: 18 }} /> : <Visibility sx={{ fontSize: 18 }} />}
+                              </IconButton>
+                            </InputAdornment>
+                          ),
                         },
                       }}
                     />

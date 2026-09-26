@@ -105,11 +105,7 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
       phone: "",
       role: "RECEPTIONIST",
       shift: "Morning (07:00 - 15:00)",
-      idType: "AADHAAR",
-      idNumber: "",
-      salary: 28000,
       status: "ACTIVE",
-      password: "",
     };
   }
 
@@ -269,21 +265,33 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
         email: staffModal.data.email,
         phone: staffModal.data.phone,
         role: staffModal.data.role || "RECEPTIONIST",
-        employeeId: staffModal.data.idNumber || undefined,
+        shift: staffModal.data.shift || "Morning (07:00 - 15:00)",
       };
 
-      const res = await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.RECEPTIONISTS, {
-        method: "POST",
-        body: payload,
-      });
+      if (staffModal.mode === "EDIT" && staffModal.data._id) {
+        const res = await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.UPDATE_RECEPTIONIST(staffModal.data._id), {
+          method: "PUT",
+          body: payload,
+        });
 
-      if (res.data) {
-        setStaffList([res.data, ...staffList]);
-        showToast(res.message || "New staff member onboarded and credentials emailed!");
+        if (res.data) {
+          setStaffList(staffList.map((s) => (s._id === staffModal.data._id ? { ...s, ...res.data } : s)));
+          showToast(res.message || "Staff member details updated successfully!");
+        }
+      } else {
+        const res = await apiRequest(API_ENDPOINTS.HOTEL_ADMIN.RECEPTIONISTS, {
+          method: "POST",
+          body: payload,
+        });
+
+        if (res.data) {
+          setStaffList([res.data, ...staffList]);
+          showToast(res.message || "New staff member onboarded and credentials emailed!");
+        }
       }
       setStaffModal({ open: false, mode: "ADD", data: getInitialStaffForm() });
     } catch (err) {
-      showToast(err.message || "Failed to create staff account", "error");
+      showToast(err.message || "Failed to save staff account", "error");
     }
   };
 

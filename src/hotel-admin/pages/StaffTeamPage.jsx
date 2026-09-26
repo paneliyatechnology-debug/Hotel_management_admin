@@ -189,7 +189,7 @@ export default function StaffTeamPage({
           <Button
             variant="contained"
             startIcon={<Add />}
-            onClick={() => setStaffModal({ open: true, mode: "ADD", data: getInitialStaffForm ? getInitialStaffForm() : { name: "", email: "", phone: "", role: "Receptionist", shift: "Morning (07:00 - 15:00)", idType: "AADHAAR", idNumber: "", salary: 28000, status: "ACTIVE", password: "" } })}
+            onClick={() => setStaffModal({ open: true, mode: "ADD", data: getInitialStaffForm ? getInitialStaffForm() : { name: "", email: "", phone: "", role: "RECEPTIONIST", shift: "Morning (07:00 - 15:00)", status: "ACTIVE" } })}
             className="btn-3d"
             sx={{
               borderRadius: "14px",
@@ -664,71 +664,6 @@ export default function StaffTeamPage({
                   <MenuItem value="General (09:00 - 18:00)">General Shift (09:00 AM - 06:00 PM)</MenuItem>
                 </TextField>
               </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Govt ID Document Type
-                </Typography>
-                <TextField
-                  select
-                  fullWidth
-                  size="small"
-                  value={staffModal.data?.idType || "AADHAAR"}
-                  onChange={(e) => setStaffModal({ ...staffModal, data: { ...staffModal.data, idType: e.target.value } })}
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                >
-                  <MenuItem value="AADHAAR">Aadhaar Card</MenuItem>
-                  <MenuItem value="PASSPORT">Passport</MenuItem>
-                  <MenuItem value="DRIVING_LICENSE">Driving License</MenuItem>
-                  <MenuItem value="PAN">PAN Card</MenuItem>
-                </TextField>
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Govt ID Document Number
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={staffModal.data?.idNumber || ""}
-                  onChange={(e) => setStaffModal({ ...staffModal, data: { ...staffModal.data, idNumber: e.target.value } })}
-                  placeholder="e.g. XXXX-XXXX-4512"
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Monthly Salary (₹)
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={staffModal.data?.salary ?? 28000}
-                  onChange={(e) => setStaffModal({ ...staffModal, data: { ...staffModal.data, salary: e.target.value } })}
-                  placeholder="e.g. 28000"
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-
-              {staffModal.mode === "ADD" && (
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                    Initial Portal Password *
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="password"
-                    required
-                    value={staffModal.data?.password || ""}
-                    onChange={(e) => setStaffModal({ ...staffModal, data: { ...staffModal.data, password: e.target.value } })}
-                    placeholder="Create secure password"
-                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                  />
-                </Grid>
-              )}
             </Grid>
           </DialogContent>
 

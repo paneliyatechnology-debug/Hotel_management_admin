@@ -46,6 +46,7 @@ export default function UnifiedLogin({ onLoginSuccess }) {
   const [forgotNewPassword, setForgotNewPassword] = useState("");
   const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
   const [showForgotPass, setShowForgotPass] = useState(false);
+  const [showForgotConfirmPass, setShowForgotConfirmPass] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMsg, setForgotMsg] = useState("");
   const [forgotError, setForgotError] = useState("");
@@ -55,6 +56,8 @@ export default function UnifiedLogin({ onLoginSuccess }) {
   const [tempUser, setTempUser] = useState(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [changeLoading, setChangeLoading] = useState(false);
   const [changeError, setChangeError] = useState("");
   const [loginSuccessMsg, setLoginSuccessMsg] = useState("");
@@ -206,7 +209,7 @@ export default function UnifiedLogin({ onLoginSuccess }) {
 
     try {
       await apiRequest(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, {
-        method: "POST",
+        method: "PUT",
         body: {
           currentPassword: password,
           newPassword,
@@ -480,7 +483,7 @@ export default function UnifiedLogin({ onLoginSuccess }) {
 
               <TextField
                 label="Confirm New Password"
-                type={showForgotPass ? "text" : "password"}
+                type={showForgotConfirmPass ? "text" : "password"}
                 fullWidth
                 required
                 value={forgotConfirmPassword}
@@ -491,6 +494,13 @@ export default function UnifiedLogin({ onLoginSuccess }) {
                     startAdornment: (
                       <InputAdornment position="start">
                         <LockIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowForgotConfirmPass(!showForgotConfirmPass)} edge="end">
+                          {showForgotConfirmPass ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
                       </InputAdornment>
                     ),
                   },
@@ -566,19 +576,51 @@ export default function UnifiedLogin({ onLoginSuccess }) {
 
           <TextField
             label="New Password"
-            type="password"
+            type={showNewPassword ? "text" : "password"}
             fullWidth
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             sx={{ mb: 2 }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowNewPassword(!showNewPassword)} edge="end">
+                      {showNewPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
 
           <TextField
             label="Confirm New Password"
-            type="password"
+            type={showConfirmPassword ? "text" : "password"}
             fullWidth
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end">
+                      {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
