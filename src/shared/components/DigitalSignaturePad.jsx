@@ -17,7 +17,7 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
-  Alert,
+  InputAdornment,
 } from "@mui/material";
 import {
   Refresh,
@@ -37,12 +37,13 @@ import {
   Phone,
   ContentCopy,
   Check,
+  Edit,
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 
 /**
- * Enterprise Digital Signature Pad with Mobile & Hardware Support
- * 1. 📱 Mobile Phone as Signature Pad (QR Code Scan-to-Sign, No app needed!)
+ * Enterprise Digital Signature Pad with Mobile QR Sync & Hardware Integration
+ * 1. 📱 Mobile Phone as Signature Pad (QR Scan to http://192.168.1.101:3001/mobile-sign)
  * 2. 🖊️ Touchscreen, Stylus Pen & Drawing Tablet
  * 3. 📟 USB Hardware Signature Pads (Topaz, Wacom STU, WebHID)
  * 4. 📁 File Upload & Clipboard (Ctrl+V) Image Paste
@@ -74,6 +75,10 @@ export default function DigitalSignaturePad({
   const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  // User-configured Network Host / Port (Defaults to user's 192.168.1.101:3001)
+  const [serverHost, setServerHost] = useState("192.168.1.101:3001");
+  const [isEditingHost, setIsEditingHost] = useState(false);
+
   // Hardware Device State (WebHID & USB Signature Pad)
   const [connectedDevice, setConnectedDevice] = useState(null);
   const [isConnectingDevice, setIsConnectingDevice] = useState(false);
@@ -82,14 +87,11 @@ export default function DigitalSignaturePad({
 
   const lastPointRef = useRef(null);
 
-  // Session ID for Mobile Sync
+  // Unique Session ID for Mobile Sync
   const [sessionId] = useState(() => `sig_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
 
-  // Mobile Web Sign URL
-  const mobileSignUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/mobile-sign?session=${sessionId}&name=${encodeURIComponent(signerName || "Guest")}`
-    : `https://hotel.local/mobile-sign?session=${sessionId}`;
-
+  // Mobile Web Sign URL encoded with Network IP
+  const mobileSignUrl = `http://${serverHost}/mobile-sign?session=${sessionId}&name=${encodeURIComponent(signerName || "Guest")}`;
   const qrCodeImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(mobileSignUrl)}&margin=8`;
 
   // Synchronize internal canvas with existing signature data URL
@@ -111,6 +113,28 @@ export default function DigitalSignaturePad({
     };
     img.src = dataUrl;
   }, []);
+
+  // Real-time polling for mobile signature submission
+  useEffect(() => {
+    if (hasSignature) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/signature-sync?session=${sessionId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === "SIGNED" && data.signature) {
+            setHasSignature(true);
+            if (canvasRef.current) loadSignatureIntoCanvas(canvasRef.current, data.signature);
+            if (onChange) onChange(data.signature);
+            clearInterval(interval);
+          }
+        }
+      } catch (_) {}
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [sessionId, hasSignature, onChange, loadSignatureIntoCanvas]);
 
   // Initialize canvas resolution & stroke styling
   const initCanvas = useCallback(
@@ -840,20 +864,64 @@ export default function DigitalSignaturePad({
             </Typography>
           </Box>
 
-          {/* Instructions & Mobile Direct Sign Simulator */}
+          {/* Instructions & Network IP Config */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.6 }}>
               <Phone sx={{ color: "#7C3AED", fontSize: 20 }} />
               <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.textMain || "#0F172A" }}>
-                તમારા મોબાઈલને જ Signature Pad બનાવો!
+                તમારા મોબાઈલથી QR સ્કેન કરી સહી કરો!
               </Typography>
             </Box>
 
             <Typography variant="body2" sx={{ color: "#64748B", fontWeight: 700, fontSize: "0.76rem", mb: 1.2 }}>
-              ૧. મોબાઈલના કેમેરાથી સામેનો QR Code સ્કેન કરો. (કોઈ એપ ઇન્સ્ટોલ કરવાની જરૂર નથી!)
+              ૧. મોબાઈલના કેમેરાથી સામેનો QR Code સ્કેન કરો.
               <br />
-              ૨. મોબાઈલમાં સહી કરો — તે તરત જ કમ્પ્યુટરમાં લાઈવ આવી જશે.
+              ૨. મોબાઈલમાં સહી કરશો એટલે કમ્પ્યુટરમાં લાઈવ સહી આવી જશે.
             </Typography>
+
+            {/* Server Network IP Configuration */}
+            <Box sx={{ mb: 1.2 }}>
+              {isEditingHost ? (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <TextField
+                    size="small"
+                    value={serverHost}
+                    onChange={(e) => setServerHost(e.target.value)}
+                    placeholder="192.168.1.101:3001"
+                    sx={{
+                      "& input": { fontSize: "0.75rem", py: 0.6, fontWeight: 800 },
+                      maxWidth: 200,
+                    }}
+                  />
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => setIsEditingHost(false)}
+                    sx={{ textTransform: "none", fontWeight: 800, fontSize: "0.72rem", py: 0.5 }}
+                  >
+                    Save IP
+                  </Button>
+                </Box>
+              ) : (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+                  <Chip
+                    size="small"
+                    label={`Network URL: http://${serverHost}`}
+                    sx={{
+                      fontSize: "0.68rem",
+                      fontWeight: 800,
+                      bgcolor: "rgba(124, 58, 237, 0.1)",
+                      color: "#7C3AED",
+                    }}
+                  />
+                  <Tooltip title="IP/Port બદલવા માટે">
+                    <IconButton size="small" onClick={() => setIsEditingHost(true)} sx={{ p: 0.3 }}>
+                      <Edit sx={{ fontSize: 13, color: "#7C3AED" }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              )}
+            </Box>
 
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
               <Button
