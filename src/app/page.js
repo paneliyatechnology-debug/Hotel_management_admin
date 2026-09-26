@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { Box, CircularProgress } from "@mui/material";
 import { AppThemeProvider, useAppTheme } from "@/shared/context/ThemeContext";
+import { SocketProvider } from "@/shared/context/SocketContext";
 import UnifiedLogin from "@/auth/components/UnifiedLogin";
 import SuperAdminLayout from "@/super-admin/layout/SuperAdminLayout";
 import HotelAdminLayout from "@/hotel-admin/layout/HotelAdminLayout";
@@ -22,7 +23,7 @@ function AdminAppContent() {
   const router = useRouter();
 
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [lockout, setLockout] = useState({ locked: false, type: "EXPIRED", reason: "" });
 
@@ -114,6 +115,18 @@ function AdminAppContent() {
     return 0;
   };
 
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+    } catch {}
+    setUser(null);
+    setLockout({ locked: false, type: "EXPIRED", reason: "" });
+    setActiveTab(0);
+    router.push("/");
+  };
+
   useEffect(() => {
     // Check local storage for session on initial mount
     const storedUser = localStorage.getItem("user");
@@ -140,10 +153,12 @@ function AdminAppContent() {
       } catch {
         setUser(null);
       }
+    } else {
+      setUser(null);
     }
-    setLoading(false);
+    setMounted(true);
 
-    // Global listener for immediate lockout events triggered by apiRequest
+    // 1. Global listener for immediate lockout events triggered by apiRequest
     const handleLockoutEvent = (e) => {
       const detail = e.detail || {};
       setLockout({
@@ -153,8 +168,55 @@ function AdminAppContent() {
       });
     };
 
+    // 2. Global listener for Unauthorized 401 events (Auto-Logout on Token Expiry)
+    const handleUnauthorizedEvent = () => {
+      console.warn("🔒 [Auth] Session expired or unauthorized. Auto-logging out...");
+      handleLogout();
+    };
+
+    // 3. Multi-Tab & Devtools Storage Listener (Auto-Logout if token is deleted)
+    const handleStorageEvent = (e) => {
+      if ((e.key === "token" || e.key === "user") && !e.newValue) {
+        console.warn("🔒 [Auth] Token removed from storage in another window. Auto-logging out...");
+        handleLogout();
+      }
+      if (e.key === null) {
+        handleLogout();
+      }
+    };
+
+    // 4. Tab Focus & Periodic Check for Deleted Token
+    const handleFocusCheck = () => {
+      const currentToken = localStorage.getItem("token");
+      if (!currentToken && localStorage.getItem("user")) {
+        console.warn("🔒 [Auth] Token missing upon tab focus. Auto-logging out...");
+        handleLogout();
+      }
+    };
+
+    const tokenHeartbeat = setInterval(() => {
+      const currentToken = localStorage.getItem("token");
+      const currentStoredUser = localStorage.getItem("user");
+      if (!currentToken && currentStoredUser) {
+        console.warn("🔒 [Auth] Token was deleted. Auto-logging out immediately...");
+        handleLogout();
+      }
+    }, 2000);
+
     window.addEventListener("hotel-status-lockout", handleLockoutEvent);
-    return () => window.removeEventListener("hotel-status-lockout", handleLockoutEvent);
+    window.addEventListener("auth-unauthorized", handleUnauthorizedEvent);
+    window.addEventListener("storage", handleStorageEvent);
+    window.addEventListener("focus", handleFocusCheck);
+    document.addEventListener("visibilitychange", handleFocusCheck);
+
+    return () => {
+      clearInterval(tokenHeartbeat);
+      window.removeEventListener("hotel-status-lockout", handleLockoutEvent);
+      window.removeEventListener("auth-unauthorized", handleUnauthorizedEvent);
+      window.removeEventListener("storage", handleStorageEvent);
+      window.removeEventListener("focus", handleFocusCheck);
+      document.removeEventListener("visibilitychange", handleFocusCheck);
+    };
   }, []);
 
   // Keep activeTab synchronized with the browser URL address at all times
@@ -178,20 +240,30 @@ function AdminAppContent() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setUser(null);
-    setLockout({ locked: false, type: "EXPIRED", reason: "" });
-    setActiveTab(0);
-    router.push("/");
-  };
-
-  if (loading) {
+  if (!mounted) {
     return (
-      <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: themeConfig.bgMain }}>
-        <CircularProgress sx={{ color: themeConfig.primary }} />
-      </Box>
+      <div
+        suppressHydrationWarning
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: themeConfig.bgMain,
+        }}
+      >
+        <div
+          style={{
+            width: "36px",
+            height: "36px",
+            border: `3px solid ${themeConfig.primary}33`,
+            borderTopColor: themeConfig.primary,
+            borderRadius: "50%",
+            animation: "spinLoader 0.8s linear infinite",
+          }}
+        />
+        <style>{`@keyframes spinLoader { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      </div>
     );
   }
 
@@ -264,9 +336,7 @@ function AdminAppContent() {
   );
 }
 
-import { SocketProvider } from "@/shared/context/SocketContext";
-
-function AdminApp() {
+function AdminAppRoot() {
   return (
     <AppThemeProvider>
       <SocketProvider>
@@ -276,7 +346,7 @@ function AdminApp() {
   );
 }
 
-export default dynamic(() => Promise.resolve(AdminApp), {
+export default dynamic(() => Promise.resolve(AdminAppRoot), {
   ssr: false,
   loading: () => (
     <div
@@ -285,19 +355,20 @@ export default dynamic(() => Promise.resolve(AdminApp), {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "#FAF9F6",
+        backgroundColor: "#0D2B26",
       }}
     >
       <div
         style={{
-          width: 36,
-          height: 36,
-          border: "3.5px solid #E2E8F0",
-          borderTopColor: "#0B8EE0",
+          width: "36px",
+          height: "36px",
+          border: "3px solid rgba(20, 184, 166, 0.2)",
+          borderTopColor: "#14B8A6",
           borderRadius: "50%",
           animation: "spin 0.8s linear infinite",
         }}
       />
+      <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
     </div>
   ),
 });

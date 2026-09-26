@@ -56,7 +56,7 @@ import EmptyState from "@/shared/components/EmptyState";
 import { downloadDailyLedgerPDF, downloadHandoverVoucherPDF } from "@/shared/utils/pdfGenerator";
 
 export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOverview }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
@@ -67,6 +67,7 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
   const [methodFilter, setMethodFilter] = useState("ALL");
+  const [settlementFilter, setSettlementFilter] = useState("ALL");
 
   // Handover History Pagination
   const [handoverPage, setHandoverPage] = useState(1);
@@ -196,7 +197,16 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
     ...(data?.percentages || {}),
   };
 
-  const guestList = data?.guestPaymentsList || [];
+  const rawGuestList = data?.guestPaymentsList || [];
+  const guestList = rawGuestList.filter((g) => {
+    if (settlementFilter === "UNSETTLED") {
+      return g.drawerSettlementStatus !== "SETTLED_TO_ADMIN";
+    }
+    if (settlementFilter === "SETTLED") {
+      return g.drawerSettlementStatus === "SETTLED_TO_ADMIN";
+    }
+    return true;
+  });
   const pagination = data?.pagination || {
     page: 1,
     limit: rowsPerPage,
@@ -266,7 +276,7 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
             sx={{
               borderRadius: "12px",
               borderColor: themeConfig.border,
-              bgcolor: "#FFFFFF",
+              bgcolor: isDarkMode ? "rgba(255,255,255,0.04)" : "#FFFFFF",
               color: themeConfig.textMain,
               fontWeight: 700,
               textTransform: "none",
@@ -303,12 +313,16 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
         sx={{
           p: 3.5,
           borderRadius: "22px",
-          bgcolor: "#FFFFFF",
+          bgcolor: themeConfig.bgCard,
           border: `1px solid ${themeConfig.border}`,
-          background: telemetry.cashInDrawer > 0
-            ? "linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%)"
-            : "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
-          boxShadow: "0 12px 30px rgba(12, 39, 59, 0.07), inset 0 1px 1px #FFFFFF",
+          background: isDarkMode
+            ? (themeConfig.bgCard || "#0E312C")
+            : telemetry.cashInDrawer > 0
+              ? "linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%)"
+              : "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
+          boxShadow: isDarkMode
+            ? "0 12px 30px rgba(0, 0, 0, 0.4)"
+            : "0 12px 30px rgba(12, 39, 59, 0.07), inset 0 1px 1px #FFFFFF",
         }}
       >
         <Box
@@ -326,8 +340,8 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
                 width: 68,
                 height: 68,
                 borderRadius: "18px",
-                bgcolor: telemetry.cashInDrawer > 0 ? "#ECFDF5" : themeConfig.champagne,
-                color: telemetry.cashInDrawer > 0 ? "#059669" : themeConfig.primary,
+                bgcolor: telemetry.cashInDrawer > 0 ? (isDarkMode ? "rgba(16, 185, 129, 0.2)" : "#ECFDF5") : themeConfig.champagne,
+                color: telemetry.cashInDrawer > 0 ? "#10B981" : themeConfig.primary,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -347,13 +361,13 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
                   size="small"
                   sx={{
                     fontWeight: 800,
-                    bgcolor: telemetry.cashInDrawer > 0 ? "#FEF3C7" : "#ECFDF5",
-                    color: telemetry.cashInDrawer > 0 ? "#D97706" : "#059669",
+                    bgcolor: telemetry.cashInDrawer > 0 ? (isDarkMode ? "rgba(245, 158, 11, 0.2)" : "#FEF3C7") : (isDarkMode ? "rgba(16, 185, 129, 0.2)" : "#ECFDF5"),
+                    color: telemetry.cashInDrawer > 0 ? "#F59E0B" : "#10B981",
                     borderRadius: "6px",
                   }}
                 />
               </Box>
-              <Typography variant="h3" sx={{ fontWeight: 900, color: telemetry.cashInDrawer > 0 ? "#059669" : themeConfig.textMain, letterSpacing: -1 }}>
+              <Typography variant="h3" sx={{ fontWeight: 900, color: telemetry.cashInDrawer > 0 ? (isDarkMode ? "#10B981" : "#059669") : themeConfig.textMain, letterSpacing: -1 }}>
                 ₹{formatRupee(telemetry.cashInDrawer)}
               </Typography>
               <Typography variant="body2" sx={{ color: themeConfig.textMuted }}>
@@ -365,11 +379,12 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
           <Button
             variant="contained"
             size="large"
-            startIcon={<Handshake />}
+            startIcon={<Handshake sx={{ fontSize: 20 }} />}
             disabled={Number(telemetry.unsettledTotal || 0) <= 0}
             onClick={() => setHandoverModalOpen(true)}
             className="btn-3d"
             sx={{
+              color: "#FFFFFF !important",
               background: `linear-gradient(135deg, ${themeConfig.primary} 0%, ${themeConfig.primaryDark} 100%)`,
               borderRadius: "14px",
               py: 1.5,
@@ -378,9 +393,17 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
               fontSize: "1rem",
               textTransform: "none",
               boxShadow: `0 8px 24px ${themeConfig.primaryGlow}`,
-              "&:disabled": {
-                bgcolor: "#E5E7EB",
-                color: "#9CA3AF",
+              "& .MuiSvgIcon-root": {
+                color: "#FFFFFF !important",
+              },
+              "&.Mui-disabled": {
+                background: isDarkMode ? "rgba(255,255,255,0.08) !important" : "#E2E8F0 !important",
+                color: isDarkMode ? "rgba(255,255,255,0.35) !important" : "#64748B !important",
+                boxShadow: "none !important",
+                cursor: "not-allowed",
+                "& .MuiSvgIcon-root": {
+                  color: isDarkMode ? "rgba(255,255,255,0.35) !important" : "#64748B !important",
+                },
               },
             }}
           >
@@ -407,10 +430,10 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
           sx={{
             p: 2.5,
             borderRadius: "18px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard,
             border: `1px solid ${themeConfig.border}`,
-            background: "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
-            boxShadow: "0 6px 18px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+            background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
+            boxShadow: isDarkMode ? "0 6px 18px rgba(0,0,0,0.3)" : "0 6px 18px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
@@ -449,10 +472,10 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
           sx={{
             p: 2.5,
             borderRadius: "18px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard,
             border: `1px solid ${themeConfig.border}`,
-            background: "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
-            boxShadow: "0 6px 18px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+            background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
+            boxShadow: isDarkMode ? "0 6px 18px rgba(0,0,0,0.3)" : "0 6px 18px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
@@ -464,8 +487,8 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
               size="small"
               sx={{
                 fontWeight: 800,
-                bgcolor: Number(percentages.dayGrowthPercentage || 0) >= 0 ? "#ECFDF5" : "#FEF2F2",
-                color: Number(percentages.dayGrowthPercentage || 0) >= 0 ? "#059669" : themeConfig.danger,
+                bgcolor: Number(percentages.dayGrowthPercentage || 0) >= 0 ? (isDarkMode ? "rgba(16, 185, 129, 0.2)" : "#ECFDF5") : (isDarkMode ? "rgba(239, 68, 68, 0.2)" : "#FEF2F2"),
+                color: Number(percentages.dayGrowthPercentage || 0) >= 0 ? "#10B981" : themeConfig.danger,
                 borderRadius: "6px",
               }}
             />
@@ -484,10 +507,10 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
           sx={{
             p: 2.5,
             borderRadius: "18px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard,
             border: `1px solid ${themeConfig.border}`,
-            background: "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
-            boxShadow: "0 6px 18px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+            background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
+            boxShadow: isDarkMode ? "0 6px 18px rgba(0,0,0,0.3)" : "0 6px 18px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
@@ -499,8 +522,8 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
               size="small"
               sx={{
                 fontWeight: 800,
-                bgcolor: "#EFF6FF",
-                color: "#2563EB",
+                bgcolor: isDarkMode ? "rgba(59, 130, 246, 0.2)" : "#EFF6FF",
+                color: isDarkMode ? "#60A5FA" : "#2563EB",
                 borderRadius: "6px",
               }}
             />
@@ -519,14 +542,14 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
           sx={{
             p: 2.5,
             borderRadius: "18px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard,
             border: `1px solid ${themeConfig.border}`,
-            background: "linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%)",
-            boxShadow: "0 6px 18px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+            background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%)",
+            boxShadow: isDarkMode ? "0 6px 18px rgba(0,0,0,0.3)" : "0 6px 18px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: "#059669", textTransform: "uppercase" }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: "#10B981", textTransform: "uppercase" }}>
               Net Profit Margin
             </Typography>
             <Chip
@@ -534,13 +557,13 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
               size="small"
               sx={{
                 fontWeight: 900,
-                bgcolor: "#ECFDF5",
-                color: "#059669",
+                bgcolor: isDarkMode ? "rgba(16, 185, 129, 0.2)" : "#ECFDF5",
+                color: "#10B981",
                 borderRadius: "6px",
               }}
             />
           </Box>
-          <Typography variant="h5" sx={{ fontWeight: 900, color: "#059669", mb: 0.5 }}>
+          <Typography variant="h5" sx={{ fontWeight: 900, color: "#10B981", mb: 0.5 }}>
             ₹{formatRupee(telemetry.todayEstimatedNetEarnings)}
           </Typography>
           <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
@@ -555,9 +578,9 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
         sx={{
           p: 2.5,
           borderRadius: "18px",
-          bgcolor: "#FFFFFF",
+          bgcolor: themeConfig.bgCard,
           border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 6px 18px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+          boxShadow: isDarkMode ? "0 6px 18px rgba(0,0,0,0.3)" : "0 6px 18px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
         }}
       >
         <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.textMain, mb: 1.5 }}>
@@ -574,38 +597,38 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
             gap: 2,
           }}
         >
-          <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: "#ECFDF5", border: "1px solid #A7F3D0" }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: "#059669", textTransform: "uppercase" }}>
+          <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: isDarkMode ? "rgba(16, 185, 129, 0.15)" : "#ECFDF5", border: isDarkMode ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid #A7F3D0" }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: "#10B981", textTransform: "uppercase" }}>
               Cash ({percentages.cashPercentage || 0}%)
             </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 900, color: "#059669" }}>
+            <Typography variant="h6" sx={{ fontWeight: 900, color: "#10B981" }}>
               ₹{formatRupee(telemetry.todayCash)}
             </Typography>
           </Box>
 
-          <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: "#F5F3FF", border: "1px solid #DDD6FE" }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: "#7C3AED", textTransform: "uppercase" }}>
+          <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: isDarkMode ? "rgba(139, 92, 246, 0.15)" : "#F5F3FF", border: isDarkMode ? "1px solid rgba(139, 92, 246, 0.3)" : "1px solid #DDD6FE" }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: isDarkMode ? "#A78BFA" : "#7C3AED", textTransform: "uppercase" }}>
               UPI QR ({percentages.upiPercentage || 0}%)
             </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 900, color: "#7C3AED" }}>
+            <Typography variant="h6" sx={{ fontWeight: 900, color: isDarkMode ? "#A78BFA" : "#7C3AED" }}>
               ₹{formatRupee(telemetry.todayUpi)}
             </Typography>
           </Box>
 
-          <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: "#EFF6FF", border: "1px solid #BFDBFE" }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: "#2563EB", textTransform: "uppercase" }}>
+          <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: isDarkMode ? "rgba(59, 130, 246, 0.15)" : "#EFF6FF", border: isDarkMode ? "1px solid rgba(59, 130, 246, 0.3)" : "1px solid #BFDBFE" }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: isDarkMode ? "#60A5FA" : "#2563EB", textTransform: "uppercase" }}>
               Card POS ({percentages.cardPercentage || 0}%)
             </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 900, color: "#2563EB" }}>
+            <Typography variant="h6" sx={{ fontWeight: 900, color: isDarkMode ? "#60A5FA" : "#2563EB" }}>
               ₹{formatRupee(telemetry.todayCard)}
             </Typography>
           </Box>
 
-          <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: "#FFFBEB", border: "1px solid #FDE68A" }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: "#D97706", textTransform: "uppercase" }}>
+          <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: isDarkMode ? "rgba(245, 158, 11, 0.15)" : "#FFFBEB", border: isDarkMode ? "1px solid rgba(245, 158, 11, 0.3)" : "1px solid #FDE68A" }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: isDarkMode ? "#FBBF24" : "#D97706", textTransform: "uppercase" }}>
               Bank NEFT ({percentages.bankPercentage || 0}%)
             </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 900, color: "#D97706" }}>
+            <Typography variant="h6" sx={{ fontWeight: 900, color: isDarkMode ? "#FBBF24" : "#D97706" }}>
               ₹{formatRupee(telemetry.todayBank)}
             </Typography>
           </Box>
@@ -617,9 +640,9 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
         className="card-3d"
         sx={{
           borderRadius: "20px",
-          bgcolor: "#FFFFFF",
+          bgcolor: themeConfig.bgCard,
           border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 10px 30px rgba(12, 39, 59, 0.06), inset 0 1px 1px #FFFFFF",
+          boxShadow: isDarkMode ? "0 10px 30px rgba(0,0,0,0.4)" : "0 10px 30px rgba(12, 39, 59, 0.06), inset 0 1px 1px #FFFFFF",
           overflow: "hidden",
         }}
       >
@@ -632,7 +655,8 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
             flexWrap: { xs: "wrap", md: "nowrap" },
             gap: 2,
             borderBottom: `1px solid ${themeConfig.border}`,
-            background: "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
+            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+            background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: { sm: 260 } }}>
@@ -694,7 +718,7 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
                   minWidth: { xs: "100%", sm: 220, md: 260 },
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "12px",
-                    bgcolor: "#FFFFFF",
+                    bgcolor: isDarkMode ? "rgba(255,255,255,0.04)" : "#FFFFFF",
                     boxShadow: "inset 0 1px 2px rgba(0,0,0,0.03)",
                   },
                 }}
@@ -716,10 +740,10 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
               value={methodFilter}
               onChange={(e) => handleMethodChange(e.target.value)}
               sx={{
-                minWidth: { xs: "100%", sm: 130 },
+                minWidth: { xs: "100%", sm: 120 },
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "12px",
-                  bgcolor: "#FFFFFF",
+                  bgcolor: isDarkMode ? "rgba(255,255,255,0.04)" : "#FFFFFF",
                   fontWeight: 700,
                   fontSize: "0.82rem",
                 },
@@ -730,6 +754,26 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
               <MenuItem value="UPI">📱 UPI QR</MenuItem>
               <MenuItem value="CARD">💳 Card POS</MenuItem>
               <MenuItem value="BANK_TRANSFER">🏦 Bank NEFT</MenuItem>
+            </TextField>
+
+            <TextField
+              select
+              size="small"
+              value={settlementFilter}
+              onChange={(e) => setSettlementFilter(e.target.value)}
+              sx={{
+                minWidth: { xs: "100%", sm: 155 },
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "12px",
+                  bgcolor: isDarkMode ? "rgba(255,255,255,0.04)" : "#FFFFFF",
+                  fontWeight: 700,
+                  fontSize: "0.82rem",
+                },
+              }}
+            >
+              <MenuItem value="ALL">All Settlements</MenuItem>
+              <MenuItem value="UNSETTLED">🟡 At Counter (Unsettled)</MenuItem>
+              <MenuItem value="SETTLED">🟢 In Vault (Settled)</MenuItem>
             </TextField>
           </Box>
         </Box>
@@ -935,7 +979,7 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
               }}
               sx={{
                 borderTop: `1px solid ${themeConfig.border}`,
-                bgcolor: "#FAFAFC",
+                bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                 "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
                   fontWeight: 700,
                   color: themeConfig.textMuted,
@@ -952,9 +996,9 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
           className="card-3d"
           sx={{
             borderRadius: "20px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
             border: `1px solid ${themeConfig.border}`,
-            boxShadow: "0 6px 20px rgba(12, 39, 59, 0.05), inset 0 1px 1px #FFFFFF",
+            boxShadow: isDarkMode ? "0 6px 20px rgba(0,0,0,0.3)" : "0 6px 20px rgba(12, 39, 59, 0.05), inset 0 1px 1px #FFFFFF",
             overflow: "hidden",
           }}
         >
@@ -990,7 +1034,7 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
                     hover
                     sx={{
                       transition: "all 0.15s ease",
-                      "&:hover": { bgcolor: "rgba(11, 142, 224, 0.04)" },
+                      "&:hover": { bgcolor: `${themeConfig.primaryGlow} !important` },
                     }}
                   >
                     <TableCell sx={{ py: 1.1, whiteSpace: "nowrap" }}>
@@ -1001,7 +1045,7 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
                         📅 {new Date(h.createdAt).toLocaleString("en-IN")}
                       </Typography>
                     </TableCell>
-                    <TableCell sx={{ py: 1.1, fontWeight: 800, color: "#059669", whiteSpace: "nowrap", fontSize: "0.85rem" }}>
+                    <TableCell sx={{ py: 1.1, fontWeight: 800, color: "#10B981", whiteSpace: "nowrap", fontSize: "0.85rem" }}>
                       ₹{(h.cashAmount || 0).toLocaleString()}
                     </TableCell>
                     <TableCell sx={{ py: 1.1, color: themeConfig.textMuted, whiteSpace: "nowrap", fontSize: "0.8rem" }}>
@@ -1059,7 +1103,7 @@ export default function DailyCollectionsPage({ user, hotelSettings, onRefreshOve
             }}
             sx={{
               borderTop: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FAFAFC",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
               "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
                 fontWeight: 700,
                 color: themeConfig.textMuted,

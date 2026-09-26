@@ -92,9 +92,9 @@ export function buildMuiTheme(themeConfig, mode = "light") {
             backgroundImage: "none",
             borderRadius: 18,
             border: `1px solid ${themeConfig.border}`,
-            backgroundColor: themeConfig.bgCard || (isDark ? "#162032" : "#FFFFFF"),
+            backgroundColor: themeConfig.bgCard || (isDark ? "#0E312C" : "#FFFFFF"),
             boxShadow: isDark
-              ? "0 10px 25px -5px rgba(0, 0, 0, 0.45), 0 4px 10px -4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)"
+              ? "0 10px 25px -5px rgba(0, 0, 0, 0.45), 0 4px 10px -4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(20, 184, 166, 0.1)"
               : "0 10px 25px -5px rgba(12, 39, 59, 0.06), 0 4px 10px -4px rgba(12, 39, 59, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.95)",
           },
           elevation0: {
@@ -103,17 +103,17 @@ export function buildMuiTheme(themeConfig, mode = "light") {
           },
           elevation1: {
             boxShadow: isDark
-              ? "0 4px 20px -2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05)"
+              ? "0 4px 20px -2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(20, 184, 166, 0.1)"
               : "0 4px 20px -2px rgba(12, 39, 59, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
           },
           elevation2: {
             boxShadow: isDark
-              ? "0 10px 25px -5px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06)"
+              ? "0 10px 25px -5px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(20, 184, 166, 0.12)"
               : "0 10px 25px -5px rgba(12, 39, 59, 0.08), 0 8px 10px -6px rgba(12, 39, 59, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.95)",
           },
           elevation3: {
             boxShadow: isDark
-              ? "0 18px 36px -6px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
+              ? "0 18px 36px -6px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(20, 184, 166, 0.15)"
               : "0 18px 36px -6px rgba(12, 39, 59, 0.12), inset 0 1px 2px rgba(255, 255, 255, 1)",
           },
         },
@@ -121,17 +121,17 @@ export function buildMuiTheme(themeConfig, mode = "light") {
       MuiCard: {
         styleOverrides: {
           root: {
-            backgroundColor: themeConfig.bgCard || (isDark ? "#162032" : "#FFFFFF"),
+            backgroundColor: themeConfig.bgCard || (isDark ? "#0E312C" : "#FFFFFF"),
             border: `1px solid ${themeConfig.border}`,
             borderRadius: 20,
             boxShadow: isDark
-              ? "0 10px 25px -5px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)"
+              ? "0 10px 25px -5px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(20, 184, 166, 0.1)"
               : "0 10px 25px -5px rgba(12, 39, 59, 0.06), 0 8px 10px -6px rgba(12, 39, 59, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.95)",
             position: "relative",
             transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
             "&:hover": {
               boxShadow: isDark
-                ? "0 16px 32px -6px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
+                ? "0 16px 32px -6px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(20, 184, 166, 0.15)"
                 : "0 16px 32px -6px rgba(12, 39, 59, 0.1), 0 8px 16px -4px rgba(12, 39, 59, 0.04), inset 0 1px 2px #FFFFFF",
             },
           },
@@ -222,7 +222,7 @@ export function buildMuiTheme(themeConfig, mode = "light") {
           outlined: {
             borderColor: themeConfig.border,
             color: themeConfig.textMain,
-            backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#FFFFFF",
+            backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#FFFFFF",
             boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
             "&:hover": {
               borderColor: themeConfig.primary,
@@ -247,7 +247,7 @@ export function buildMuiTheme(themeConfig, mode = "light") {
           root: {
             borderRadius: 18,
             border: `1px solid ${themeConfig.border}`,
-            backgroundColor: themeConfig.bgCard || (isDark ? "#162032" : "#FFFFFF"),
+            backgroundColor: themeConfig.bgCard || (isDark ? "#0E312C" : "#FFFFFF"),
             boxShadow: isDark
               ? "0 10px 25px -5px rgba(0, 0, 0, 0.4)"
               : "0 10px 25px -5px rgba(12, 39, 59, 0.06), inset 0 1px 1px #FFFFFF",
@@ -266,7 +266,7 @@ export function buildMuiTheme(themeConfig, mode = "light") {
           head: {
             fontWeight: 800,
             color: themeConfig.textMain,
-            backgroundColor: isDark ? "rgba(255,255,255,0.04)" : (themeConfig.champagne || "#F8F6F4"),
+            backgroundColor: isDark ? "rgba(20, 184, 166, 0.1)" : (themeConfig.champagne || "#F0FDFA"),
             borderBottom: `1px solid ${themeConfig.border}`,
             letterSpacing: "0.02em",
           },
@@ -286,7 +286,7 @@ export function buildMuiTheme(themeConfig, mode = "light") {
         styleOverrides: {
           root: {
             color: themeConfig.textMain,
-            backgroundColor: themeConfig.bgCard || (isDark ? "#162032" : "#FFFFFF"),
+            backgroundColor: themeConfig.bgCard || (isDark ? "#0E312C" : "#FFFFFF"),
             borderTop: `1px solid ${themeConfig.border}`,
           },
           selectLabel: {
@@ -314,11 +314,22 @@ export function buildMuiTheme(themeConfig, mode = "light") {
           },
         },
       },
+      MuiInputLabel: {
+        styleOverrides: {
+          root: {
+            color: themeConfig.textMuted,
+            fontWeight: 600,
+            "&.Mui-focused": {
+              color: themeConfig.primary,
+            },
+          },
+        },
+      },
       MuiOutlinedInput: {
         styleOverrides: {
           root: {
             borderRadius: 12,
-            backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#FFFFFF",
+            backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "#FFFFFF",
             color: themeConfig.textMain,
             boxShadow: isDark ? "none" : "inset 0 1px 3px rgba(0, 0, 0, 0.02)",
             transition: "all 0.2s ease",
@@ -335,6 +346,28 @@ export function buildMuiTheme(themeConfig, mode = "light") {
               borderColor: themeConfig.primary,
               borderWidth: "1.5px",
             },
+            "& .MuiSelect-icon": {
+              color: themeConfig.textMuted,
+            },
+          },
+        },
+      },
+      MuiMenuItem: {
+        styleOverrides: {
+          root: {
+            color: themeConfig.textMain,
+            borderRadius: 8,
+            margin: "2px 6px",
+            fontWeight: 600,
+            fontSize: "0.85rem",
+            "&:hover": {
+              backgroundColor: themeConfig.champagne || (isDark ? "rgba(20, 184, 166, 0.15)" : "rgba(15, 118, 110, 0.08)"),
+            },
+            "&.Mui-selected": {
+              backgroundColor: `${themeConfig.primaryGlow} !important`,
+              color: isDark ? "#5EEAD4" : themeConfig.primaryDark,
+              fontWeight: 800,
+            },
           },
         },
       },
@@ -342,9 +375,9 @@ export function buildMuiTheme(themeConfig, mode = "light") {
         styleOverrides: {
           paper: {
             borderRadius: 22,
-            backgroundColor: themeConfig.bgCard || (isDark ? "#162032" : "#FFFFFF"),
+            backgroundColor: themeConfig.bgCard || (isDark ? "#0E312C" : "#FFFFFF"),
             boxShadow: isDark
-              ? "0 24px 48px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
+              ? "0 24px 48px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(20, 184, 166, 0.15)"
               : "0 24px 48px -12px rgba(12, 39, 59, 0.22), 0 12px 24px -8px rgba(12, 39, 59, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.95)",
             border: `1px solid ${themeConfig.border}`,
           },
@@ -354,9 +387,9 @@ export function buildMuiTheme(themeConfig, mode = "light") {
         styleOverrides: {
           paper: {
             borderRadius: 16,
-            backgroundColor: themeConfig.bgCard || (isDark ? "#162032" : "#FFFFFF"),
+            backgroundColor: themeConfig.bgCard || (isDark ? "#0E312C" : "#FFFFFF"),
             boxShadow: isDark
-              ? "0 12px 28px -6px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06)"
+              ? "0 12px 28px -6px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(20, 184, 166, 0.12)"
               : "0 12px 28px -6px rgba(12, 39, 59, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
             border: `1px solid ${themeConfig.border}`,
           },
@@ -366,7 +399,7 @@ export function buildMuiTheme(themeConfig, mode = "light") {
         styleOverrides: {
           paper: {
             borderRadius: 0,
-            backgroundColor: themeConfig.bgCard || (isDark ? "#162032" : "#FFFFFF"),
+            backgroundColor: themeConfig.bgCard || (isDark ? "#0E312C" : "#FFFFFF"),
             borderRight: `1px solid ${themeConfig.border}`,
             borderTop: "none",
             borderBottom: "none",
@@ -381,7 +414,7 @@ export function buildMuiTheme(themeConfig, mode = "light") {
         styleOverrides: {
           root: {
             borderRadius: 0,
-            backgroundColor: themeConfig.bgHeader || (isDark ? "#0F172A" : "#FFFFFF"),
+            backgroundColor: themeConfig.bgHeader || (isDark ? "#0A2522" : "#FFFFFF"),
             borderBottom: `1px solid ${themeConfig.border}`,
             borderTop: "none",
             borderLeft: "none",
@@ -398,7 +431,7 @@ export function buildMuiTheme(themeConfig, mode = "light") {
           root: {
             borderRadius: "16px !important",
             border: `1px solid ${themeConfig.border}`,
-            backgroundColor: themeConfig.bgCard || (isDark ? "#162032" : "#FFFFFF"),
+            backgroundColor: themeConfig.bgCard || (isDark ? "#0E312C" : "#FFFFFF"),
             boxShadow: isDark
               ? "0 4px 14px rgba(0, 0, 0, 0.3)"
               : "0 4px 14px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
@@ -406,6 +439,13 @@ export function buildMuiTheme(themeConfig, mode = "light") {
               display: "none",
             },
             marginBottom: "12px",
+          },
+        },
+      },
+      MuiDivider: {
+        styleOverrides: {
+          root: {
+            borderColor: themeConfig.border,
           },
         },
       },

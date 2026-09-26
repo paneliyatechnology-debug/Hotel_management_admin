@@ -12,13 +12,13 @@ import {
 } from "@/shared/icons";
 
 export const HOTEL_ADMIN_NAV = [
-  { label: "Dashboard & Home", shortLabel: "Overview", path: "overview", icon: <DashboardIcon fontSize="small" /> },
-  { label: "Daily Collections Hub", shortLabel: "Collections", path: "daily-collections", icon: <Payments fontSize="small" /> },
+  { label: "Dashboard", shortLabel: "Dashboard", path: "overview", icon: <DashboardIcon fontSize="small" /> },
+  { label: "Daily Collections", shortLabel: "Collections", path: "daily-collections", icon: <Payments fontSize="small" /> },
   { label: "Guest Directory", shortLabel: "Guests", path: "guests", icon: <Person fontSize="small" /> },
-  { label: "Hotel Staff Team", shortLabel: "Staff", path: "staff", icon: <People fontSize="small" /> },
-  { label: "Room Types & Tariffs", shortLabel: "Rooms", path: "rooms", icon: <Layers fontSize="small" /> },
-  { label: "Subscription & Trial", shortLabel: "Plans", path: "subscriptions", icon: <Stars fontSize="small" /> },
-  { label: "Profile & Settings", shortLabel: "Settings", path: "settings", icon: <Settings fontSize="small" /> },
+  { label: "Staff Management", shortLabel: "Staff", path: "staff", icon: <People fontSize="small" /> },
+  { label: "Rooms & Tariffs", shortLabel: "Rooms", path: "rooms", icon: <Layers fontSize="small" /> },
+  { label: "Subscription Plan", shortLabel: "Subscription", path: "subscriptions", icon: <Stars fontSize="small" /> },
+  { label: "Settings", shortLabel: "Settings", path: "settings", icon: <Settings fontSize="small" /> },
 ];
 
 export default function HotelAdminLayout({ user, activeTab, onTabChange, onLogout, children }) {

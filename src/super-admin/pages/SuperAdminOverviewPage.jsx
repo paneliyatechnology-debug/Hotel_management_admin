@@ -53,7 +53,7 @@ export default function SuperAdminOverviewPage({
   onRefresh,
   onTabChange,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
 
   const [dashboardData, setDashboardData] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -177,15 +177,15 @@ export default function SuperAdminOverviewPage({
               className="btn-3d"
               sx={{
                 borderRadius: "14px",
-                bgcolor: "#FFFFFF",
+                bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                 color: themeConfig.primaryDark || "#0C273B",
                 fontWeight: 800,
                 fontSize: "0.82rem",
                 px: 2.5,
                 py: 1.1,
-                boxShadow: "0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 #FFFFFF",
+                boxShadow: isDarkMode ? "none" : "0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 #FFFFFF",
                 "&:hover": {
-                  bgcolor: "#F8FAFC",
+                  bgcolor: isDarkMode ? "rgba(20, 184, 166, 0.15)" : "#F8FAFC",
                   transform: "translateY(-2px)",
                 },
               }}
@@ -397,8 +397,8 @@ export default function SuperAdminOverviewPage({
             sx={{
               borderRadius: "22px",
               border: `1.5px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
-              boxShadow: "0 10px 28px -6px rgba(12, 39, 59, 0.06), inset 0 1px 0 #FFFFFF",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+              boxShadow: isDarkMode ? "none" : "0 10px 28px -6px rgba(12, 39, 59, 0.06), inset 0 1px 0 #FFFFFF",
               height: "100%",
               display: "flex",
               flexDirection: "column",
@@ -523,8 +523,8 @@ export default function SuperAdminOverviewPage({
             sx={{
               borderRadius: "22px",
               border: `1.5px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
-              boxShadow: "0 10px 28px -6px rgba(12, 39, 59, 0.06), inset 0 1px 0 #FFFFFF",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+              boxShadow: isDarkMode ? "none" : "0 10px 28px -6px rgba(12, 39, 59, 0.06), inset 0 1px 0 #FFFFFF",
               height: "100%",
               display: "flex",
               flexDirection: "column",

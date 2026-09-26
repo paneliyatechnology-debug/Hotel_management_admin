@@ -89,7 +89,7 @@ export default function StaffTeamPage({
   onToggleStaffStatus,
   getInitialStaffForm,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
 
   const totalReceptionists = staffList.filter((s) => (s.role || "").toUpperCase().includes("RECEPTIONIST")).length;
   const totalManagers = staffList.filter((s) => (s.role || "").toUpperCase().includes("MANAGER")).length;
@@ -193,15 +193,18 @@ export default function StaffTeamPage({
             className="btn-3d"
             sx={{
               borderRadius: "14px",
-              bgcolor: "#FFFFFF",
-              color: themeConfig.primaryDark || "#0C273B",
+              bgcolor: isDarkMode ? "rgba(255,255,255,0.12)" : "#FFFFFF",
+              color: isDarkMode ? "#FFFFFF" : (themeConfig.primaryDark || "#0C273B"),
               fontWeight: 800,
               fontSize: "0.82rem",
               px: 2.5,
               py: 1.1,
-              boxShadow: "0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 #FFFFFF",
+              border: isDarkMode ? `1px solid ${themeConfig.border}` : "none",
+              boxShadow: isDarkMode
+                ? "0 6px 16px rgba(0,0,0,0.3)"
+                : "0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 #FFFFFF",
               "&:hover": {
-                bgcolor: "#F8FAFC",
+                bgcolor: isDarkMode ? "rgba(255,255,255,0.2)" : "#F8FAFC",
                 transform: "translateY(-2px)",
               },
             }}
@@ -220,9 +223,11 @@ export default function StaffTeamPage({
           p: 2,
           mb: 3.5,
           borderRadius: "18px",
-          bgcolor: "#FFFFFF",
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
           border: `1.5px solid ${themeConfig.border}`,
-          boxShadow: "0 8px 24px -4px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
+          boxShadow: isDarkMode
+            ? "0 8px 24px -4px rgba(0, 0, 0, 0.4)"
+            : "0 8px 24px -4px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
           display: "flex",
           flexWrap: "wrap",
           alignItems: "center",
@@ -531,7 +536,7 @@ export default function StaffTeamPage({
             }}
             sx={{
               borderTop: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
               borderRadius: "0 0 20px 20px",
             }}
           />
@@ -552,8 +557,8 @@ export default function StaffTeamPage({
               borderRadius: "24px",
               p: 1.5,
               border: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.18)",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+              boxShadow: isDarkMode ? "0 20px 50px rgba(0,0,0,0.6)" : "0 20px 50px rgba(0,0,0,0.18)",
             },
           },
         }}
@@ -764,8 +769,8 @@ export default function StaffTeamPage({
               borderRadius: "24px",
               p: 0,
               border: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.18)",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+              boxShadow: isDarkMode ? "0 20px 50px rgba(0,0,0,0.6)" : "0 20px 50px rgba(0,0,0,0.18)",
               overflow: "hidden",
             },
           },
@@ -790,8 +795,8 @@ export default function StaffTeamPage({
                     width: 52,
                     height: 52,
                     borderRadius: "14px",
-                    bgcolor: "#FFFFFF",
-                    color: themeConfig.primaryDark,
+                    bgcolor: isDarkMode ? "rgba(255,255,255,0.15)" : "#FFFFFF",
+                    color: isDarkMode ? "#FFFFFF" : themeConfig.primaryDark,
                     fontWeight: 900,
                     fontSize: "1.3rem",
                     boxShadow: "0 4px 14px rgba(0,0,0,0.2)",

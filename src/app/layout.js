@@ -38,8 +38,12 @@ export default function RootLayout({ children }) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable}`}
       style={themeStyles}
+      suppressHydrationWarning
     >
-      <body style={{ margin: 0, padding: 0, backgroundColor: themeConfig.bgMain, color: themeConfig.textMain }}>
+      <body
+        suppressHydrationWarning
+        style={{ margin: 0, padding: 0, backgroundColor: themeConfig.bgMain, color: themeConfig.textMain }}
+      >
         {children}
       </body>
     </html>

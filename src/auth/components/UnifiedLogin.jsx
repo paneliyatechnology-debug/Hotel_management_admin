@@ -85,6 +85,10 @@ export default function UnifiedLogin({ onLoginSuccess }) {
           localStorage.setItem("token", token);
         }
 
+        if (res.refreshToken) {
+          localStorage.setItem("refreshToken", res.refreshToken);
+        }
+
         if (user) {
           localStorage.setItem("user", JSON.stringify(user));
 

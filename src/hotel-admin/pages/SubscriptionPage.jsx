@@ -285,8 +285,8 @@ export default function SubscriptionPage({ user, subscription: initialSub, onRef
                 fontSize: "0.78rem",
                 color: themeConfig.textMuted,
                 "&.Mui-selected": {
-                  bgcolor: themeConfig.bgCard || (isDarkMode ? "#1E293B" : "#FFFFFF"),
-                  color: isDarkMode ? "#FFFFFF" : themeConfig.primaryDark,
+                  bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+                  color: isDarkMode ? "#5EEAD4" : themeConfig.primaryDark,
                   boxShadow: isDarkMode ? "0 2px 8px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.08)",
                 },
               },
@@ -382,7 +382,7 @@ export default function SubscriptionPage({ user, subscription: initialSub, onRef
                       )}
 
                       <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5, my: 1.5 }}>
-                        <Typography variant="h4" sx={{ fontWeight: 900, color: themeConfig.primaryDark }}>
+                        <Typography variant="h4" sx={{ fontWeight: 900, color: isDarkMode ? themeConfig.primary : themeConfig.primaryDark }}>
                           ₹{plan.price?.toLocaleString("en-IN")}
                         </Typography>
                         <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontWeight: 700 }}>
@@ -419,7 +419,7 @@ export default function SubscriptionPage({ user, subscription: initialSub, onRef
                             }
                           : {
                               borderColor: themeConfig.border,
-                              color: themeConfig.primaryDark,
+                              color: isDarkMode ? themeConfig.primary : themeConfig.primaryDark,
                             }),
                       }}
                     >

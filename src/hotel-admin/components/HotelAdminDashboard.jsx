@@ -79,6 +79,8 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
   }
 
   function getInitialGuestForm() {
+    const availableRoom = rooms.find((r) => r.status === "AVAILABLE") || rooms[0];
+    const defaultPrice = availableRoom?.customPricePerNight || (typeof availableRoom?.roomType === "object" ? availableRoom?.roomType?.basePrice : 4000) || 4000;
     return {
       _id: "",
       name: "",
@@ -87,10 +89,10 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
       idType: "AADHAAR",
       idNumber: "",
       address: "",
-      roomAssigned: "101",
+      roomAssigned: availableRoom ? String(availableRoom.roomNumber) : "",
       checkInDate: new Date().toISOString().split("T")[0],
-      checkOutDate: new Date(Date.now() + 86400000 * 2).toISOString().split("T")[0],
-      totalAmount: 7000,
+      checkOutDate: new Date(Date.now() + 86400000).toISOString().split("T")[0],
+      totalAmount: defaultPrice,
       status: "IN-HOUSE",
     };
   }
@@ -189,6 +191,11 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
     }
 
     try {
+      const selectedRoomList = guestModal.data.selectedRooms || [];
+      const combinedRoomNumbers = selectedRoomList.length > 0
+        ? selectedRoomList.map((r) => r.roomNumber).join(", ")
+        : guestModal.data.roomAssigned || "";
+
       const payload = {
         fullName: guestName,
         mobileNumber: guestPhone,
@@ -196,6 +203,16 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
         address: guestModal.data.address || "",
         idType: guestModal.data.idType || "AADHAAR",
         idNumber: guestModal.data.idNumber || "PENDING",
+        roomAssigned: combinedRoomNumbers,
+        roomIds: selectedRoomList.map((r) => r._id || r).filter(Boolean),
+        selectedRooms: selectedRoomList,
+        roomNumbers: selectedRoomList.map((r) => String(r.roomNumber)).filter(Boolean),
+        checkInDate: guestModal.data.checkInDate || "",
+        checkOutDate: guestModal.data.checkOutDate || "",
+        status: guestModal.data.status || "IN-HOUSE",
+        totalAmount: Number(guestModal.data.totalAmount) || 0,
+        advancePaid: Number(guestModal.data.advancePaid) || 0,
+        accompanyingGuests: guestModal.data.accompanyingGuests || [],
       };
 
       const res = await apiRequest(API_ENDPOINTS.RECEPTIONIST.GUESTS, {
@@ -204,23 +221,12 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
       });
 
       if (res.data) {
-        const savedGuest = {
-          ...res.data,
-          name: res.data.fullName,
-          phone: res.data.mobileNumber,
-          idType: res.data.idProof?.idType || payload.idType,
-          idNumber: res.data.idProof?.idNumber || payload.idNumber,
-        };
-        const existingIdx = guests.findIndex((g) => g._id === savedGuest._id || g.mobileNumber === savedGuest.mobileNumber);
-        if (existingIdx >= 0) {
-          const updated = [...guests];
-          updated[existingIdx] = savedGuest;
-          setGuests(updated);
-        } else {
-          setGuests([savedGuest, ...guests]);
-        }
         await fetchAllData();
-        showToast("Guest record saved to database successfully!");
+        showToast(
+          guestModal.mode === "EDIT"
+            ? "Guest profile updated successfully!"
+            : `New guest registered & ${selectedRoomList.length || 1} room(s) allocated successfully!`
+        );
       }
       setGuestModal({ open: false, mode: "ADD", data: getInitialGuestForm() });
     } catch (err) {
@@ -558,6 +564,7 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
       {activeNav === 2 && (
         <GuestDirectoryPage
           guests={guests}
+          rooms={rooms}
           guestSearch={guestSearch}
           setGuestSearch={setGuestSearch}
           guestFilter={guestFilter}

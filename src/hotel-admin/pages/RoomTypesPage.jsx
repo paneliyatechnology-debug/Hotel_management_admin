@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -115,7 +115,7 @@ export default function RoomTypesPage({
   onSaveRoomType,
   onDeleteRoomType,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
 
   // Active View Tabs:
   // 0: Category-Wise Grouped View
@@ -450,9 +450,9 @@ export default function RoomTypesPage({
           p: 0.8,
           mb: 3,
           borderRadius: "16px",
-          bgcolor: "#FFFFFF",
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
           border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 6px 18px rgba(12, 39, 59, 0.05)",
+          boxShadow: isDarkMode ? "0 6px 18px rgba(0,0,0,0.3)" : "0 6px 18px rgba(12, 39, 59, 0.05)",
           display: "inline-flex",
         }}
       >
@@ -524,8 +524,8 @@ export default function RoomTypesPage({
                 p: 4,
                 borderRadius: "20px",
                 border: `1px solid ${themeConfig.border}`,
-                bgcolor: "#FFFFFF",
-                boxShadow: "0 10px 25px -5px rgba(12, 39, 59, 0.08)",
+                bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+                boxShadow: isDarkMode ? "0 10px 25px -5px rgba(0,0,0,0.4)" : "0 10px 25px -5px rgba(12, 39, 59, 0.08)",
               }}
             >
               <EmptyState
@@ -580,8 +580,8 @@ export default function RoomTypesPage({
                       p: { xs: 2, sm: 3 },
                       borderRadius: "22px",
                       border: `1px solid ${themeConfig.border}`,
-                      bgcolor: "#FFFFFF",
-                      boxShadow: "0 10px 28px -6px rgba(12, 39, 59, 0.07), inset 0 1px 1px #FFFFFF",
+                      bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+                      boxShadow: isDarkMode ? "0 10px 28px -6px rgba(0,0,0,0.4)" : "0 10px 28px -6px rgba(12, 39, 59, 0.07), inset 0 1px 1px #FFFFFF",
                       transition: "all 0.25s ease",
                     }}
                   >
@@ -632,8 +632,8 @@ export default function RoomTypesPage({
                               label={`👥 Max ${cat.capacity?.adults || 2} Adults, ${cat.capacity?.children || 1} Children`}
                               size="small"
                               sx={{
-                                bgcolor: "#F3F4F6",
-                                color: "#374151",
+                                bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : "#F3F4F6",
+                                color: themeConfig.textMain,
                                 fontWeight: 700,
                                 fontSize: "0.72rem",
                               }}
@@ -642,8 +642,8 @@ export default function RoomTypesPage({
                               label={`🏨 ${catRooms.length} Rooms Assigned`}
                               size="small"
                               sx={{
-                                bgcolor: catRooms.length > 0 ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)",
-                                color: catRooms.length > 0 ? "#059669" : "#DC2626",
+                                bgcolor: catRooms.length > 0 ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                                color: catRooms.length > 0 ? "#10B981" : "#EF4444",
                                 fontWeight: 800,
                                 fontSize: "0.72rem",
                                 border: `1px solid ${catRooms.length > 0 ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"}`,
@@ -720,7 +720,7 @@ export default function RoomTypesPage({
                             label={am}
                             size="small"
                             sx={{
-                              bgcolor: "#FFFFFF",
+                              bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : "#FFFFFF",
                               color: themeConfig.textMain,
                               fontWeight: 700,
                               fontSize: "0.74rem",
@@ -734,7 +734,7 @@ export default function RoomTypesPage({
 
                     {/* Rooms Assigned to this Category */}
                     {catRooms.length === 0 ? (
-                      <Box sx={{ p: 3, textAlign: "center", bgcolor: "#FAFBFC", borderRadius: "14px", border: `1px solid ${themeConfig.border}` }}>
+                      <Box sx={{ p: 3, textAlign: "center", bgcolor: themeConfig.bgMain, borderRadius: "14px", border: `1px solid ${themeConfig.border}` }}>
                         <Typography variant="body2" sx={{ fontWeight: 700, color: themeConfig.textMuted }}>
                           No rooms created under &quot;{cat.name}&quot; yet.
                         </Typography>
@@ -761,14 +761,14 @@ export default function RoomTypesPage({
                                 sx={{
                                   borderRadius: "16px",
                                   border: `1px solid ${themeConfig.border}`,
-                                  bgcolor: "#FFFFFF",
+                                  bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                                   p: 2,
                                   height: "100%",
                                   display: "flex",
                                   flexDirection: "column",
                                   justifyContent: "space-between",
                                   transition: "all 0.2s ease",
-                                  boxShadow: "0 4px 12px rgba(12, 39, 59, 0.04)",
+                                  boxShadow: isDarkMode ? "0 4px 12px rgba(0,0,0,0.3)" : "0 4px 12px rgba(12, 39, 59, 0.04)",
                                   "&:hover": {
                                     transform: "translateY(-3px)",
                                     boxShadow: `0 8px 20px ${themeConfig.primaryGlow}`,
@@ -952,8 +952,8 @@ export default function RoomTypesPage({
               mb: 3,
               borderRadius: "18px",
               border: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
-              boxShadow: "0 6px 20px rgba(12, 39, 59, 0.04)",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+              boxShadow: isDarkMode ? "0 6px 20px rgba(0,0,0,0.3)" : "0 6px 20px rgba(12, 39, 59, 0.04)",
               display: "flex",
               flexWrap: "wrap",
               gap: 2,
@@ -1319,7 +1319,7 @@ export default function RoomTypesPage({
                 }}
                 sx={{
                   borderTop: `1px solid ${themeConfig.border}`,
-                  bgcolor: "#FFFFFF",
+                  bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                   borderRadius: "0 0 20px 20px",
                 }}
               />
@@ -1340,8 +1340,8 @@ export default function RoomTypesPage({
                 p: 4,
                 borderRadius: "20px",
                 border: `1px solid ${themeConfig.border}`,
-                bgcolor: "#FFFFFF",
-                boxShadow: "0 10px 25px -5px rgba(12, 39, 59, 0.08)",
+                bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+                boxShadow: isDarkMode ? "0 10px 25px -5px rgba(0,0,0,0.4)" : "0 10px 25px -5px rgba(12, 39, 59, 0.08)",
               }}
             >
               <EmptyState
@@ -1367,8 +1367,8 @@ export default function RoomTypesPage({
                       sx={{
                         borderRadius: "22px",
                         border: `1px solid ${themeConfig.border}`,
-                        boxShadow: "0 10px 25px -5px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
-                        background: "linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)",
+                        boxShadow: isDarkMode ? "0 10px 25px -5px rgba(0,0,0,0.4)" : "0 10px 25px -5px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
+                        background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)",
                         height: "100%",
                         display: "flex",
                         flexDirection: "column",
@@ -1376,7 +1376,7 @@ export default function RoomTypesPage({
                         transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
                         "&:hover": {
                           transform: "translateY(-4px)",
-                          boxShadow: "0 16px 32px -6px rgba(12, 39, 59, 0.12)",
+                          boxShadow: isDarkMode ? "0 16px 32px -6px rgba(0,0,0,0.55)" : "0 16px 32px -6px rgba(12, 39, 59, 0.12)",
                         },
                       }}
                     >
@@ -1447,8 +1447,8 @@ export default function RoomTypesPage({
                             sx={{
                               fontWeight: 800,
                               fontSize: "0.72rem",
-                              bgcolor: "#F3F4F6",
-                              color: "#374151",
+                              bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : "#F3F4F6",
+                              color: themeConfig.textMain,
                             }}
                           />
                         </Box>
@@ -1527,8 +1527,8 @@ export default function RoomTypesPage({
               borderRadius: "24px",
               p: 1.5,
               border: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
-              boxShadow: "0 24px 50px rgba(0,0,0,0.2)",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+              boxShadow: isDarkMode ? "0 24px 50px rgba(0,0,0,0.6)" : "0 24px 50px rgba(0,0,0,0.2)",
             },
           },
         }}
@@ -1814,7 +1814,7 @@ export default function RoomTypesPage({
                       return (
                         <Chip
                           key={i}
-                          icon={isSelected ? <Check sx={{ fontSize: "16px !important", color: "#FFFFFF !important" }} /> : am.icon}
+                          icon={isSelected ? <Check sx={{ fontSize: "16px !important", color: "#FFFFFF !important" }} /> : React.cloneElement(am.icon, { sx: { fontSize: "16px !important", color: isDarkMode ? "#14B8A6 !important" : "inherit" } })}
                           label={am.label}
                           clickable
                           onClick={() => toggleRoomAmenity(am.label)}
@@ -1823,12 +1823,12 @@ export default function RoomTypesPage({
                             borderRadius: "8px",
                             fontWeight: 700,
                             fontSize: "0.75rem",
-                            bgcolor: isSelected ? themeConfig.primaryDark : "#FFFFFF",
+                            bgcolor: isSelected ? (themeConfig.primaryDark || "#115E59") : (isDarkMode ? "rgba(255,255,255,0.06)" : "#FFFFFF"),
                             color: isSelected ? "#FFFFFF" : themeConfig.textMain,
-                            border: `1px solid ${isSelected ? themeConfig.primaryDark : themeConfig.border}`,
+                            border: `1px solid ${isSelected ? themeConfig.primaryLight || themeConfig.primary : themeConfig.border}`,
                             transition: "all 0.15s ease",
                             "&:hover": {
-                              bgcolor: isSelected ? themeConfig.primaryDark : themeConfig.champagne,
+                              bgcolor: isSelected ? themeConfig.primaryDark : (isDarkMode ? "rgba(255,255,255,0.12)" : themeConfig.champagne),
                             },
                           }}
                         />
@@ -1849,7 +1849,7 @@ export default function RoomTypesPage({
                           handleAddCustomRoomAmenity();
                         }
                       }}
-                      sx={{ flexGrow: 1, "& .MuiOutlinedInput-root": { borderRadius: "10px", bgcolor: "#FFFFFF" } }}
+                      sx={{ flexGrow: 1, "& .MuiOutlinedInput-root": { borderRadius: "10px", bgcolor: isDarkMode ? "rgba(255,255,255,0.04)" : "#FFFFFF" } }}
                     />
                     <Button
                       variant="contained"
@@ -1909,7 +1909,8 @@ export default function RoomTypesPage({
               borderRadius: "22px",
               p: 1.5,
               border: `1px solid ${themeConfig.border}`,
-              boxShadow: "0 24px 48px -12px rgba(12, 39, 59, 0.22)",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+              boxShadow: isDarkMode ? "0 24px 50px rgba(0,0,0,0.6)" : "0 24px 48px -12px rgba(12, 39, 59, 0.22)",
             },
           },
         }}
@@ -2084,7 +2085,7 @@ export default function RoomTypesPage({
                       return (
                         <Chip
                           key={i}
-                          icon={isSelected ? <Check sx={{ fontSize: "16px !important", color: "#FFFFFF !important" }} /> : am.icon}
+                          icon={isSelected ? <Check sx={{ fontSize: "16px !important", color: "#FFFFFF !important" }} /> : React.cloneElement(am.icon, { sx: { fontSize: "16px !important", color: isDarkMode ? "#14B8A6 !important" : "inherit" } })}
                           label={am.label}
                           clickable
                           onClick={() => toggleTypeAmenity(am.label)}
@@ -2093,9 +2094,13 @@ export default function RoomTypesPage({
                             borderRadius: "8px",
                             fontWeight: 700,
                             fontSize: "0.72rem",
-                            bgcolor: isSelected ? themeConfig.primary : "#FFFFFF",
+                            bgcolor: isSelected ? (themeConfig.primary || "#0F766E") : (isDarkMode ? "rgba(255,255,255,0.06)" : "#FFFFFF"),
                             color: isSelected ? "#FFFFFF" : themeConfig.textMain,
-                            border: `1px solid ${isSelected ? themeConfig.primary : themeConfig.border}`,
+                            border: `1px solid ${isSelected ? themeConfig.primaryLight || themeConfig.primary : themeConfig.border}`,
+                            transition: "all 0.15s ease",
+                            "&:hover": {
+                              bgcolor: isSelected ? themeConfig.primary : (isDarkMode ? "rgba(255,255,255,0.12)" : themeConfig.champagne),
+                            },
                           }}
                         />
                       );
@@ -2115,7 +2120,7 @@ export default function RoomTypesPage({
                           handleAddCustomTypeAmenity();
                         }
                       }}
-                      sx={{ flexGrow: 1, "& .MuiOutlinedInput-root": { borderRadius: "10px", bgcolor: "#FFFFFF" } }}
+                      sx={{ flexGrow: 1, "& .MuiOutlinedInput-root": { borderRadius: "10px", bgcolor: isDarkMode ? "rgba(255,255,255,0.04)" : "#FFFFFF" } }}
                     />
                     <Button
                       variant="contained"

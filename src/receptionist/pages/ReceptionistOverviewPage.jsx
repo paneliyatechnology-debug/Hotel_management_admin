@@ -62,7 +62,7 @@ export default function ReceptionistOverviewPage({
   onNavigateTab,
   onSelectRoomForCheckIn,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
 
   // Pagination for Recent Check-Ins Table
   const [guestPage, setGuestPage] = useState(0);
@@ -439,8 +439,9 @@ export default function ReceptionistOverviewPage({
         sx={{
           borderRadius: "22px",
           border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 10px 30px -5px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
-          background: "linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)",
+          boxShadow: isDarkMode ? "none" : "0 10px 30px -5px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+          background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)",
           mb: 4,
         }}
       >
@@ -464,6 +465,7 @@ export default function ReceptionistOverviewPage({
                 fontWeight: 800,
                 fontSize: "0.82rem",
                 borderColor: themeConfig.border,
+                bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                 color: themeConfig.textMain,
                 "&:hover": { bgcolor: themeConfig.champagne, borderColor: themeConfig.primary },
               }}
@@ -506,10 +508,13 @@ export default function ReceptionistOverviewPage({
                       p: 3,
                       borderRadius: "20px",
                       border: `2px solid ${hasAvailable ? themeConfig.primaryGlow || "#0B8EE033" : themeConfig.border}`,
-                      background: hasAvailable
-                        ? "linear-gradient(135deg, #FFFFFF 0%, #F4F9FD 100%)"
-                        : "linear-gradient(135deg, #FFFFFF 0%, #FAFAFA 100%)",
-                      boxShadow: "0 8px 24px rgba(12, 39, 59, 0.06), inset 0 1px 1px #FFFFFF",
+                      bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+                      background: isDarkMode
+                        ? (themeConfig.bgCard || "#0E312C")
+                        : (hasAvailable
+                          ? "linear-gradient(135deg, #FFFFFF 0%, #F4F9FD 100%)"
+                          : "linear-gradient(135deg, #FFFFFF 0%, #FAFAFA 100%)"),
+                      boxShadow: isDarkMode ? "none" : "0 8px 24px rgba(12, 39, 59, 0.06), inset 0 1px 1px #FFFFFF",
                       cursor: "pointer",
                       display: "flex",
                       flexDirection: "column",
@@ -654,8 +659,9 @@ export default function ReceptionistOverviewPage({
         sx={{
           borderRadius: "22px",
           border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 10px 30px -5px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
-          background: "linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)",
+          boxShadow: isDarkMode ? "none" : "0 10px 30px -5px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+          background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)",
         }}
       >
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>

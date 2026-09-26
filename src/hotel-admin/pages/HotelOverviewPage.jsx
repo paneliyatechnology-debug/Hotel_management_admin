@@ -71,7 +71,7 @@ export default function HotelOverviewPage({
   onRefresh,
   onTabChange,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
   const [roomSearch, setRoomSearch] = useState("");
   const [nowTime, setNowTime] = useState(Date.now());
   const [guestPage, setGuestPage] = useState(0);
@@ -362,15 +362,18 @@ export default function HotelOverviewPage({
               className="btn-3d"
               sx={{
                 borderRadius: "14px",
-                bgcolor: "#FFFFFF",
-                color: themeConfig.primaryDark || "#0C273B",
+                bgcolor: isDarkMode ? "rgba(255,255,255,0.12)" : "#FFFFFF",
+                color: isDarkMode ? "#FFFFFF" : (themeConfig.primaryDark || "#0C273B"),
                 fontWeight: 800,
                 fontSize: "0.82rem",
                 px: 2.5,
                 py: 1.1,
-                boxShadow: "0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 #FFFFFF",
+                border: isDarkMode ? `1px solid ${themeConfig.border}` : "none",
+                boxShadow: isDarkMode
+                  ? "0 6px 16px rgba(0,0,0,0.3)"
+                  : "0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 #FFFFFF",
                 "&:hover": {
-                  bgcolor: "#F8FAFC",
+                  bgcolor: isDarkMode ? "rgba(255,255,255,0.2)" : "#F8FAFC",
                   transform: "translateY(-2px)",
                 },
               }}
@@ -391,8 +394,12 @@ export default function HotelOverviewPage({
               p: 2,
               borderRadius: "18px",
               border: `1px solid ${themeConfig.border}`,
-              background: "linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)",
-              boxShadow: "0 6px 20px -4px rgba(12, 39, 59, 0.05), inset 0 1px 1px #FFFFFF",
+              background: isDarkMode
+                ? (themeConfig.bgCard || "#0E312C")
+                : "linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)",
+              boxShadow: isDarkMode
+                ? "0 6px 20px -4px rgba(0, 0, 0, 0.4)"
+                : "0 6px 20px -4px rgba(12, 39, 59, 0.05), inset 0 1px 1px #FFFFFF",
             }}
           >
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 2 }}>
@@ -655,7 +662,7 @@ export default function HotelOverviewPage({
                 placeholder="Search room #, guest..."
                 value={roomSearch}
                 onChange={(e) => setRoomSearch(e.target.value)}
-                sx={{ minWidth: { xs: "100%", sm: 200 }, "& .MuiOutlinedInput-root": { borderRadius: "12px", bgcolor: "#FFFFFF" } }}
+                sx={{ minWidth: { xs: "100%", sm: 200 }, "& .MuiOutlinedInput-root": { borderRadius: "12px", bgcolor: isDarkMode ? "rgba(255,255,255,0.04)" : "#FFFFFF" } }}
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -673,7 +680,7 @@ export default function HotelOverviewPage({
                 size="small"
                 value={selectedFloor}
                 onChange={(e) => setSelectedFloor(e.target.value)}
-                sx={{ minWidth: 125, "& .MuiOutlinedInput-root": { borderRadius: "12px", bgcolor: "#FFFFFF", fontWeight: 700 } }}
+                sx={{ minWidth: 125, "& .MuiOutlinedInput-root": { borderRadius: "12px", bgcolor: isDarkMode ? "rgba(255,255,255,0.04)" : "#FFFFFF", fontWeight: 700 } }}
               >
                 <MenuItem value="ALL">All Floors</MenuItem>
                 {Array.from(new Set(rooms.map((r) => r.floor || 1)))
@@ -691,7 +698,7 @@ export default function HotelOverviewPage({
                 size="small"
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                sx={{ minWidth: 155, "& .MuiOutlinedInput-root": { borderRadius: "12px", bgcolor: "#FFFFFF", fontWeight: 700 } }}
+                sx={{ minWidth: 155, "& .MuiOutlinedInput-root": { borderRadius: "12px", bgcolor: isDarkMode ? "rgba(255,255,255,0.04)" : "#FFFFFF", fontWeight: 700 } }}
               >
                 <MenuItem value="ALL">All Status ({rooms.length})</MenuItem>
                 <MenuItem value="AVAILABLE">🟢 Available ({totalAvailable})</MenuItem>
@@ -756,8 +763,12 @@ export default function HotelOverviewPage({
                       p: 2,
                       borderRadius: "18px",
                       border: `1.5px solid ${statusBorder}`,
-                      background: `linear-gradient(135deg, #FFFFFF 0%, ${statusBg} 100%)`,
-                      boxShadow: `0 4px 14px rgba(12, 39, 59, 0.04), 0 2px 6px ${statusGlow}, inset 0 1px 1px #FFFFFF`,
+                      background: isDarkMode
+                        ? `linear-gradient(135deg, ${themeConfig.bgCard || "#0E312C"} 0%, ${statusBg} 100%)`
+                        : `linear-gradient(135deg, #FFFFFF 0%, ${statusBg} 100%)`,
+                      boxShadow: isDarkMode
+                        ? `0 4px 14px rgba(0, 0, 0, 0.4), 0 2px 6px ${statusGlow}`
+                        : `0 4px 14px rgba(12, 39, 59, 0.04), 0 2px 6px ${statusGlow}, inset 0 1px 1px #FFFFFF`,
                       textAlign: "center",
                       height: "100%",
                       display: "flex",
@@ -835,7 +846,7 @@ export default function HotelOverviewPage({
                             overflow: "hidden",
                             whiteSpace: "nowrap",
                             fontSize: "0.72rem",
-                            bgcolor: "rgba(255,255,255,0.7)",
+                            bgcolor: isDarkMode ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.7)",
                             borderRadius: "6px",
                             py: 0.3,
                           }}
@@ -1045,7 +1056,7 @@ export default function HotelOverviewPage({
               }}
               sx={{
                 borderTop: `1px solid ${themeConfig.border}`,
-                bgcolor: "#FFFFFF",
+                bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                 mt: 1,
               }}
             />

@@ -47,7 +47,7 @@ export default function SubscriptionExpiredScreen({
   reason = "",
   type = "EXPIRED", // "EXPIRED" | "DISABLED" | "SUSPENDED"
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
   const [plans, setPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [billingCycle, setBillingCycle] = useState("MONTHLY");
@@ -291,7 +291,7 @@ export default function SubscriptionExpiredScreen({
               mb: 3.5,
             }}
           >
-            <Grid container spacing={2} alignItems="center">
+            <Grid container spacing={2} sx={{ alignItems: "center" }}>
               <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontWeight: 700 }}>
                   Trial Status
@@ -351,9 +351,9 @@ export default function SubscriptionExpiredScreen({
                       fontSize: "0.75rem",
                       color: themeConfig.textMuted,
                       "&.Mui-selected": {
-                        bgcolor: "#FFFFFF",
+                        bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                         color: themeConfig.primaryDark,
-                        boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+                        boxShadow: isDarkMode ? "none" : "0 2px 6px rgba(0,0,0,0.08)",
                       },
                     },
                   }}
@@ -383,9 +383,9 @@ export default function SubscriptionExpiredScreen({
                             p: 2.5,
                             borderRadius: "18px",
                             border: isPopular ? `2px solid ${themeConfig.primary}` : `1px solid ${themeConfig.border}`,
-                            bgcolor: "#FFFFFF",
+                            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                             position: "relative",
-                            boxShadow: isPopular ? `0 12px 28px -4px ${themeConfig.primaryGlow}` : "0 4px 16px rgba(0,0,0,0.04)",
+                            boxShadow: isPopular ? `0 12px 28px -4px ${themeConfig.primaryGlow}` : (isDarkMode ? "none" : "0 4px 16px rgba(0,0,0,0.04)"),
                             display: "flex",
                             flexDirection: "column",
                             justifyContent: "space-between",
@@ -507,7 +507,7 @@ export default function SubscriptionExpiredScreen({
                     p: 2.2,
                     borderRadius: "16px",
                     border: `1px solid ${themeConfig.border}`,
-                    bgcolor: "#FFFFFF",
+                    bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                     textAlign: "center",
                     transition: "all 0.2s ease",
                     "&:hover": { transform: "translateY(-3px)", borderColor: themeConfig.primary },
@@ -542,7 +542,7 @@ export default function SubscriptionExpiredScreen({
                     p: 2.2,
                     borderRadius: "16px",
                     border: `1px solid ${themeConfig.border}`,
-                    bgcolor: "#FFFFFF",
+                    bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                     textAlign: "center",
                     transition: "all 0.2s ease",
                     "&:hover": { transform: "translateY(-3px)", borderColor: "#25D366" },
@@ -587,7 +587,7 @@ export default function SubscriptionExpiredScreen({
                     p: 2.2,
                     borderRadius: "16px",
                     border: `1px solid ${themeConfig.border}`,
-                    bgcolor: "#FFFFFF",
+                    bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                     textAlign: "center",
                     transition: "all 0.2s ease",
                     "&:hover": { transform: "translateY(-3px)", borderColor: themeConfig.info },

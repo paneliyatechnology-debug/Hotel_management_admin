@@ -53,7 +53,7 @@ export default function GovtIdCompliancePage({
   hotelSettings = {},
   onVerifyGuestId,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("ALL");
@@ -172,7 +172,7 @@ export default function GovtIdCompliancePage({
             sx={{
               borderRadius: "12px",
               borderColor: themeConfig.border,
-              bgcolor: "#FFFFFF",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
               color: themeConfig.textMain,
               fontWeight: 700,
               textTransform: "none",
@@ -220,10 +220,10 @@ export default function GovtIdCompliancePage({
           sx={{
             p: 2.2,
             borderRadius: "16px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
             border: `1px solid ${themeConfig.border}`,
-            background: "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
-            boxShadow: "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+            background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
+            boxShadow: isDarkMode ? "none" : "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
@@ -248,24 +248,24 @@ export default function GovtIdCompliancePage({
           sx={{
             p: 2.2,
             borderRadius: "16px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
             border: `1px solid ${themeConfig.border}`,
-            background: "linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%)",
-            boxShadow: "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+            background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%)",
+            boxShadow: isDarkMode ? "none" : "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: "#059669", textTransform: "uppercase" }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: isDarkMode ? "#34D399" : "#059669", textTransform: "uppercase" }}>
               Verified & Stamped
             </Typography>
-            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: "#ECFDF5", color: "#059669" }}>
+            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: isDarkMode ? "rgba(52, 211, 153, 0.15)" : "#ECFDF5", color: isDarkMode ? "#34D399" : "#059669" }}>
               <CheckCircle sx={{ fontSize: 18 }} />
             </Box>
           </Box>
-          <Typography variant="h5" sx={{ fontWeight: 900, color: "#059669" }}>
+          <Typography variant="h5" sx={{ fontWeight: 900, color: isDarkMode ? "#34D399" : "#059669" }}>
             {verifiedCount}
           </Typography>
-          <Typography variant="caption" sx={{ color: "#059669", fontWeight: 700 }}>
+          <Typography variant="caption" sx={{ color: isDarkMode ? "#34D399" : "#059669", fontWeight: 700 }}>
             Police & tourism stamped
           </Typography>
         </Paper>
@@ -276,24 +276,24 @@ export default function GovtIdCompliancePage({
           sx={{
             p: 2.2,
             borderRadius: "16px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
             border: `1px solid ${themeConfig.border}`,
-            background: "linear-gradient(135deg, #FFFFFF 0%, #FFFBEB 100%)",
-            boxShadow: "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+            background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #FFFBEB 100%)",
+            boxShadow: isDarkMode ? "none" : "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: "#D97706", textTransform: "uppercase" }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: isDarkMode ? "#FBBF24" : "#D97706", textTransform: "uppercase" }}>
               Pending Verification
             </Typography>
-            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: "#FEF3C7", color: "#D97706" }}>
+            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: isDarkMode ? "rgba(251, 191, 36, 0.15)" : "#FEF3C7", color: isDarkMode ? "#FBBF24" : "#D97706" }}>
               <Warning sx={{ fontSize: 18 }} />
             </Box>
           </Box>
-          <Typography variant="h5" sx={{ fontWeight: 900, color: pendingCount > 0 ? "#D97706" : themeConfig.textMain }}>
+          <Typography variant="h5" sx={{ fontWeight: 900, color: pendingCount > 0 ? (isDarkMode ? "#FBBF24" : "#D97706") : themeConfig.textMain }}>
             {pendingCount}
           </Typography>
-          <Typography variant="caption" sx={{ color: pendingCount > 0 ? "#D97706" : themeConfig.textMuted, fontWeight: pendingCount > 0 ? 700 : 400 }}>
+          <Typography variant="caption" sx={{ color: pendingCount > 0 ? (isDarkMode ? "#FBBF24" : "#D97706") : themeConfig.textMuted, fontWeight: pendingCount > 0 ? 700 : 400 }}>
             {pendingCount > 0 ? "Requires ID stamp" : "All guests stamped"}
           </Typography>
         </Paper>
@@ -304,24 +304,24 @@ export default function GovtIdCompliancePage({
           sx={{
             p: 2.2,
             borderRadius: "16px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
             border: `1px solid ${themeConfig.border}`,
-            background: "linear-gradient(135deg, #FFFFFF 0%, #FAF5FF 100%)",
-            boxShadow: "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+            background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #FAF5FF 100%)",
+            boxShadow: isDarkMode ? "none" : "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: "#7C3AED", textTransform: "uppercase" }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: isDarkMode ? "#A78BFA" : "#7C3AED", textTransform: "uppercase" }}>
               Audit Compliance
             </Typography>
-            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: "#F5F3FF", color: "#7C3AED" }}>
+            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: isDarkMode ? "rgba(167, 139, 250, 0.15)" : "#F5F3FF", color: isDarkMode ? "#A78BFA" : "#7C3AED" }}>
               <Security sx={{ fontSize: 18 }} />
             </Box>
           </Box>
-          <Typography variant="h5" sx={{ fontWeight: 900, color: "#7C3AED" }}>
+          <Typography variant="h5" sx={{ fontWeight: 900, color: isDarkMode ? "#A78BFA" : "#7C3AED" }}>
             {complianceRate}%
           </Typography>
-          <Typography variant="caption" sx={{ color: "#7C3AED", fontWeight: 700 }}>
+          <Typography variant="caption" sx={{ color: isDarkMode ? "#A78BFA" : "#7C3AED", fontWeight: 700 }}>
             Regulatory audit ready
           </Typography>
         </Paper>
@@ -333,9 +333,9 @@ export default function GovtIdCompliancePage({
         sx={{
           p: 2,
           borderRadius: "18px",
-          bgcolor: "#FFFFFF",
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
           border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 8px 20px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+          boxShadow: isDarkMode ? "none" : "0 8px 20px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
         }}
       >
         <Box
@@ -360,7 +360,7 @@ export default function GovtIdCompliancePage({
               minWidth: { xs: "100%", sm: "260px" },
               "& .MuiOutlinedInput-root": {
                 borderRadius: "12px",
-                bgcolor: themeConfig.champagne,
+                bgcolor: isDarkMode ? "rgba(255, 255, 255, 0.04)" : themeConfig.champagne,
               },
             }}
             slotProps={{
@@ -384,7 +384,7 @@ export default function GovtIdCompliancePage({
                   setSelectedType(e.target.value);
                   setPage(0);
                 }}
-                sx={{ borderRadius: "12px", bgcolor: "#FFFFFF" }}
+                sx={{ borderRadius: "12px", bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF") }}
               >
                 <MenuItem value="ALL">All ID Types</MenuItem>
                 <MenuItem value="AADHAAR">🪪 Aadhaar</MenuItem>
@@ -404,7 +404,7 @@ export default function GovtIdCompliancePage({
                   setSelectedStatus(e.target.value);
                   setPage(0);
                 }}
-                sx={{ borderRadius: "12px", bgcolor: "#FFFFFF" }}
+                sx={{ borderRadius: "12px", bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF") }}
               >
                 <MenuItem value="ALL">All Records</MenuItem>
                 <MenuItem value="VERIFIED">🟢 Verified Only</MenuItem>
@@ -420,9 +420,9 @@ export default function GovtIdCompliancePage({
         className="card-3d"
         sx={{
           borderRadius: "20px",
-          bgcolor: "#FFFFFF",
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
           border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 10px 30px rgba(12, 39, 59, 0.06), inset 0 1px 1px #FFFFFF",
+          boxShadow: isDarkMode ? "none" : "0 10px 30px rgba(12, 39, 59, 0.06), inset 0 1px 1px #FFFFFF",
           overflow: "hidden",
         }}
       >

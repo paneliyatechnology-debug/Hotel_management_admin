@@ -55,6 +55,7 @@ import {
   LightMode,
   WbSunny,
   NightlightRound,
+  CreditCard,
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
@@ -321,9 +322,11 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
       {/* 3D Main Container Card */}
       <Card
         sx={{
+          maxWidth: 1280,
+          mx: "auto",
           borderRadius: "24px",
           border: `1.5px solid ${themeConfig.border}`,
-          bgcolor: themeConfig.bgCard || (isDarkMode ? "#162032" : "#FFFFFF"),
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
           boxShadow: isDarkMode
             ? "0 20px 45px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.05)"
             : "0 20px 45px -12px rgba(12, 39, 59, 0.08), 0 4px 16px rgba(0,0,0,0.02), inset 0 1px 0 #FFFFFF",
@@ -335,9 +338,11 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
           sx={{
             borderBottom: `1.5px solid ${themeConfig.border}`,
             px: { xs: 1.5, sm: 3 },
-            py: 1,
-            bgcolor: isDarkMode ? "rgba(15, 23, 42, 0.8)" : "rgba(248, 250, 252, 0.7)",
+            py: 1.2,
+            bgcolor: isDarkMode ? "rgba(20, 184, 166, 0.08)" : (themeConfig.champagne || "rgba(240, 253, 250, 0.8)"),
             backdropFilter: "blur(10px)",
+            display: "flex",
+            justifyContent: "center",
           }}
         >
           <Tabs
@@ -345,17 +350,21 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
             onChange={(e, v) => setActiveSubTab(v)}
             variant="scrollable"
             scrollButtons="auto"
+            allowScrollButtonsMobile
             sx={{
               minHeight: 48,
+              width: "100%",
+              maxWidth: 1200,
               "& .MuiTabs-flexContainer": {
-                gap: 1,
+                gap: 1.2,
+                justifyContent: { xs: "flex-start", md: "center" },
               },
               "& .MuiTab-root": {
                 textTransform: "none",
-                fontWeight: 700,
+                fontWeight: 800,
                 fontSize: "0.88rem",
                 py: 1.2,
-                px: 2,
+                px: 2.2,
                 minHeight: 44,
                 borderRadius: "14px",
                 color: themeConfig.textMuted,
@@ -367,8 +376,8 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                   transform: "translateY(-1px)",
                 },
                 "&:hover:not(.Mui-selected)": {
-                  bgcolor: themeConfig.champagne,
-                  color: themeConfig.primaryDark,
+                  bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : themeConfig.champagne,
+                  color: themeConfig.primaryLight || themeConfig.primaryDark,
                 },
               },
               "& .MuiTabs-indicator": {
@@ -382,7 +391,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
           </Tabs>
         </Box>
 
-        <Box sx={{ p: { xs: 2.5, sm: 3.5, md: 4 } }}>
+        <Box sx={{ p: { xs: 2.5, sm: 3.5, md: 4 }, maxWidth: 1000, mx: "auto", width: "100%" }}>
           {/* ========================================================================= */}
           {/* TAB: THEME & COLOR PALETTES */}
           {/* ========================================================================= */}
@@ -756,7 +765,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
           {/* TAB: HOTEL TIMINGS & OPERATIONS (HOTEL ADMIN ONLY) */}
           {/* ========================================================================= */}
           {currentTab === "timings" && (
-            <Box component="form" onSubmit={handleSaveHotelTimings} sx={{ maxWidth: 880 }}>
+            <Box component="form" onSubmit={handleSaveHotelTimings} sx={{ width: "100%", mx: "auto" }}>
               {timingsMsg.show && (
                 <Alert severity={timingsMsg.severity} sx={{ mb: 3, borderRadius: "14px", boxShadow: "0 4px 14px rgba(0,0,0,0.05)" }}>
                   {timingsMsg.message}
@@ -1185,7 +1194,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
           {/* TAB: MY PROFILE & SECURITY */}
           {/* ========================================================================= */}
           {currentTab === "profile" && (
-            <Box component="form" onSubmit={handleSaveProfile} sx={{ maxWidth: 880 }}>
+            <Box component="form" onSubmit={handleSaveProfile} sx={{ width: "100%", mx: "auto" }}>
               {profileMsg.show && (
                 <Alert severity={profileMsg.severity} sx={{ mb: 3, borderRadius: "14px", boxShadow: "0 4px 14px rgba(0,0,0,0.05)" }}>
                   {profileMsg.message}
@@ -1411,7 +1420,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
           {/* TAB: SYSTEM PREFERENCES */}
           {/* ========================================================================= */}
           {currentTab === "preferences" && (
-            <Box sx={{ maxWidth: 880 }}>
+            <Box sx={{ width: "100%", mx: "auto" }}>
               <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 0.5 }}>
                 System &amp; Workflow Preferences
               </Typography>
@@ -1525,7 +1534,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
           {/* TAB: HELP & SUPPORT */}
           {/* ========================================================================= */}
           {currentTab === "help" && (
-            <Box sx={{ maxWidth: 880 }}>
+            <Box sx={{ width: "100%", mx: "auto" }}>
               <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 0.5 }}>
                 Help Center &amp; Knowledge Base
               </Typography>
@@ -1578,9 +1587,9 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                   mt: 4,
                   p: 3.5,
                   borderRadius: "22px",
-                  bgcolor: "#FFFFFF",
+                  bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                   border: `1.5px dashed ${themeConfig.primary}`,
-                  boxShadow: "0 10px 30px -6px rgba(12, 39, 59, 0.06), inset 0 1px 0 #FFFFFF",
+                  boxShadow: isDarkMode ? "none" : "0 10px 30px -6px rgba(12, 39, 59, 0.06), inset 0 1px 0 #FFFFFF",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -1613,13 +1622,13 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                   variant="outlined"
                   sx={{
                     borderColor: themeConfig.primary,
-                    color: themeConfig.primaryDark,
+                    color: themeConfig.primaryLight || themeConfig.primary,
                     fontWeight: 800,
                     px: 3,
                     py: 1,
                     borderRadius: "12px",
-                    bgcolor: "#FFFFFF",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+                    bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+                    boxShadow: isDarkMode ? "none" : "0 2px 8px rgba(0,0,0,0.03)",
                     "&:hover": { bgcolor: themeConfig.champagne, transform: "translateY(-1px)" },
                   }}
                 >

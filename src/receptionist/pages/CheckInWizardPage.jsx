@@ -832,9 +832,9 @@ export default function CheckInWizardPage({
         sx={{
           p: { xs: 2.5, sm: 4 },
           borderRadius: "24px",
-          bgcolor: "#FFFFFF",
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
           border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 12px 30px -5px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
+          boxShadow: isDarkMode ? "none" : "0 12px 30px -5px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
           maxWidth: 1020,
           mx: "auto",
         }}
@@ -1284,9 +1284,9 @@ export default function CheckInWizardPage({
               sx={{
                 p: 3,
                 borderRadius: "20px",
-                bgcolor: "#FFFFFF",
+                bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                 border: `1.5px solid ${themeConfig.border}`,
-                boxShadow: "0 6px 20px rgba(0,0,0,0.03)",
+                boxShadow: isDarkMode ? "none" : "0 6px 20px rgba(0,0,0,0.03)",
               }}
             >
               <Box sx={{ display: "flex", alignItems: "center", gap: 1.2, mb: 2.5 }}>
@@ -1647,9 +1647,9 @@ export default function CheckInWizardPage({
               sx={{
                 p: 3,
                 borderRadius: "20px",
-                bgcolor: "#FFFFFF",
+                bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                 border: `1.5px solid ${themeConfig.border}`,
-                boxShadow: "0 6px 20px rgba(0,0,0,0.03)",
+                boxShadow: isDarkMode ? "none" : "0 6px 20px rgba(0,0,0,0.03)",
               }}
             >
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2.5, flexWrap: "wrap", gap: 1.5 }}>
@@ -2032,7 +2032,7 @@ export default function CheckInWizardPage({
               sx={{
                 p: 3,
                 borderRadius: "20px",
-                bgcolor: "#FFFFFF",
+                bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                 border: `1.5px solid ${themeConfig.border}`,
               }}
             >
@@ -2135,7 +2135,7 @@ export default function CheckInWizardPage({
               sx={{
                 p: 3,
                 borderRadius: "20px",
-                bgcolor: "#FFFFFF",
+                bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                 border: `1.5px solid ${isCapacityExceeded ? themeConfig.danger : themeConfig.border}`,
                 boxShadow: isCapacityExceeded ? "0 0 20px rgba(239, 68, 68, 0.15)" : "none",
               }}

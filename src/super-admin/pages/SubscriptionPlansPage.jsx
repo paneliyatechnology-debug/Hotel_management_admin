@@ -41,7 +41,7 @@ import EmptyState from "@/shared/components/EmptyState";
 import ConfirmDialog from "@/shared/components/ConfirmDialog";
 
 export default function SubscriptionPlansPage() {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
 
   const [plans, setPlans] = useState([]);
   const [meta, setMeta] = useState({
@@ -751,7 +751,7 @@ export default function SubscriptionPlansPage() {
               borderRadius: "24px",
               p: 1.5,
               border: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
               boxShadow: "0 20px 50px rgba(0,0,0,0.18)",
             },
           },

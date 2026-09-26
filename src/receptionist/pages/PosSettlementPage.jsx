@@ -25,7 +25,7 @@ export default function PosSettlementPage({
   onOpenInvoice,
   onRefresh,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
   const [activeSubTab, setActiveSubTab] = useState(0);
 
   const checkedInBookings = bookings.filter((b) => b.status === "CHECKED_IN");
@@ -38,9 +38,9 @@ export default function PosSettlementPage({
         sx={{
           p: 1.2,
           borderRadius: "18px",
-          bgcolor: "#FFFFFF",
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
           border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 6px 18px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+          boxShadow: isDarkMode ? "none" : "0 6px 18px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
           mb: 0.5,
         }}
       >
@@ -93,9 +93,9 @@ export default function PosSettlementPage({
           sx={{
             p: 3,
             borderRadius: "20px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
             border: `1px solid ${themeConfig.border}`,
-            boxShadow: "0 10px 25px -5px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
+            boxShadow: isDarkMode ? "none" : "0 10px 25px -5px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
           }}
         >
           <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 0.5 }}>
@@ -131,8 +131,9 @@ export default function PosSettlementPage({
                       p: 3,
                       borderRadius: "16px",
                       border: `1px solid ${themeConfig.border}`,
-                      background: "linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)",
-                      boxShadow: "0 6px 18px rgba(12, 39, 59, 0.05), inset 0 1px 1px #FFFFFF",
+                      bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+                      background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)",
+                      boxShadow: isDarkMode ? "none" : "0 6px 18px rgba(12, 39, 59, 0.05), inset 0 1px 1px #FFFFFF",
                     }}
                   >
                     <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
@@ -186,10 +187,10 @@ export default function PosSettlementPage({
                         sx={{
                           borderRadius: "10px",
                           borderColor: themeConfig.border,
-                          bgcolor: "#FFFFFF",
+                          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                           color: themeConfig.textMain,
                           fontWeight: 700,
-                          boxShadow: "0 2px 4px rgba(0,0,0,0.03)",
+                          boxShadow: isDarkMode ? "none" : "0 2px 4px rgba(0,0,0,0.03)",
                         }}
                       >
                         + Add Charge
@@ -221,4 +222,3 @@ export default function PosSettlementPage({
     </Box>
   );
 }
-

@@ -60,7 +60,7 @@ export default function PaymentLedgerView({
   recordPaymentEndpoint,
   onPaymentSuccess,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
 
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState([]);
@@ -395,7 +395,7 @@ export default function PaymentLedgerView({
             sx={{
               borderRadius: "10px",
               borderColor: themeConfig.border,
-              bgcolor: "#FFFFFF",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
               color: themeConfig.textMain,
               fontWeight: 700,
               fontSize: "0.78rem",
@@ -420,8 +420,8 @@ export default function PaymentLedgerView({
             sx={{
               borderRadius: "10px",
               borderColor: themeConfig.primary,
-              bgcolor: "#FFFFFF",
-              color: themeConfig.primary,
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+              color: themeConfig.primaryLight || themeConfig.primary,
               fontWeight: 800,
               fontSize: "0.78rem",
               textTransform: "none",
@@ -475,10 +475,10 @@ export default function PaymentLedgerView({
           sx={{
             p: 2.2,
             borderRadius: "16px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
             border: `1px solid ${themeConfig.border}`,
-            background: "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
-            boxShadow: "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+            background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
+            boxShadow: isDarkMode ? "none" : "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
@@ -503,24 +503,24 @@ export default function PaymentLedgerView({
           sx={{
             p: 2.2,
             borderRadius: "16px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
             border: `1px solid ${themeConfig.border}`,
-            background: "linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%)",
-            boxShadow: "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+            background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%)",
+            boxShadow: isDarkMode ? "none" : "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: "#059669", textTransform: "uppercase" }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: isDarkMode ? "#34D399" : "#059669", textTransform: "uppercase" }}>
               Today&apos;s Collection
             </Typography>
-            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: "#ECFDF5", color: "#059669" }}>
+            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: isDarkMode ? "rgba(52, 211, 153, 0.15)" : "#ECFDF5", color: isDarkMode ? "#34D399" : "#059669" }}>
               <Schedule sx={{ fontSize: 18 }} />
             </Box>
           </Box>
-          <Typography variant="h6" sx={{ fontWeight: 900, color: "#059669" }}>
+          <Typography variant="h6" sx={{ fontWeight: 900, color: isDarkMode ? "#34D399" : "#059669" }}>
             ₹{(summary.todayCollected || 0).toLocaleString()}
           </Typography>
-          <Typography variant="caption" sx={{ color: "#059669", fontWeight: 700 }}>
+          <Typography variant="caption" sx={{ color: isDarkMode ? "#34D399" : "#059669", fontWeight: 700 }}>
             Cash: ₹{(summary.todayCash || 0).toLocaleString()} &bull; UPI: ₹{(summary.todayUpi || 0).toLocaleString()}
           </Typography>
         </Paper>
@@ -531,17 +531,17 @@ export default function PaymentLedgerView({
           sx={{
             p: 2.2,
             borderRadius: "16px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
             border: `1px solid ${themeConfig.border}`,
-            background: "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
-            boxShadow: "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+            background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
+            boxShadow: isDarkMode ? "none" : "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
             <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMuted, textTransform: "uppercase" }}>
               Cash In Drawer
             </Typography>
-            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: "#ECFDF5", color: "#059669" }}>
+            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: isDarkMode ? "rgba(52, 211, 153, 0.15)" : "#ECFDF5", color: isDarkMode ? "#34D399" : "#059669" }}>
               <Payments sx={{ fontSize: 18 }} />
             </Box>
           </Box>
@@ -559,22 +559,22 @@ export default function PaymentLedgerView({
           sx={{
             p: 2.2,
             borderRadius: "16px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
             border: `1px solid ${themeConfig.border}`,
-            background: "linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 100%)",
-            boxShadow: "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+            background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 100%)",
+            boxShadow: isDarkMode ? "none" : "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
             overflow: "hidden",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: "#7C3AED", textTransform: "uppercase" }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: isDarkMode ? "#A78BFA" : "#7C3AED", textTransform: "uppercase" }}>
               UPI QR Pay
             </Typography>
-            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: "#F5F3FF", color: "#7C3AED" }}>
+            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: isDarkMode ? "rgba(167, 139, 250, 0.15)" : "#F5F3FF", color: isDarkMode ? "#A78BFA" : "#7C3AED" }}>
               <QrCode2 sx={{ fontSize: 18 }} />
             </Box>
           </Box>
-          <Typography variant="h6" sx={{ fontWeight: 900, color: "#7C3AED" }}>
+          <Typography variant="h6" sx={{ fontWeight: 900, color: isDarkMode ? "#A78BFA" : "#7C3AED" }}>
             ₹{(summary.upiTotal || 0).toLocaleString()}
           </Typography>
           <Tooltip title={activeUpiId}>
@@ -599,17 +599,17 @@ export default function PaymentLedgerView({
           sx={{
             p: 2.2,
             borderRadius: "16px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
             border: `1px solid ${themeConfig.border}`,
-            background: "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
-            boxShadow: "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+            background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #FAFBFD 100%)",
+            boxShadow: isDarkMode ? "none" : "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
             <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMuted, textTransform: "uppercase" }}>
               Card & Bank NEFT
             </Typography>
-            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: "#EFF6FF", color: "#2563EB" }}>
+            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: isDarkMode ? "rgba(96, 165, 250, 0.15)" : "#EFF6FF", color: isDarkMode ? "#60A5FA" : "#2563EB" }}>
               <CreditCard sx={{ fontSize: 18 }} />
             </Box>
           </Box>
@@ -627,17 +627,17 @@ export default function PaymentLedgerView({
           sx={{
             p: 2.2,
             borderRadius: "16px",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
             border: `1px solid ${themeConfig.border}`,
-            background: "linear-gradient(135deg, #FFFFFF 0%, #FFF5F5 100%)",
-            boxShadow: "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
+            background: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "linear-gradient(135deg, #FFFFFF 0%, #FFF5F5 100%)",
+            boxShadow: isDarkMode ? "none" : "0 6px 16px rgba(12, 39, 59, 0.04), inset 0 1px 1px #FFFFFF",
           }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
             <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.danger, textTransform: "uppercase" }}>
               Pending Dues
             </Typography>
-            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: "#FEF2F2", color: themeConfig.danger }}>
+            <Box sx={{ p: 0.8, borderRadius: "8px", bgcolor: isDarkMode ? "rgba(239, 68, 68, 0.15)" : "#FEF2F2", color: themeConfig.danger }}>
               <AccountBalanceWallet sx={{ fontSize: 18 }} />
             </Box>
           </Box>
@@ -656,9 +656,9 @@ export default function PaymentLedgerView({
         sx={{
           p: 2,
           borderRadius: "18px",
-          bgcolor: "#FFFFFF",
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
           border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 8px 20px rgba(12, 39, 59, 0.05), inset 0 1px 1px #FFFFFF",
+          boxShadow: isDarkMode ? "none" : "0 8px 20px rgba(12, 39, 59, 0.05), inset 0 1px 1px #FFFFFF",
         }}
       >
         <Box
@@ -682,7 +682,7 @@ export default function PaymentLedgerView({
               minWidth: { xs: "100%", sm: "240px" },
               "& .MuiOutlinedInput-root": {
                 borderRadius: "12px",
-                bgcolor: themeConfig.champagne,
+                bgcolor: isDarkMode ? "rgba(255, 255, 255, 0.04)" : themeConfig.champagne,
               },
             }}
             slotProps={{
@@ -706,7 +706,7 @@ export default function PaymentLedgerView({
                   setSelectedMethod(e.target.value);
                   setPage(0);
                 }}
-                sx={{ borderRadius: "12px", bgcolor: "#FFFFFF" }}
+                sx={{ borderRadius: "12px", bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF") }}
               >
                 <MenuItem value="ALL">All Modes</MenuItem>
                 <MenuItem value="UPI">🟣 UPI QR</MenuItem>
@@ -726,7 +726,7 @@ export default function PaymentLedgerView({
                   setSelectedType(e.target.value);
                   setPage(0);
                 }}
-                sx={{ borderRadius: "12px", bgcolor: "#FFFFFF" }}
+                sx={{ borderRadius: "12px", bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF") }}
               >
                 <MenuItem value="ALL">All Stages</MenuItem>
                 <MenuItem value="ADVANCE">Advance Check-In</MenuItem>
@@ -745,7 +745,7 @@ export default function PaymentLedgerView({
                   setTimeRange(e.target.value);
                   setPage(0);
                 }}
-                sx={{ borderRadius: "12px", bgcolor: "#FFFFFF" }}
+                sx={{ borderRadius: "12px", bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF") }}
               >
                 <MenuItem value="all">All Time</MenuItem>
                 <MenuItem value="today">Today Only</MenuItem>
@@ -778,9 +778,9 @@ export default function PaymentLedgerView({
         className="card-3d"
         sx={{
           borderRadius: "20px",
-          bgcolor: "#FFFFFF",
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
           border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 10px 30px rgba(12, 39, 59, 0.06), inset 0 1px 1px #FFFFFF",
+          boxShadow: isDarkMode ? "none" : "0 10px 30px rgba(12, 39, 59, 0.06), inset 0 1px 1px #FFFFFF",
           overflow: "hidden",
         }}
       >
@@ -944,7 +944,7 @@ export default function PaymentLedgerView({
                             fontWeight: 700,
                             fontSize: "0.75rem",
                             textTransform: "none",
-                            bgcolor: "#FFFFFF",
+                            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                             py: 0.3,
                             px: 1.2,
                           }}
@@ -975,7 +975,7 @@ export default function PaymentLedgerView({
             }}
             sx={{
               borderTop: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
             }}
           />
         )}
@@ -1064,9 +1064,9 @@ export default function PaymentLedgerView({
               <Box
                 sx={{
                   p: 2,
-                  bgcolor: "#F5F3FF",
+                  bgcolor: isDarkMode ? "rgba(167, 139, 250, 0.1)" : "#F5F3FF",
                   borderRadius: "14px",
-                  border: "1px solid #DDD6FE",
+                  border: `1px solid ${isDarkMode ? "rgba(167, 139, 250, 0.25)" : "#DDD6FE"}`,
                   textAlign: "center",
                   display: "flex",
                   flexDirection: "column",
@@ -1074,7 +1074,7 @@ export default function PaymentLedgerView({
                   gap: 1,
                 }}
               >
-                <Typography variant="subtitle2" sx={{ fontWeight: 900, color: "#7C3AED" }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 900, color: isDarkMode ? "#A78BFA" : "#7C3AED" }}>
                   Scan UPI QR to Pay ₹{Number(collectData.amount || 0).toLocaleString()}
                 </Typography>
                 <Box
@@ -1090,7 +1090,7 @@ export default function PaymentLedgerView({
                     boxShadow: "0 4px 12px rgba(124, 58, 237, 0.15)",
                   }}
                 />
-                <Typography variant="caption" sx={{ fontWeight: 800, color: "#7C3AED" }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: isDarkMode ? "#A78BFA" : "#7C3AED" }}>
                   UPI ID: {activeUpiId}
                 </Typography>
               </Box>

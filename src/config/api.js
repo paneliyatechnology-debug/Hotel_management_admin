@@ -3,13 +3,13 @@
  * 
  * મોડ બદલવા માટે નીચે ENVIRONMENT માં "LOCAL" અથવા "LIVE" લખો:
  * - "LOCAL" -> http://localhost:5000
- * - "LIVE"  -> https://hotel-management-backend-9qf5.onrender.com
+ * - "LIVE"  -> https://hotelmanagementbackend-dev.up.railway.app
  */
 
-export const ENVIRONMENT = "LIVE"; // 👉 અહીં "LOCAL" અથવા "LIVE" બદલો
+export const ENVIRONMENT = "LOCAL"; // 👉 અહીં "LOCAL" અથવા "LIVE" બદલો
 
 export const LOCAL_API_URL = "http://localhost:5000";
-export const LIVE_API_URL = "https://hotel-management-backend-9qf5.onrender.com";
+export const LIVE_API_URL = "https://hotelmanagementbackend-dev.up.railway.app";
 
 // Active API Base URL (Case-insensitive check for LOCAL / LIVE)
 export const getApiBaseUrl = () => {
@@ -47,6 +47,7 @@ export const API_BASE_URL = getApiBaseUrl();
 export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: `${API_BASE_URL}/api/v1/auth/login`,
+    REFRESH_TOKEN: `${API_BASE_URL}/api/v1/auth/refresh-token`,
     ME: `${API_BASE_URL}/api/v1/auth/me`,
     CHANGE_PASSWORD: `${API_BASE_URL}/api/v1/auth/change-password`,
     FORGOT_PASSWORD: `${API_BASE_URL}/api/v1/auth/forgot-password`,
@@ -120,6 +121,8 @@ export const API_ENDPOINTS = {
     CHECKOUT: (bookingId) => `${API_BASE_URL}/api/v1/receptionist/bookings/${bookingId}/check-out`,
     PAYMENTS: `${API_BASE_URL}/api/v1/receptionist/payments`,
     RECORD_PAYMENT: `${API_BASE_URL}/api/v1/receptionist/payments`,
+    DAILY_COLLECTIONS: `${API_BASE_URL}/api/v1/receptionist/daily-collections`,
+    SETTLE_HANDOVER: `${API_BASE_URL}/api/v1/receptionist/daily-collections/handover`,
     KYC_OCR_VERIFY: `${API_BASE_URL}/api/v1/receptionist/kyc/ocr-verify`,
     KYC_VERIFY_DL: `${API_BASE_URL}/api/v1/receptionist/kyc/verify-driving-license`,
   },
@@ -145,6 +148,7 @@ export async function apiRequest(endpoint, options = {}) {
   const config = {
     method,
     headers: reqHeaders,
+    credentials: "include", // Automatically send & receive secure httpOnly cookies
     ...rest,
   };
 
@@ -211,9 +215,42 @@ export async function apiRequest(endpoint, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    if (response.status === 401 && typeof window !== "undefined" && !endpoint.includes("/auth/login")) {
+    if (
+      response.status === 401 &&
+      typeof window !== "undefined" &&
+      !endpoint.includes("/auth/login") &&
+      !endpoint.includes("/auth/refresh-token")
+    ) {
+      const storedRefreshToken = localStorage.getItem("refreshToken");
+      if (storedRefreshToken && !options._retry) {
+        try {
+          const refreshRes = await fetch(`${currentBase}/api/v1/auth/refresh-token`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken: storedRefreshToken }),
+          });
+          const refreshData = await refreshRes.json();
+          if (refreshRes.ok && (refreshData.token || refreshData.accessToken)) {
+            const newToken = refreshData.token || refreshData.accessToken;
+            localStorage.setItem("token", newToken);
+            if (refreshData.refreshToken) {
+              localStorage.setItem("refreshToken", refreshData.refreshToken);
+            }
+            // Retry original request seamlessly with new token
+            return apiRequest(endpoint, {
+              ...options,
+              token: newToken,
+              _retry: true,
+            });
+          }
+        } catch (refreshErr) {
+          console.error("Auto token refresh failed:", refreshErr);
+        }
+      }
+
       // Clear expired session and broadcast auth event
       localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
       window.dispatchEvent(new Event("auth-unauthorized"));
     }
