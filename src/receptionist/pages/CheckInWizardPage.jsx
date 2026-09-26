@@ -520,14 +520,23 @@ export default function CheckInWizardPage({
   };
 
   const handleNightsChange = (nightsCount) => {
-    const n = Math.max(1, parseInt(nightsCount) || 1);
+    if (nightsCount === "" || nightsCount === null || nightsCount === undefined) {
+      setCheckInData((prev) => ({
+        ...prev,
+        numberOfNights: "",
+      }));
+      return;
+    }
+
+    const parsed = parseInt(nightsCount, 10);
+    const n = isNaN(parsed) ? 0 : Math.max(0, parsed);
     const inDateStr = checkInData.checkInDate || getTodayLocalDate();
     const d1 = new Date(inDateStr);
-    const d2 = new Date(d1.getTime() + n * 86400000);
+    const d2 = new Date(d1.getTime() + Math.max(1, n) * 86400000);
     const outDateStr = d2.toISOString().split("T")[0];
 
     const currentRate = checkInData.rate || 3000;
-    const baseTot = currentRate * n;
+    const baseTot = currentRate * (n === 0 ? 0 : n);
     const disc = isVipGuest ? Math.round(baseTot * 0.10) : (checkInData.discountAmount || 0);
     const netTot = Math.max(0, baseTot - disc) + (checkInData.collectSecurityDeposit ? (Number(checkInData.securityDepositAmount) || 1000) : 0);
 
@@ -1872,8 +1881,10 @@ export default function CheckInWizardPage({
                     fullWidth
                     size="small"
                     label="Nights Count"
-                    placeholder="e.g. 1, 2"
-                    value={checkInData.numberOfNights ?? 1}
+                    type="number"
+                    slotProps={{ htmlInput: { min: 0 } }}
+                    placeholder="0"
+                    value={checkInData.numberOfNights ?? ""}
                     onChange={(e) => handleNightsChange(e.target.value)}
                   />
                 </Grid>
