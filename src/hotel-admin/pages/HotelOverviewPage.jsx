@@ -169,12 +169,17 @@ export default function HotelOverviewPage({
   const totalMaintenance = rooms.filter((r) => r.status === "MAINTENANCE" || r.status === "BLOCKED").length;
   const totalReserved = rooms.filter((r) => r.status === "RESERVED").length;
 
-  const fin = dashboardData?.financials || {};
-  const ops = dashboardData?.operationsSummary || {};
+  // Live occupied rooms stay tariff sum
+  const occupiedTariffSum = useMemo(() => {
+    return rooms
+      .filter((r) => r.status === "OCCUPIED")
+      .reduce((acc, r) => acc + (Number(r.pricePerNight) || Number(r.price) || 0), 0);
+  }, [rooms]);
 
   // Real live calculated data from backend & database
   const liveTodayRevNum = Number(fin.todayRevenue ?? (dashboardData?.todayRevenue || 0));
-  const liveTodayEarnNum = Number(fin.todayEarnings ?? (dashboardData?.todayEarnings || Math.round(liveTodayRevNum * 0.785)));
+  const effectiveTodayRev = liveTodayRevNum > 0 ? liveTodayRevNum : (occupiedTariffSum > 0 ? occupiedTariffSum : 0);
+  const liveTodayEarnNum = Number(fin.todayEarnings ?? (dashboardData?.todayEarnings || Math.round(effectiveTodayRev * 0.785)));
   const liveMonthRevNum = Number(fin.monthlyRevenue ?? (dashboardData?.monthlyRevenue || liveTodayRevNum));
   const liveTotalGuests = guests.length || ops.currentGuests || 0;
   const liveInHouseGuests = guests.filter((g) => g.status === "IN-HOUSE").length || ops.currentGuests || 0;
@@ -470,29 +475,47 @@ export default function HotelOverviewPage({
           <StatCard
             title="Today's Revenue"
             value={todayRevenue}
-            subtitle="Live billings today"
+            subtitle={
+              liveTodayRevNum > 0
+                ? "Live collections today"
+                : occupiedTariffSum > 0
+                ? `₹${occupiedTariffSum.toLocaleString("en-IN")} Active Stay Tariff`
+                : "No new billing today"
+            }
             icon={<CurrencyRupee />}
             color="#10B981"
-            trend={`${dayGrowthPercentage >= 0 ? "+" : ""}${dayGrowthPercentage}%`}
-            trendType={dayGrowthPercentage >= 0 ? "up" : "down"}
-            badgeText="Today"
+            trend={
+              liveTodayRevNum > 0
+                ? `${dayGrowthPercentage >= 0 ? "+" : ""}${dayGrowthPercentage}%`
+                : occupiedTariffSum > 0
+                ? "Active In-House"
+                : "Live Counter"
+            }
+            trendType="up"
+            badgeText={liveTodayRevNum > 0 ? "Today" : "Counter"}
           />
 
           <StatCard
             title="Today's Earnings"
             value={todayEarnings}
-            subtitle="Net estimated margin"
+            subtitle={
+              liveTodayRevNum > 0
+                ? "Estimated net profit (78.5%)"
+                : occupiedTariffSum > 0
+                ? "Est. profit from active stay"
+                : "78.5% Margin projection"
+            }
             icon={<TrendingUp />}
             color="#0B8EE0"
             trend="78.5% Margin"
             trendType="up"
-            badgeText="Settled"
+            badgeText="Net Profit"
           />
 
           <StatCard
             title="Total Guests"
             value={`${liveTotalGuests} Guests`}
-            subtitle={`${liveInHouseGuests} Active in-house`}
+            subtitle={`${liveInHouseGuests} Active in-house • ${totalOccupied} Rooms`}
             icon={<Person />}
             color="#8B5CF6"
             badgeText="In-House"
@@ -504,7 +527,7 @@ export default function HotelOverviewPage({
             subtitle="Current billing cycle"
             icon={<AccountBalanceWallet />}
             color="#F59E0B"
-            badgeText="Monthly"
+            badgeText="Monthly Total"
           />
         </Box>
       </Box>
