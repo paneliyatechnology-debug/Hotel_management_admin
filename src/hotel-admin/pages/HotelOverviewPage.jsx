@@ -29,6 +29,7 @@ import {
   DialogActions,
   LinearProgress,
   Tooltip,
+  Grid,
 } from "@mui/material";
 import {
   MeetingRoom,
@@ -68,6 +69,12 @@ import StatCard from "@/shared/components/StatCard";
 import StatusChip from "@/shared/components/StatusChip";
 import EmptyState from "@/shared/components/EmptyState";
 import { formatTime12Hour, getTurnaroundWindow } from "@/shared/utils/timeUtils";
+import {
+  OccupancyDonutChart,
+  RevenueWaveChart,
+  DailyTargetGauge,
+  HourlyActivityBarChart,
+} from "@/hotel-admin/components/DashboardCharts";
 
 export default function HotelOverviewPage({
   user,
@@ -782,6 +789,53 @@ export default function HotelOverviewPage({
             badgeText="Monthly"
           />
         </Box>
+      </Box>
+
+      {/* ========================================================================= */}
+      {/* 4.5 📊 EXECUTIVE VISUAL ANALYTICS & INTELLIGENCE SUITE                    */}
+      {/* ========================================================================= */}
+      <Box sx={{ mb: 3.5 }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+            <Avatar sx={{ bgcolor: "rgba(67, 97, 238, 0.12)", color: themeConfig.primary, width: 32, height: 32, borderRadius: "8px" }}>
+              <TrendingUp sx={{ fontSize: 18 }} />
+            </Avatar>
+            <Typography variant="h6" sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "1.05rem" }}>
+              Visual Revenue &amp; Occupancy Analytics
+            </Typography>
+          </Box>
+          <Chip
+            icon={<AutoAwesome sx={{ fontSize: "14px !important", color: themeConfig.primary }} />}
+            label="Live Realtime Telemetry"
+            size="small"
+            sx={{ fontWeight: 800, fontSize: "0.7rem", borderRadius: "8px", bgcolor: themeConfig.champagne, color: themeConfig.primaryDark }}
+          />
+        </Box>
+
+        <Grid container spacing={2.5}>
+          {/* 1. Circular Occupancy Donut */}
+          <Grid size={{ xs: 12, md: 4 }}>
+            <OccupancyDonutChart rooms={rooms} />
+          </Grid>
+
+          {/* 2. 7-Day Revenue Curve Wave */}
+          <Grid size={{ xs: 12, md: 8 }}>
+            <RevenueWaveChart dashboardData={dashboardData} isDarkMode={isDarkMode} />
+          </Grid>
+
+          {/* 3. Daily Target Gauge */}
+          <Grid size={{ xs: 12, md: 5 }}>
+            <DailyTargetGauge
+              currentRevenue={liveTodayRevNum || 18500}
+              targetRevenue={hotelSettings?.dailyRevenueTarget || 35000}
+            />
+          </Grid>
+
+          {/* 4. Hourly Reception Traffic Heat Bars */}
+          <Grid size={{ xs: 12, md: 7 }}>
+            <HourlyActivityBarChart />
+          </Grid>
+        </Grid>
       </Box>
 
       {/* ========================================================================= */}
