@@ -2173,93 +2173,31 @@ export default function CheckInWizardPage({
                 />
               </Box>
 
-              {/* CAPACITY WARNING ALERT WHEN OVERFLOW OCCURS (e.g. 4 guests in 2-person room) */}
-              {isCapacityExceeded && (
-                <Box
-                  sx={{
-                    mb: 3,
-                    p: 2.5,
-                    borderRadius: "16px",
-                    bgcolor: "#FEF2F2",
-                    border: "2px solid #EF4444",
-                    boxShadow: "0 6px 20px rgba(239, 68, 68, 0.12)",
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 2,
-                  }}
-                >
-                  <Box sx={{ bgcolor: "#FEE2E2", p: 1, borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Warning sx={{ fontSize: 26, color: "#DC2626" }} />
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 900, color: "#991B1B", mb: 0.5, fontSize: "0.95rem" }}>
-                      Guest Capacity Exceeded!
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontSize: "0.88rem", color: "#7F1D1D", lineHeight: 1.5 }}>
-                      Total <strong style={{ color: "#991B1B", fontWeight: 900 }}>{totalPartySize} Guests</strong> (1 Main + {checkInData.accompanyingGuests?.length || 0} Members) cannot fit into the selected room(s) with total capacity of <strong style={{ color: "#991B1B", fontWeight: 900 }}>{totalStandardCapacity} guests</strong> (Max {totalMaxCapacity} with extra mattress).
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 900, mt: 0.8, fontSize: "0.88rem", color: "#B91C1C" }}>
-                      Please allocate <strong style={{ textDecoration: "underline", color: "#7F1D1D" }}>additional room(s)</strong> below for the remaining <strong>{totalPartySize - totalStandardCapacity} guest(s)</strong>.
-                    </Typography>
-                  </Box>
-                </Box>
-              )}
-
-              {/* BUFFER NOTIFICATION WHEN EXTRA MATTRESS IS USED */}
-              {isBufferUsed && !isCapacityExceeded && (
-                <Box
-                  sx={{
-                    mb: 3,
-                    p: 2,
-                    borderRadius: "14px",
-                    bgcolor: "#FFFBEB",
-                    border: "1.5px solid #F59E0B",
-                    boxShadow: "0 4px 14px rgba(245, 158, 11, 0.1)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1.5,
-                  }}
-                >
-                  <Box sx={{ bgcolor: "#FEF3C7", p: 0.8, borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Lightbulb sx={{ fontSize: 22, color: "#D97706" }} />
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 900, color: "#92400E", mb: 0.2 }}>
-                      Extra Bedding Buffer Active
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: "#78350F", fontWeight: 700, display: "block" }}>
-                      Total {totalPartySize} Guests comfortably fit in {selectedRoomsList.length} room(s) with standard {totalStandardCapacity} beds + extra rollaway mattress provided by housekeeping.
-                    </Typography>
-                  </Box>
-                </Box>
-              )}
-
-              {/* Multi-Room Assignment Dropdown */}
-              <Box sx={{ mb: 3 }}>
-                <FormControl fullWidth size="medium">
-                  <InputLabel id="select-rooms-label" sx={{ fontWeight: 700 }}>Select Room(s) for Check-In</InputLabel>
+              {/* Multi-Room Assignment & Selection */}
+              <Box sx={{ mb: 2.5 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="select-rooms-label" sx={{ fontWeight: 700 }}>Select / Add Room(s)</InputLabel>
                   <Select
                     labelId="select-rooms-label"
                     multiple
                     value={selectedRoomIds}
                     onChange={handleDropdownRoomChange}
-                    input={<OutlinedInput label="Select Room(s) for Check-In" sx={{ borderRadius: "14px" }} />}
+                    input={<OutlinedInput label="Select / Add Room(s)" sx={{ borderRadius: "12px" }} />}
                     renderValue={(selected) => (
-                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, py: 0.5 }}>
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.8 }}>
                         {selected.map((val) => {
                           const r = rooms.find((x) => x._id === val);
-                          const cap = calculateRoomCapacity(r);
                           return (
                             <Chip
                               key={val}
-                              label={`Room #${r?.roomNumber || val} • ${getRoomCategoryName(r)} (${cap.standardCapacity} Guests)`}
+                              label={`Room #${r?.roomNumber || val} (${getRoomCategoryName(r)})`}
                               size="small"
                               sx={{
                                 fontWeight: 800,
                                 bgcolor: themeConfig.champagne,
                                 color: themeConfig.primaryDark,
                                 borderRadius: "8px",
-                                height: 26,
+                                height: 24,
                               }}
                             />
                           );
@@ -2270,30 +2208,15 @@ export default function CheckInWizardPage({
                     {availableRooms.map((r) => {
                       const tariff = getRoomTariff(r);
                       const cap = calculateRoomCapacity(r);
-                      const iconCfg = getRoomCategoryIconConfig(r, 16);
                       return (
-                        <MenuItem key={r._id} value={r._id} sx={{ py: 1.2 }}>
+                        <MenuItem key={r._id} value={r._id} sx={{ py: 1 }}>
                           <Box sx={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                              <Avatar sx={{ bgcolor: iconCfg.bg, color: iconCfg.color, width: 26, height: 26, borderRadius: "6px" }}>
-                                {iconCfg.icon}
-                              </Avatar>
-                              <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.textMain }}>
-                                Room #{r.roomNumber}
-                              </Typography>
-                              <Chip label={getRoomCategoryName(r)} size="small" sx={{ height: 20, fontSize: "0.7rem", fontWeight: 700, bgcolor: iconCfg.bg, color: iconCfg.color }} />
-                              <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
-                                Floor {r.floor || 1}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                              <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMuted }}>
-                                👥 {cap.standardCapacity} Guests ({cap.bedType})
-                              </Typography>
-                              <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.primaryDark }}>
-                                ₹{tariff}/n
-                              </Typography>
-                            </Box>
+                            <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
+                              Room #{r.roomNumber} &bull; {getRoomCategoryName(r)} (Floor {r.floor || 1})
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 900, color: "#059669" }}>
+                              ₹{tariff}/night &bull; 👥 {cap.standardCapacity} Guests
+                            </Typography>
                           </Box>
                         </MenuItem>
                       );
@@ -2302,241 +2225,64 @@ export default function CheckInWizardPage({
                 </FormControl>
               </Box>
 
-              {/* Selected Room Cards Preview with Capacity details & Remove Button */}
-              <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMuted, display: "block", mb: 1.5, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                Allocated Rooms ({selectedRoomsList.length}):
-              </Typography>
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: {
-                    xs: "1fr",
-                    sm: "repeat(auto-fill, minmax(320px, 1fr))",
-                  },
-                  gap: 2,
-                  mb: 3,
-                }}
-              >
+              {/* Allocated Rooms Summary List */}
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }, gap: 1.5 }}>
                 {selectedRoomsList.map((room) => {
                   const tariff = getRoomTariff(room);
                   const cap = calculateRoomCapacity(room);
-                  const iconCfg = getRoomCategoryIconConfig(room, 22);
+                  const iconCfg = getRoomCategoryIconConfig(room, 20);
 
                   return (
                     <Card
                       key={room._id}
                       sx={{
-                        p: 2.2,
-                        borderRadius: "16px",
-                        border: `1.5px solid ${iconCfg.color}40`,
-                        background: `linear-gradient(135deg, #FFFFFF 0%, ${iconCfg.bg} 100%)`,
-                        boxShadow: "0 4px 14px rgba(0, 0, 0, 0.05)",
+                        p: 1.8,
+                        borderRadius: "14px",
+                        border: `1.5px solid ${themeConfig.border}`,
+                        bgcolor: themeConfig.bgCard || "#FFFFFF",
                         display: "flex",
-                        flexDirection: "column",
-                        gap: 1.2,
-                        transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                        "&:hover": {
-                          boxShadow: `0 6px 20px ${iconCfg.bg}`,
-                        },
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
                       }}
                     >
-                      {/* Top Header: Icon + Room Number & Category + Allocated badge / Delete */}
-                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 1 }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
-                          <Avatar
-                            sx={{
-                              bgcolor: iconCfg.bg,
-                              color: iconCfg.color,
-                              width: 40,
-                              height: 40,
-                              borderRadius: "10px",
-                              flexShrink: 0,
-                            }}
-                          >
-                            {iconCfg.icon}
-                          </Avatar>
-                          <Box sx={{ minWidth: 0 }}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 900, color: themeConfig.textMain, lineHeight: 1.2, noWrap: true }}>
-                              Room #{room.roomNumber}
-                            </Typography>
-                            <Typography variant="caption" sx={{ fontWeight: 800, color: iconCfg.color, display: "block" }}>
-                              {getRoomCategoryName(room)} &bull; Floor {room.floor || 1}
-                            </Typography>
-                          </Box>
-                        </Box>
-
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, flexShrink: 0 }}>
-                          <Chip
-                            icon={<Check style={{ fontSize: 13, color: "#059669" }} />}
-                            label="Allocated"
-                            size="small"
-                            sx={{
-                              bgcolor: "rgba(16, 185, 129, 0.12)",
-                              color: "#059669",
-                              fontWeight: 800,
-                              fontSize: "0.68rem",
-                              height: 24,
-                              border: "1px solid rgba(16, 185, 129, 0.3)",
-                            }}
-                          />
-                          {selectedRoomsList.length > 1 && (
-                            <IconButton
-                              size="small"
-                              onClick={() => handleRemoveSelectedRoom(room._id)}
-                              title="Remove Room"
-                              sx={{
-                                color: themeConfig.danger,
-                                p: 0.5,
-                                borderRadius: "8px",
-                                bgcolor: "rgba(239, 68, 68, 0.06)",
-                                "&:hover": { bgcolor: "rgba(239, 68, 68, 0.15)" },
-                              }}
-                            >
-                              <Close sx={{ fontSize: 16 }} />
-                            </IconButton>
-                          )}
-                        </Box>
-                      </Box>
-
-                      {/* Middle Row: Capacity & Bed Type Badges */}
-                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.8, my: 0.2 }}>
-                        <Chip
-                          label={`👥 ${cap.standardCapacity} Guests`}
-                          size="small"
-                          sx={{
-                            fontWeight: 800,
-                            fontSize: "0.72rem",
-                            height: 24,
-                            bgcolor: themeConfig.champagne,
-                            color: themeConfig.primaryDark,
-                            borderRadius: "6px",
-                          }}
-                        />
-                        <Chip
-                          label={`🛏️ ${cap.bedType || "Standard"}`}
-                          size="small"
-                          sx={{
-                            fontWeight: 700,
-                            fontSize: "0.72rem",
-                            height: 24,
-                            bgcolor: "rgba(0,0,0,0.04)",
-                            color: themeConfig.textMain,
-                            borderRadius: "6px",
-                          }}
-                        />
-                      </Box>
-
-                      {/* Bottom Footer: Dedicated Price Strip (Never squished) */}
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          pt: 1.2,
-                          mt: "auto",
-                          borderTop: `1px dashed rgba(16, 185, 129, 0.25)`,
-                        }}
-                      >
-                        <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMuted }}>
-                          Room Rate:
-                        </Typography>
-
-                        <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 900, color: "#059669", lineHeight: 1, whiteSpace: "nowrap" }}>
-                            ₹{Number(tariff).toLocaleString()}
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1.2, minWidth: 0 }}>
+                        <Avatar sx={{ bgcolor: iconCfg.bg, color: iconCfg.color, width: 34, height: 34, borderRadius: "8px", flexShrink: 0 }}>
+                          {iconCfg.icon}
+                        </Avatar>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.textMain, lineHeight: 1.2 }}>
+                            Room #{room.roomNumber}
                           </Typography>
-                          <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontWeight: 700, fontSize: "0.72rem", whiteSpace: "nowrap" }}>
-                            / night
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: iconCfg.color, fontSize: "0.72rem", display: "block" }}>
+                            {getRoomCategoryName(room)} &bull; Fl {room.floor || 1}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.7rem", fontWeight: 700 }}>
+                            👥 {cap.standardCapacity} Guests &bull; <strong style={{ color: "#059669" }}>₹{Number(tariff).toLocaleString()}</strong>/n
                           </Typography>
                         </Box>
                       </Box>
+
+                      {selectedRoomsList.length > 1 && (
+                        <IconButton
+                          size="small"
+                          onClick={() => handleRemoveSelectedRoom(room._id)}
+                          title="Remove Room"
+                          sx={{
+                            color: themeConfig.danger,
+                            p: 0.5,
+                            borderRadius: "8px",
+                            bgcolor: "rgba(239, 68, 68, 0.06)",
+                            "&:hover": { bgcolor: "rgba(239, 68, 68, 0.15)" },
+                          }}
+                        >
+                          <Close sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      )}
                     </Card>
                   );
                 })}
               </Box>
-
-              {/* QUICK SUGGESTER: ALLOCATE ADDITIONAL ROOMS (WHEN GUESTS EXCEED OR MULTI-ROOM NEEDED) */}
-              {availableRooms.filter((r) => !selectedRoomIds.includes(r._id)).length > 0 && (
-                <Box sx={{ pt: 2, borderTop: `1px dashed ${themeConfig.border}` }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.textMain, mb: 1.5, display: "flex", alignItems: "center", gap: 0.8 }}>
-                    <Add sx={{ fontSize: 18, color: themeConfig.primary }} />
-                    Quick Add Additional Available Room(s) {isCapacityExceeded && `(Needed for remaining ${totalPartySize - totalStandardCapacity} guests)`}:
-                  </Typography>
-
-                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }, gap: 1.5 }}>
-                    {availableRooms
-                      .filter((r) => !selectedRoomIds.includes(r._id))
-                      .map((r) => {
-                        const tariff = getRoomTariff(r);
-                        const cap = calculateRoomCapacity(r);
-                        const iconCfg = getRoomCategoryIconConfig(r, 18);
-
-                        return (
-                          <Card
-                            key={r._id}
-                            onClick={() => handleAddAdditionalRoom(r._id)}
-                            sx={{
-                              p: 1.5,
-                              borderRadius: "14px",
-                              border: `1.5px dashed ${iconCfg.color}70`,
-                              bgcolor: "#FFFFFF",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
-                              transition: "all 0.2s ease",
-                              "&:hover": {
-                                borderColor: iconCfg.color,
-                                bgcolor: iconCfg.bg,
-                                transform: "translateY(-2px)",
-                                boxShadow: "0 6px 16px rgba(0, 0, 0, 0.08)",
-                              },
-                            }}
-                          >
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1.2, minWidth: 0 }}>
-                              <Avatar sx={{ bgcolor: iconCfg.bg, color: iconCfg.color, width: 32, height: 32, borderRadius: "8px", flexShrink: 0 }}>
-                                {iconCfg.icon}
-                              </Avatar>
-                              <Box sx={{ minWidth: 0 }}>
-                                <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.85rem", lineHeight: 1.2 }}>
-                                  Room #{r.roomNumber}
-                                </Typography>
-                                <Typography variant="caption" sx={{ fontWeight: 800, color: iconCfg.color, fontSize: "0.72rem", display: "block", noWrap: true }}>
-                                  {getRoomCategoryName(r)} &bull; Floor {r.floor || 1}
-                                </Typography>
-                                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMuted, fontSize: "0.7rem" }}>
-                                  👥 {cap.standardCapacity} Guests
-                                </Typography>
-                              </Box>
-                            </Box>
-
-                            <Box sx={{ textAlign: "right", flexShrink: 0, pl: 1 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 900, color: "#059669", fontSize: "0.88rem" }}>
-                                ₹{tariff}
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.68rem", fontWeight: 700, display: "block" }}>
-                                / night
-                              </Typography>
-                              <Chip
-                                label="+ Add"
-                                size="small"
-                                sx={{
-                                  height: 20,
-                                  fontSize: "0.68rem",
-                                  fontWeight: 900,
-                                  bgcolor: "rgba(16, 185, 129, 0.12)",
-                                  color: "#059669",
-                                  mt: 0.3,
-                                }}
-                              />
-                            </Box>
-                          </Card>
-                        );
-                      })}
-                  </Box>
-                </Box>
-              )}
             </Paper>
           </Box>
         )}
