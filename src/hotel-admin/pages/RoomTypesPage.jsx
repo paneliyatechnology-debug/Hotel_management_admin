@@ -362,11 +362,13 @@ export default function RoomTypesPage({
                   data: {
                     _id: "",
                     name: "",
-                    basePrice: 4000,
-                    maxAdults: 2,
-                    maxChildren: 1,
+                    basePrice: "",
+                    maxAdults: "",
+                    maxChildren: "",
+                    bedCount: "",
+                    bedType: "",
                     description: "",
-                    amenities: ["Free High-Speed WiFi", "Air Conditioner (AC)", "Smart 4K LED TV", "Attached Bathroom & Geyser"],
+                    amenities: [],
                   },
                 })
               }
@@ -542,12 +544,14 @@ export default function RoomTypesPage({
                       mode: "ADD",
                       data: {
                         _id: "",
-                        name: "Deluxe Suite",
-                        basePrice: 4500,
-                        maxAdults: 2,
-                        maxChildren: 1,
-                        description: "Spacious luxury room with king bed, attached bathroom and balcony view.",
-                        amenities: ["Free High-Speed WiFi", "Air Conditioner (AC)", "Smart 4K LED TV", "Attached Bathroom & Geyser", "Mini Fridge / Bar"],
+                        name: "",
+                        basePrice: "",
+                        maxAdults: "",
+                        maxChildren: "",
+                        bedCount: "",
+                        bedType: "",
+                        description: "",
+                        amenities: [],
                       },
                     })
                   }
@@ -1963,9 +1967,9 @@ export default function RoomTypesPage({
                   label="Max Adults (Guest Capacity)"
                   fullWidth
                   size="small"
-                  value={typeModal.data.maxAdults ?? 2}
+                  value={typeModal.data.maxAdults ?? ""}
                   onChange={(e) => setTypeModal({ ...typeModal, data: { ...typeModal.data, maxAdults: e.target.value } })}
-                  placeholder="2"
+                  placeholder="e.g. 2"
                   sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
                 />
               </Grid>
@@ -1975,9 +1979,9 @@ export default function RoomTypesPage({
                   label="Max Children"
                   fullWidth
                   size="small"
-                  value={typeModal.data.maxChildren ?? 1}
+                  value={typeModal.data.maxChildren ?? ""}
                   onChange={(e) => setTypeModal({ ...typeModal, data: { ...typeModal.data, maxChildren: e.target.value } })}
-                  placeholder="1"
+                  placeholder="e.g. 1"
                   sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
                 />
               </Grid>
@@ -1987,8 +1991,8 @@ export default function RoomTypesPage({
                   select
                   fullWidth
                   size="small"
-                  label="🛏️ Default Bed Setup"
-                  value={typeModal.data.bedType || "1 King Size Bed"}
+                  label="🛏️ Bed Setup"
+                  value={typeModal.data.bedType || ""}
                   onChange={(e) => {
                     const selectedBed = e.target.value;
                     const preset = BED_OPTIONS.find((b) => b.label === selectedBed);
@@ -1997,13 +2001,16 @@ export default function RoomTypesPage({
                       data: {
                         ...typeModal.data,
                         bedType: selectedBed,
-                        bedCount: preset ? preset.count : typeModal.data.bedCount || 1,
-                        maxAdults: preset ? preset.capacity : typeModal.data.maxAdults || 2,
+                        bedCount: preset ? preset.count : typeModal.data.bedCount || "",
+                        maxAdults: preset ? preset.capacity : typeModal.data.maxAdults || "",
                       },
                     });
                   }}
                   sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
                 >
+                  <MenuItem value="">
+                    <em>Select Bed Configuration</em>
+                  </MenuItem>
                   {BED_OPTIONS.map((opt, i) => (
                     <MenuItem key={i} value={opt.label}>
                       🛏️ {opt.label} ({opt.capacity} Persons)
@@ -2015,10 +2022,10 @@ export default function RoomTypesPage({
 
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
-                  label="🛏️ Default Number of Beds"
+                  label="🛏️ Number of Beds"
                   fullWidth
                   size="small"
-                  value={typeModal.data.bedCount ?? 1}
+                  value={typeModal.data.bedCount ?? ""}
                   onChange={(e) => setTypeModal({ ...typeModal, data: { ...typeModal.data, bedCount: e.target.value } })}
                   placeholder="e.g. 1, 2"
                   sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}

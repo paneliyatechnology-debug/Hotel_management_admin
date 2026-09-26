@@ -68,13 +68,13 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
     return {
       _id: "",
       name: "",
-      basePrice: 4000,
-      maxAdults: 2,
-      maxChildren: 1,
-      bedCount: 1,
-      bedType: "1 King Size Bed",
+      basePrice: "",
+      maxAdults: "",
+      maxChildren: "",
+      bedCount: "",
+      bedType: "",
       description: "",
-      amenities: ["Free WiFi", "Air Conditioner (AC)", "Smart LED TV", "Attached Bathroom", "Mini Fridge"],
+      amenities: [],
     };
   }
 
