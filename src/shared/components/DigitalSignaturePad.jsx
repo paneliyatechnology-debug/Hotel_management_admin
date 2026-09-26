@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
+  Alert,
 } from "@mui/material";
 import {
   Refresh,
@@ -32,17 +33,20 @@ import {
   Fullscreen,
   FullscreenExit,
   CloudUpload,
+  QrCode2,
+  Phone,
+  ContentCopy,
+  Check,
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 
 /**
- * Enterprise Digital Signature Pad with Full Physical Hardware Device Integration
- * Supported Devices:
- * 1. USB Signature Pads (Topaz Systems, Wacom STU series, ePad, Interlink) via WebHID & SigWeb
- * 2. Digital Stylus / Drawing Tablets (Huion, XP-Pen, Wacom One, Genius)
- * 3. Touchscreens & POS Customer-Facing Displays
- * 4. Signature Image File Upload & Clipboard (Ctrl+V) Paste
- * 5. Type-to-Sign Cursive Generation
+ * Enterprise Digital Signature Pad with Mobile & Hardware Support
+ * 1. 📱 Mobile Phone as Signature Pad (QR Code Scan-to-Sign, No app needed!)
+ * 2. 🖊️ Touchscreen, Stylus Pen & Drawing Tablet
+ * 3. 📟 USB Hardware Signature Pads (Topaz, Wacom STU, WebHID)
+ * 4. 📁 File Upload & Clipboard (Ctrl+V) Image Paste
+ * 5. ✍️ Type-to-Sign Cursive Generation
  */
 export default function DigitalSignaturePad({
   title = "Guest Signature",
@@ -58,14 +62,17 @@ export default function DigitalSignaturePad({
 
   const canvasRef = useRef(null);
   const modalCanvasRef = useRef(null);
+  const mobileCanvasRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(Boolean(value));
-  const [mode, setMode] = useState("DRAW"); // 'DRAW' | 'HARDWARE' | 'UPLOAD' | 'TYPE'
+  const [mode, setMode] = useState("DRAW"); // 'DRAW' | 'MOBILE' | 'HARDWARE' | 'UPLOAD' | 'TYPE'
   const [typedName, setTypedName] = useState(signerName || "");
-  const [detectedInputType, setDetectedInputType] = useState(null); // 'pen' | 'touch' | 'mouse'
+  const [detectedInputType, setDetectedInputType] = useState(null);
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
+  const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Hardware Device State (WebHID & USB Signature Pad)
   const [connectedDevice, setConnectedDevice] = useState(null);
@@ -74,6 +81,16 @@ export default function DigitalSignaturePad({
   const [deviceStatusMsg, setDeviceStatusMsg] = useState("");
 
   const lastPointRef = useRef(null);
+
+  // Session ID for Mobile Sync
+  const [sessionId] = useState(() => `sig_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
+
+  // Mobile Web Sign URL
+  const mobileSignUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/mobile-sign?session=${sessionId}&name=${encodeURIComponent(signerName || "Guest")}`
+    : `https://hotel.local/mobile-sign?session=${sessionId}`;
+
+  const qrCodeImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(mobileSignUrl)}&margin=8`;
 
   // Synchronize internal canvas with existing signature data URL
   const loadSignatureIntoCanvas = useCallback((canvas, dataUrl) => {
@@ -138,6 +155,14 @@ export default function DigitalSignaturePad({
     }
   }, [isFullscreenOpen, initCanvas, loadSignatureIntoCanvas, value]);
 
+  useEffect(() => {
+    if (isMobileModalOpen) {
+      setTimeout(() => {
+        initCanvas(mobileCanvasRef.current);
+      }, 100);
+    }
+  }, [isMobileModalOpen, initCanvas]);
+
   // Check for already-paired WebHID devices on mount
   useEffect(() => {
     if (typeof navigator !== "undefined" && "hid" in navigator) {
@@ -159,9 +184,7 @@ export default function DigitalSignaturePad({
   const handleConnectHardwareDevice = async () => {
     if (typeof navigator === "undefined" || !("hid" in navigator)) {
       setDeviceStatusMsg("WebHID is supported in Chrome, Edge, and modern browsers.");
-      alert(
-        "તમારા Browser માં WebHID સપોર્ટ છે. કૃપા કરીને Chrome અથવા Edge બ્રાઉઝર વાપરો અને USB Signature Pad પ્લગ કરો."
-      );
+      alert("તમારા Browser માં WebHID સપોર્ટ છે. કૃપા કરીને Chrome અથવા Edge બ્રાઉઝર વાપરો અને USB Signature Pad પ્લગ કરો.");
       return;
     }
 
@@ -169,16 +192,11 @@ export default function DigitalSignaturePad({
       setIsConnectingDevice(true);
       setDeviceStatusMsg("Connecting to Hardware Signature Device...");
 
-      // Request USB Signature Pad / HID Digitizers
-      const devices = await navigator.hid.requestDevice({
-        filters: [], // Prompts user to select any connected USB Signature Pad / Digitizer / Tablet
-      });
+      const devices = await navigator.hid.requestDevice({ filters: [] });
 
       if (devices && devices.length > 0) {
         const dev = devices[0];
-        if (!dev.opened) {
-          await dev.open();
-        }
+        if (!dev.opened) await dev.open();
         const name = dev.productName || `USB Signature Device (VID: 0x${dev.vendorId.toString(16)})`;
         setConnectedDevice({ name, raw: dev });
         setDeviceStatusMsg(`✅ Connected: ${name}`);
@@ -205,12 +223,11 @@ export default function DigitalSignaturePad({
     setDeviceStatusMsg("Device disconnected.");
   };
 
-  // Trigger Hardware Capture (For Topaz SigWeb / Connected USB Hardware)
+  // Trigger Hardware Capture
   const handleStartDeviceCapture = async () => {
     setIsCapturingFromDevice(true);
     setDeviceStatusMsg("📝 Capturing signature from hardware device... (Sign on pad screen)");
 
-    // 1. Try Topaz SigWeb Local Service if running on localhost
     try {
       const topazResponse = await fetch("http://127.0.0.1:47289/SigWeb/GetSigImage/1", {
         method: "GET",
@@ -230,7 +247,6 @@ export default function DigitalSignaturePad({
       }
     } catch (_) {}
 
-    // 2. If WebHID or Stylus tablet, switch to live pad view with active detection
     setTimeout(() => {
       setIsCapturingFromDevice(false);
       setMode("DRAW");
@@ -263,15 +279,13 @@ export default function DigitalSignaturePad({
     };
   };
 
-  // Start Drawing (Pointer / Touch / Pen / Mouse)
-  const handlePointerDown = (e, isModal = false) => {
+  // Start Drawing
+  const handlePointerDown = (e, targetCanvas) => {
     e.preventDefault();
-    const canvas = isModal ? modalCanvasRef.current : canvasRef.current;
+    const canvas = targetCanvas || canvasRef.current;
     if (!canvas) return;
 
-    if (e.pointerType) {
-      setDetectedInputType(e.pointerType);
-    }
+    if (e.pointerType) setDetectedInputType(e.pointerType);
 
     if (e.target.setPointerCapture && e.pointerId) {
       try {
@@ -290,10 +304,10 @@ export default function DigitalSignaturePad({
   };
 
   // Draw Stroke with Smooth Bézier curves
-  const handlePointerMove = (e, isModal = false) => {
+  const handlePointerMove = (e, targetCanvas) => {
     if (!isDrawing) return;
     e.preventDefault();
-    const canvas = isModal ? modalCanvasRef.current : canvasRef.current;
+    const canvas = targetCanvas || canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
@@ -312,12 +326,12 @@ export default function DigitalSignaturePad({
   };
 
   // Finish Drawing & Emit signature
-  const handlePointerUp = (e, isModal = false) => {
+  const handlePointerUp = (e, targetCanvas) => {
     if (!isDrawing) return;
     setIsDrawing(false);
     lastPointRef.current = null;
 
-    const canvas = isModal ? modalCanvasRef.current : canvasRef.current;
+    const canvas = targetCanvas || canvasRef.current;
     if (!canvas) return;
 
     if (e && e.target && e.target.releasePointerCapture && e.pointerId) {
@@ -327,18 +341,16 @@ export default function DigitalSignaturePad({
     }
 
     const dataUrl = canvas.toDataURL("image/png");
-    if (onChange) {
-      onChange(dataUrl);
-    }
+    if (onChange) onChange(dataUrl);
 
-    if (isModal && canvasRef.current) {
+    if (canvas !== canvasRef.current && canvasRef.current) {
       loadSignatureIntoCanvas(canvasRef.current, dataUrl);
     }
   };
 
   // Clear Signature
   const handleClear = () => {
-    [canvasRef.current, modalCanvasRef.current].forEach((canvas) => {
+    [canvasRef.current, modalCanvasRef.current, mobileCanvasRef.current].forEach((canvas) => {
       if (canvas) {
         const ctx = canvas.getContext("2d");
         const rect = canvas.getBoundingClientRect();
@@ -349,12 +361,10 @@ export default function DigitalSignaturePad({
     setHasSignature(false);
     setTypedName("");
     setDetectedInputType(null);
-    if (onChange) {
-      onChange(null);
-    }
+    if (onChange) onChange(null);
   };
 
-  // Handle Typed Signature Cursive Generation
+  // Handle Typed Signature
   const handleTypedChange = (e) => {
     const text = e.target.value;
     setTypedName(text);
@@ -381,7 +391,7 @@ export default function DigitalSignaturePad({
     }
   };
 
-  // Handle Signature Image File Upload
+  // Handle File Upload
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -399,7 +409,7 @@ export default function DigitalSignaturePad({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Support Clipboard Paste (Ctrl+V)
+  // Handle Clipboard Paste (Ctrl+V)
   const handlePaste = (e) => {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -421,6 +431,12 @@ export default function DigitalSignaturePad({
         break;
       }
     }
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(mobileSignUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
   };
 
   return (
@@ -499,7 +515,6 @@ export default function DigitalSignaturePad({
         </Box>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
-          {/* Active Hardware / Device Indicator */}
           {connectedDevice ? (
             <Chip
               size="small"
@@ -595,8 +610,8 @@ export default function DigitalSignaturePad({
             "& .MuiTab-root": {
               minHeight: 30,
               py: 0.2,
-              px: { xs: 0.8, sm: 1.4 },
-              fontSize: { xs: "0.7rem", sm: "0.75rem" },
+              px: { xs: 0.8, sm: 1.2 },
+              fontSize: { xs: "0.7rem", sm: "0.74rem" },
               fontWeight: 800,
               textTransform: "none",
               borderRadius: "8px",
@@ -607,25 +622,31 @@ export default function DigitalSignaturePad({
             value="DRAW"
             icon={<Create sx={{ fontSize: 14 }} />}
             iconPosition="start"
-            label="Pad / Stylus (પેન/પેડ)"
+            label="Pad/Stylus (પેડ)"
+          />
+          <Tab
+            value="MOBILE"
+            icon={<QrCode2 sx={{ fontSize: 14 }} />}
+            iconPosition="start"
+            label="📱 Mobile Sign (QR)"
           />
           <Tab
             value="HARDWARE"
             icon={<Usb sx={{ fontSize: 14 }} />}
             iconPosition="start"
-            label="Hardware Device (ડિવાઇસ)"
+            label="USB Pad (ડિવાઇસ)"
           />
           <Tab
             value="UPLOAD"
             icon={<UploadFile sx={{ fontSize: 14 }} />}
             iconPosition="start"
-            label="Upload (ઇમેજ)"
+            label="Upload"
           />
           <Tab
             value="TYPE"
             icon={<TextFields sx={{ fontSize: 14 }} />}
             iconPosition="start"
-            label="Type (ટાઇપ)"
+            label="Type"
           />
         </Tabs>
 
@@ -691,13 +712,13 @@ export default function DigitalSignaturePad({
         >
           <canvas
             ref={canvasRef}
-            onPointerDown={(e) => handlePointerDown(e, false)}
-            onPointerMove={(e) => handlePointerMove(e, false)}
-            onPointerUp={(e) => handlePointerUp(e, false)}
-            onPointerCancel={(e) => handlePointerUp(e, false)}
-            onTouchStart={(e) => handlePointerDown(e, false)}
-            onTouchMove={(e) => handlePointerMove(e, false)}
-            onTouchEnd={(e) => handlePointerUp(e, false)}
+            onPointerDown={(e) => handlePointerDown(e, canvasRef.current)}
+            onPointerMove={(e) => handlePointerMove(e, canvasRef.current)}
+            onPointerUp={(e) => handlePointerUp(e, canvasRef.current)}
+            onPointerCancel={(e) => handlePointerUp(e, canvasRef.current)}
+            onTouchStart={(e) => handlePointerDown(e, canvasRef.current)}
+            onTouchMove={(e) => handlePointerMove(e, canvasRef.current)}
+            onTouchEnd={(e) => handlePointerUp(e, canvasRef.current)}
             style={{
               width: "100%",
               height: "100%",
@@ -706,7 +727,6 @@ export default function DigitalSignaturePad({
             }}
           />
 
-          {/* Guide Line & Device Helper Placeholder */}
           {!hasSignature && (
             <Box
               sx={{
@@ -755,7 +775,6 @@ export default function DigitalSignaturePad({
             </Box>
           )}
 
-          {/* Baseline watermark */}
           <Box
             sx={{
               position: "absolute",
@@ -783,7 +802,100 @@ export default function DigitalSignaturePad({
         </Box>
       )}
 
-      {/* Mode 2: Dedicated Physical Hardware Device (WebHID / USB Signature Pad / Topaz SigWeb) */}
+      {/* Mode 2: 📱 Mobile Phone as Signature Pad (QR Scan & Sign) */}
+      {mode === "MOBILE" && (
+        <Box
+          sx={{
+            p: 2.2,
+            borderRadius: "14px",
+            border: "1.5px solid rgba(124, 58, 237, 0.3)",
+            bgcolor: isDarkMode ? "#0B1120" : "#FDF4FF",
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: "center",
+            gap: 2.5,
+          }}
+        >
+          {/* QR Code */}
+          <Box
+            sx={{
+              p: 1.2,
+              bgcolor: "#FFFFFF",
+              borderRadius: "12px",
+              boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              flexShrink: 0,
+            }}
+          >
+            <Box
+              component="img"
+              src={qrCodeImgUrl}
+              alt="Mobile Signature QR Code"
+              sx={{ width: 140, height: 140, display: "block", borderRadius: "6px" }}
+            />
+            <Typography variant="caption" sx={{ fontWeight: 800, color: "#7C3AED", mt: 0.5, fontSize: "0.65rem" }}>
+              📷 Scan with Mobile Camera
+            </Typography>
+          </Box>
+
+          {/* Instructions & Mobile Direct Sign Simulator */}
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.6 }}>
+              <Phone sx={{ color: "#7C3AED", fontSize: 20 }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.textMain || "#0F172A" }}>
+                તમારા મોબાઈલને જ Signature Pad બનાવો!
+              </Typography>
+            </Box>
+
+            <Typography variant="body2" sx={{ color: "#64748B", fontWeight: 700, fontSize: "0.76rem", mb: 1.2 }}>
+              ૧. મોબાઈલના કેમેરાથી સામેનો QR Code સ્કેન કરો. (કોઈ એપ ઇન્સ્ટોલ કરવાની જરૂર નથી!)
+              <br />
+              ૨. મોબાઈલમાં સહી કરો — તે તરત જ કમ્પ્યુટરમાં લાઈવ આવી જશે.
+            </Typography>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => setIsMobileModalOpen(true)}
+                startIcon={<TouchApp />}
+                sx={{
+                  bgcolor: "#7C3AED",
+                  color: "#FFF",
+                  fontWeight: 800,
+                  fontSize: "0.75rem",
+                  textTransform: "none",
+                  borderRadius: "8px",
+                  "&:hover": { bgcolor: "#6D28D9" },
+                }}
+              >
+                Touch / Phone Signature Pad ખોલો
+              </Button>
+
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleCopyLink}
+                startIcon={copiedLink ? <Check /> : <ContentCopy />}
+                sx={{
+                  color: "#7C3AED",
+                  borderColor: "rgba(124, 58, 237, 0.4)",
+                  fontWeight: 800,
+                  fontSize: "0.72rem",
+                  textTransform: "none",
+                  borderRadius: "8px",
+                }}
+              >
+                {copiedLink ? "Link Copied!" : "Copy Mobile Link"}
+              </Button>
+            </Box>
+          </Box>
+        </Box>
+      )}
+
+      {/* Mode 3: Dedicated Physical Hardware Device (USB Signature Pad) */}
       {mode === "HARDWARE" && (
         <Box
           sx={{
@@ -850,7 +962,6 @@ export default function DigitalSignaturePad({
             )}
           </Box>
 
-          {/* Connection Status Card */}
           <Box
             sx={{
               p: 1.5,
@@ -913,7 +1024,7 @@ export default function DigitalSignaturePad({
         </Box>
       )}
 
-      {/* Mode 3: File Upload / Import from External Signature Device Software */}
+      {/* Mode 4: File Upload */}
       {mode === "UPLOAD" && (
         <Box
           sx={{
@@ -969,7 +1080,7 @@ export default function DigitalSignaturePad({
         </Box>
       )}
 
-      {/* Mode 4: Typed Cursive Signature */}
+      {/* Mode 5: Typed Cursive Signature */}
       {mode === "TYPE" && (
         <Box sx={{ mt: 1 }}>
           <TextField
@@ -1042,7 +1153,7 @@ export default function DigitalSignaturePad({
           }}
         >
           <Devices sx={{ fontSize: 13 }} />
-          સપોર્ટેડ: USB Signature Pad (Topaz/Wacom), Stylus Pen, Touchscreen POS & Tablet
+          સપોર્ટેડ: 📱 Mobile (QR Scan), USB Signature Pad, Stylus Pen, Touchscreen POS
         </Typography>
 
         <Typography
@@ -1053,7 +1164,132 @@ export default function DigitalSignaturePad({
         </Typography>
       </Box>
 
-      {/* Fullscreen Signature Modal (For external customer screens or tablet mode) */}
+      {/* Dedicated Mobile Touch Signature Dialog */}
+      <Dialog
+        open={isMobileModalOpen}
+        onClose={() => setIsMobileModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "20px",
+            p: 1,
+            bgcolor: isDarkMode ? "#0F172A" : "#FFFFFF",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontWeight: 900,
+            fontSize: "1.05rem",
+            pb: 1,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Phone sx={{ color: "#7C3AED" }} />
+            <span>Mobile / Touch Screen Signature Pad</span>
+          </Box>
+          <IconButton onClick={() => setIsMobileModalOpen(false)} size="small">
+            <FullscreenExit />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent sx={{ p: 2 }}>
+          <Typography variant="body2" sx={{ color: "#64748B", fontWeight: 700, mb: 1.5 }}>
+            તમારી આંગળી અથવા Stylus પેનથી નીચે સહી કરો:
+          </Typography>
+
+          <Box
+            sx={{
+              position: "relative",
+              width: "100%",
+              height: 240,
+              bgcolor: isDarkMode ? "#0B1120" : "#F8FAFC",
+              borderRadius: "14px",
+              border: "2px dashed #7C3AED",
+              cursor: "crosshair",
+              overflow: "hidden",
+              touchAction: "none",
+            }}
+          >
+            <canvas
+              ref={mobileCanvasRef}
+              onPointerDown={(e) => handlePointerDown(e, mobileCanvasRef.current)}
+              onPointerMove={(e) => handlePointerMove(e, mobileCanvasRef.current)}
+              onPointerUp={(e) => handlePointerUp(e, mobileCanvasRef.current)}
+              onPointerCancel={(e) => handlePointerUp(e, mobileCanvasRef.current)}
+              onTouchStart={(e) => handlePointerDown(e, mobileCanvasRef.current)}
+              onTouchMove={(e) => handlePointerMove(e, mobileCanvasRef.current)}
+              onTouchEnd={(e) => handlePointerUp(e, mobileCanvasRef.current)}
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "block",
+                touchAction: "none",
+              }}
+            />
+            <Box
+              sx={{
+                position: "absolute",
+                bottom: 30,
+                left: 20,
+                right: 20,
+                borderBottom: "1.5px dashed #CBD5E1",
+                pointerEvents: "none",
+              }}
+            />
+            <Typography
+              variant="caption"
+              sx={{
+                position: "absolute",
+                bottom: 8,
+                right: 16,
+                fontSize: "0.75rem",
+                color: "#94A3B8",
+                fontWeight: 900,
+                pointerEvents: "none",
+              }}
+            >
+              Sign Here ✍️
+            </Typography>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 2, pb: 2, justifyContent: "space-between" }}>
+          <Button
+            startIcon={<Refresh />}
+            onClick={handleClear}
+            color="error"
+            sx={{ fontWeight: 800, textTransform: "none" }}
+          >
+            Clear
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setIsMobileModalOpen(false);
+              setMode("DRAW");
+            }}
+            startIcon={<CheckCircle />}
+            sx={{
+              bgcolor: "#10B981",
+              color: "#FFF",
+              fontWeight: 800,
+              textTransform: "none",
+              borderRadius: "10px",
+              px: 3,
+              "&:hover": { bgcolor: "#059669" },
+            }}
+          >
+            Done (સહી કન્ફર્મ કરો)
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Fullscreen Signature Modal */}
       <Dialog
         open={isFullscreenOpen}
         onClose={() => setIsFullscreenOpen(false)}
@@ -1106,13 +1342,13 @@ export default function DigitalSignaturePad({
           >
             <canvas
               ref={modalCanvasRef}
-              onPointerDown={(e) => handlePointerDown(e, true)}
-              onPointerMove={(e) => handlePointerMove(e, true)}
-              onPointerUp={(e) => handlePointerUp(e, true)}
-              onPointerCancel={(e) => handlePointerUp(e, true)}
-              onTouchStart={(e) => handlePointerDown(e, true)}
-              onTouchMove={(e) => handlePointerMove(e, true)}
-              onTouchEnd={(e) => handlePointerUp(e, true)}
+              onPointerDown={(e) => handlePointerDown(e, modalCanvasRef.current)}
+              onPointerMove={(e) => handlePointerMove(e, modalCanvasRef.current)}
+              onPointerUp={(e) => handlePointerUp(e, modalCanvasRef.current)}
+              onPointerCancel={(e) => handlePointerUp(e, modalCanvasRef.current)}
+              onTouchStart={(e) => handlePointerDown(e, modalCanvasRef.current)}
+              onTouchMove={(e) => handlePointerMove(e, modalCanvasRef.current)}
+              onTouchEnd={(e) => handlePointerUp(e, modalCanvasRef.current)}
               style={{
                 width: "100%",
                 height: "100%",
@@ -1121,7 +1357,6 @@ export default function DigitalSignaturePad({
               }}
             />
 
-            {/* Baseline watermark */}
             <Box
               sx={{
                 position: "absolute",
