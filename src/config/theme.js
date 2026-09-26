@@ -1,13 +1,7 @@
 /**
  * ====================================================================
- * CENTRAL THEME CONFIGURATION SYSTEM (Synced with Web)
- * 6 Curated ColorHunt Palettes:
- * 1. Azure Sky & Mint Fresh (https://colorhunt.co/palette/30afff92eeffd8ffc5c4f7ca)
- * 2. Warm Peach & Sky Blue (https://colorhunt.co/palette/ffbe91ffddb0fffce1cfebff)
- * 3. Lavender Blush & Rose (https://colorhunt.co/palette/fbefefffe2e2f5cbcbc5b3d3)
- * 4. Nordic Coastal & Sand (https://colorhunt.co/palette/81a6c6aacddcf3e3d0d2c4b4)
- * 5. Luxury Linen & Cashmere (https://colorhunt.co/palette/f9f8f6efe9e3d9cfc7c9b59c)
- * 6. Sage Meadow & Warm Pearl (https://colorhunt.co/palette/faf1e6fdfaf6e4efe799bc85)
+ * CENTRAL THEME CONFIGURATION SYSTEM (Light & Dark Modes)
+ * 10 Curated Palettes with Full Light & Dark Mode Specifications
  * ====================================================================
  */
 
@@ -15,6 +9,7 @@ export const themePalettes = {
   // ⚡ 1. Vibrant Azure Sky & Mint Fresh (https://colorhunt.co/palette/30afff92eeffd8ffc5c4f7ca)
   palette1: {
     name: "Azure Sky & Mint Fresh",
+    mode: "light",
     primary: "#0B8EE0",
     primaryDark: "#066CB0",
     primaryLight: "#92EEFF",
@@ -48,6 +43,7 @@ export const themePalettes = {
   // 🍑 2. Warm Peach & Sky Blue (https://colorhunt.co/palette/ffbe91ffddb0fffce1cfebff)
   palette2: {
     name: "Warm Peach & Sky Blue",
+    mode: "light",
     primary: "#E67E48",
     primaryDark: "#C25B28",
     primaryLight: "#FFBE91",
@@ -81,6 +77,7 @@ export const themePalettes = {
   // 🌸 3. Soft Lavender Blush & Rose (https://colorhunt.co/palette/fbefefffe2e2f5cbcbc5b3d3)
   palette3: {
     name: "Lavender Blush & Rose",
+    mode: "light",
     primary: "#8E66A8",
     primaryDark: "#6A4482",
     primaryLight: "#C5B3D3",
@@ -114,6 +111,7 @@ export const themePalettes = {
   // 🌊 4. Nordic Coastal Blue & Sand (https://colorhunt.co/palette/81a6c6aacddcf3e3d0d2c4b4)
   palette4: {
     name: "Nordic Coastal & Warm Sand",
+    mode: "light",
     primary: "#42719B",
     primaryDark: "#274E73",
     primaryLight: "#81A6C6",
@@ -147,6 +145,7 @@ export const themePalettes = {
   // 🌾 5. Luxury Linen & Cashmere (https://colorhunt.co/palette/f9f8f6efe9e3d9cfc7c9b59c)
   palette5: {
     name: "Luxury Linen & Cashmere",
+    mode: "light",
     primary: "#9C7F5D",
     primaryDark: "#735738",
     primaryLight: "#C9B59C",
@@ -180,6 +179,7 @@ export const themePalettes = {
   // 🌿 6. Sage Meadow & Warm Pearl (https://colorhunt.co/palette/faf1e6fdfaf6e4efe799bc85)
   palette6: {
     name: "Sage Meadow & Warm Pearl",
+    mode: "light",
     primary: "#61874C",
     primaryDark: "#446332",
     primaryLight: "#99BC85",
@@ -213,6 +213,7 @@ export const themePalettes = {
   // 🌊 7. Deep Coastal & Glacier Foam (https://colorhunt.co/palette/3368a066a3bfc8dfdbf2efe7)
   palette7: {
     name: "Deep Coastal & Glacier Foam",
+    mode: "light",
     primary: "#3368A0",
     primaryDark: "#224A75",
     primaryLight: "#66A3BF",
@@ -246,6 +247,7 @@ export const themePalettes = {
   // 🌲 8. Forest Jade & Pale Mint (https://colorhunt.co/palette/d3f6d1a7d7c574b49b5c8d89)
   palette8: {
     name: "Forest Jade & Pale Mint",
+    mode: "light",
     primary: "#5C8D89",
     primaryDark: "#416965",
     primaryLight: "#74B49B",
@@ -279,6 +281,7 @@ export const themePalettes = {
   // 🖤 9. Midnight Slate & Frost Glacier (https://colorhunt.co/palette/01010169779bacdbdff0ece2)
   palette9: {
     name: "Midnight Slate & Frost Glacier",
+    mode: "light",
     primary: "#69779B",
     primaryDark: "#010101",
     primaryLight: "#ACDBDF",
@@ -312,6 +315,7 @@ export const themePalettes = {
   // ☀️ 10. Sky Azure & Butter Apricot (https://colorhunt.co/palette/fff9d2ffebccbfddf08cc0eb)
   palette10: {
     name: "Sky Azure & Butter Apricot",
+    mode: "light",
     primary: "#3B86C8",
     primaryDark: "#23629B",
     primaryLight: "#8CC0EB",
@@ -342,6 +346,363 @@ export const themePalettes = {
     shadowModal: "0 16px 48px rgba(27, 46, 68, 0.16)",
   },
 };
+
+/**
+ * ====================================================================
+ * 🌙 DARK THEME PALETTES (Tailored sleek OLED / Slate Dark Modes)
+ * ====================================================================
+ */
+export const darkThemePalettes = {
+  // ⚡ 1. Dark Azure Cyan & Mint
+  palette1: {
+    name: "Dark Azure & Ice Mint",
+    mode: "dark",
+    primary: "#38BDF8",
+    primaryDark: "#0284C7",
+    primaryLight: "#BAE6FD",
+    primaryGlow: "rgba(56, 189, 248, 0.35)",
+    bgMain: "#0B1120",
+    bgHeader: "#0F172A",
+    bgCard: "#162032",
+    bgFooter: "#0F172A",
+    textMain: "#F8FAFC",
+    textMuted: "#94A3B8",
+    textLight: "#64748B",
+    border: "rgba(255, 255, 255, 0.1)",
+    borderLight: "rgba(255, 255, 255, 0.05)",
+    borderHover: "#38BDF8",
+    champagne: "rgba(56, 189, 248, 0.12)",
+    success: "#22C55E",
+    successBg: "rgba(34, 197, 94, 0.16)",
+    warning: "#F59E0B",
+    warningBg: "rgba(245, 158, 11, 0.16)",
+    danger: "#EF4444",
+    dangerBg: "rgba(239, 68, 68, 0.16)",
+    info: "#38BDF8",
+    infoBg: "rgba(56, 189, 248, 0.16)",
+    cleaning: "#22D3EE",
+    cleaningBg: "rgba(34, 211, 238, 0.16)",
+    shadowCard: "0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    shadowHover: "0 14px 40px rgba(0, 0, 0, 0.6)",
+    shadowModal: "0 24px 60px rgba(0, 0, 0, 0.85)",
+  },
+
+  // 🍑 2. Dark Sunset Peach & Sky
+  palette2: {
+    name: "Dark Sunset Peach & Sky",
+    mode: "dark",
+    primary: "#FB923C",
+    primaryDark: "#EA580C",
+    primaryLight: "#FED7AA",
+    primaryGlow: "rgba(251, 146, 60, 0.35)",
+    bgMain: "#140F0C",
+    bgHeader: "#1C1510",
+    bgCard: "#251C16",
+    bgFooter: "#1C1510",
+    textMain: "#FFF7ED",
+    textMuted: "#D6B59E",
+    textLight: "#A8856E",
+    border: "rgba(254, 215, 170, 0.12)",
+    borderLight: "rgba(254, 215, 170, 0.06)",
+    borderHover: "#FB923C",
+    champagne: "rgba(251, 146, 60, 0.12)",
+    success: "#22C55E",
+    successBg: "rgba(34, 197, 94, 0.16)",
+    warning: "#F59E0B",
+    warningBg: "rgba(245, 158, 11, 0.16)",
+    danger: "#EF4444",
+    dangerBg: "rgba(239, 68, 68, 0.16)",
+    info: "#60A5FA",
+    infoBg: "rgba(96, 165, 250, 0.16)",
+    cleaning: "#22D3EE",
+    cleaningBg: "rgba(34, 211, 238, 0.16)",
+    shadowCard: "0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    shadowHover: "0 14px 40px rgba(0, 0, 0, 0.6)",
+    shadowModal: "0 24px 60px rgba(0, 0, 0, 0.85)",
+  },
+
+  // 🌸 3. Dark Velvet Lavender
+  palette3: {
+    name: "Dark Velvet Lavender",
+    mode: "dark",
+    primary: "#C084FC",
+    primaryDark: "#9333EA",
+    primaryLight: "#E9D5FF",
+    primaryGlow: "rgba(192, 132, 252, 0.35)",
+    bgMain: "#110B18",
+    bgHeader: "#181022",
+    bgCard: "#221630",
+    bgFooter: "#181022",
+    textMain: "#FAF5FF",
+    textMuted: "#D8B4E2",
+    textLight: "#A882B5",
+    border: "rgba(233, 213, 255, 0.12)",
+    borderLight: "rgba(233, 213, 255, 0.06)",
+    borderHover: "#C084FC",
+    champagne: "rgba(192, 132, 252, 0.12)",
+    success: "#22C55E",
+    successBg: "rgba(34, 197, 94, 0.16)",
+    warning: "#F59E0B",
+    warningBg: "rgba(245, 158, 11, 0.16)",
+    danger: "#EF4444",
+    dangerBg: "rgba(239, 68, 68, 0.16)",
+    info: "#C084FC",
+    infoBg: "rgba(192, 132, 252, 0.16)",
+    cleaning: "#22D3EE",
+    cleaningBg: "rgba(34, 211, 238, 0.16)",
+    shadowCard: "0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    shadowHover: "0 14px 40px rgba(0, 0, 0, 0.6)",
+    shadowModal: "0 24px 60px rgba(0, 0, 0, 0.85)",
+  },
+
+  // 🌊 4. Dark Nordic Deep Sea
+  palette4: {
+    name: "Dark Nordic Deep Sea",
+    mode: "dark",
+    primary: "#60A5FA",
+    primaryDark: "#2563EB",
+    primaryLight: "#BFDBFE",
+    primaryGlow: "rgba(96, 165, 250, 0.35)",
+    bgMain: "#0B121C",
+    bgHeader: "#101B28",
+    bgCard: "#162436",
+    bgFooter: "#101B28",
+    textMain: "#F1F5F9",
+    textMuted: "#94A3B8",
+    textLight: "#64748B",
+    border: "rgba(191, 219, 254, 0.12)",
+    borderLight: "rgba(191, 219, 254, 0.06)",
+    borderHover: "#60A5FA",
+    champagne: "rgba(96, 165, 250, 0.12)",
+    success: "#22C55E",
+    successBg: "rgba(34, 197, 94, 0.16)",
+    warning: "#F59E0B",
+    warningBg: "rgba(245, 158, 11, 0.16)",
+    danger: "#EF4444",
+    dangerBg: "rgba(239, 68, 68, 0.16)",
+    info: "#60A5FA",
+    infoBg: "rgba(96, 165, 250, 0.16)",
+    cleaning: "#22D3EE",
+    cleaningBg: "rgba(34, 211, 238, 0.16)",
+    shadowCard: "0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    shadowHover: "0 14px 40px rgba(0, 0, 0, 0.6)",
+    shadowModal: "0 24px 60px rgba(0, 0, 0, 0.85)",
+  },
+
+  // 🌾 5. Dark Luxury Onyx & Gold
+  palette5: {
+    name: "Dark Luxury Onyx & Gold",
+    mode: "dark",
+    primary: "#E5C398",
+    primaryDark: "#B88E56",
+    primaryLight: "#F5E5D0",
+    primaryGlow: "rgba(229, 195, 152, 0.35)",
+    bgMain: "#12100E",
+    bgHeader: "#1A1714",
+    bgCard: "#24201C",
+    bgFooter: "#1A1714",
+    textMain: "#FAF8F5",
+    textMuted: "#C7BCB1",
+    textLight: "#998D80",
+    border: "rgba(229, 195, 152, 0.14)",
+    borderLight: "rgba(229, 195, 152, 0.07)",
+    borderHover: "#E5C398",
+    champagne: "rgba(229, 195, 152, 0.12)",
+    success: "#4ADE80",
+    successBg: "rgba(74, 222, 128, 0.16)",
+    warning: "#FBBF24",
+    warningBg: "rgba(251, 191, 36, 0.16)",
+    danger: "#F87171",
+    dangerBg: "rgba(248, 113, 113, 0.16)",
+    info: "#93C5FD",
+    infoBg: "rgba(147, 197, 253, 0.16)",
+    cleaning: "#2DD4BF",
+    cleaningBg: "rgba(45, 212, 191, 0.16)",
+    shadowCard: "0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    shadowHover: "0 14px 40px rgba(0, 0, 0, 0.6)",
+    shadowModal: "0 24px 60px rgba(0, 0, 0, 0.85)",
+  },
+
+  // 🌿 6. Dark Emerald & Sage
+  palette6: {
+    name: "Dark Emerald & Sage",
+    mode: "dark",
+    primary: "#86EFAC",
+    primaryDark: "#16A34A",
+    primaryLight: "#DCFCE7",
+    primaryGlow: "rgba(134, 239, 172, 0.35)",
+    bgMain: "#09120C",
+    bgHeader: "#0E1A12",
+    bgCard: "#15261B",
+    bgFooter: "#0E1A12",
+    textMain: "#F0FDF4",
+    textMuted: "#A7D4B6",
+    textLight: "#749F83",
+    border: "rgba(134, 239, 172, 0.12)",
+    borderLight: "rgba(134, 239, 172, 0.06)",
+    borderHover: "#86EFAC",
+    champagne: "rgba(134, 239, 172, 0.12)",
+    success: "#86EFAC",
+    successBg: "rgba(134, 239, 172, 0.16)",
+    warning: "#F59E0B",
+    warningBg: "rgba(245, 158, 11, 0.16)",
+    danger: "#EF4444",
+    dangerBg: "rgba(239, 68, 68, 0.16)",
+    info: "#38BDF8",
+    infoBg: "rgba(56, 189, 248, 0.16)",
+    cleaning: "#2DD4BF",
+    cleaningBg: "rgba(45, 212, 191, 0.16)",
+    shadowCard: "0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    shadowHover: "0 14px 40px rgba(0, 0, 0, 0.6)",
+    shadowModal: "0 24px 60px rgba(0, 0, 0, 0.85)",
+  },
+
+  // 🌊 7. Dark Glacier & Ocean
+  palette7: {
+    name: "Dark Glacier & Ocean",
+    mode: "dark",
+    primary: "#38BDF8",
+    primaryDark: "#0284C7",
+    primaryLight: "#BAE6FD",
+    primaryGlow: "rgba(56, 189, 248, 0.35)",
+    bgMain: "#0A121D",
+    bgHeader: "#0F1A29",
+    bgCard: "#16253A",
+    bgFooter: "#0F1A29",
+    textMain: "#F0F9FF",
+    textMuted: "#94B4D0",
+    textLight: "#668BAF",
+    border: "rgba(56, 189, 248, 0.12)",
+    borderLight: "rgba(56, 189, 248, 0.06)",
+    borderHover: "#38BDF8",
+    champagne: "rgba(56, 189, 248, 0.12)",
+    success: "#22C55E",
+    successBg: "rgba(34, 197, 94, 0.16)",
+    warning: "#F59E0B",
+    warningBg: "rgba(245, 158, 11, 0.16)",
+    danger: "#EF4444",
+    dangerBg: "rgba(239, 68, 68, 0.16)",
+    info: "#38BDF8",
+    infoBg: "rgba(56, 189, 248, 0.16)",
+    cleaning: "#22D3EE",
+    cleaningBg: "rgba(34, 211, 238, 0.16)",
+    shadowCard: "0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    shadowHover: "0 14px 40px rgba(0, 0, 0, 0.6)",
+    shadowModal: "0 24px 60px rgba(0, 0, 0, 0.85)",
+  },
+
+  // 🌲 8. Dark Forest & Mint
+  palette8: {
+    name: "Dark Forest & Mint",
+    mode: "dark",
+    primary: "#34D399",
+    primaryDark: "#059669",
+    primaryLight: "#A7F3D0",
+    primaryGlow: "rgba(52, 211, 153, 0.35)",
+    bgMain: "#081412",
+    bgHeader: "#0C1E1B",
+    bgCard: "#122A26",
+    bgFooter: "#0C1E1B",
+    textMain: "#ECFDF5",
+    textMuted: "#9FD1C2",
+    textLight: "#6B9E91",
+    border: "rgba(52, 211, 153, 0.12)",
+    borderLight: "rgba(52, 211, 153, 0.06)",
+    borderHover: "#34D399",
+    champagne: "rgba(52, 211, 153, 0.12)",
+    success: "#34D399",
+    successBg: "rgba(52, 211, 153, 0.16)",
+    warning: "#F59E0B",
+    warningBg: "rgba(245, 158, 11, 0.16)",
+    danger: "#EF4444",
+    dangerBg: "rgba(239, 68, 68, 0.16)",
+    info: "#34D399",
+    infoBg: "rgba(52, 211, 153, 0.16)",
+    cleaning: "#2DD4BF",
+    cleaningBg: "rgba(45, 212, 191, 0.16)",
+    shadowCard: "0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    shadowHover: "0 14px 40px rgba(0, 0, 0, 0.6)",
+    shadowModal: "0 24px 60px rgba(0, 0, 0, 0.85)",
+  },
+
+  // 🖤 9. Dark Midnight Carbon
+  palette9: {
+    name: "Dark Midnight Carbon",
+    mode: "dark",
+    primary: "#93C5FD",
+    primaryDark: "#3B82F6",
+    primaryLight: "#DBEAFE",
+    primaryGlow: "rgba(147, 197, 253, 0.35)",
+    bgMain: "#0A0C0F",
+    bgHeader: "#101419",
+    bgCard: "#171C23",
+    bgFooter: "#101419",
+    textMain: "#F8FAFC",
+    textMuted: "#94A3B8",
+    textLight: "#64748B",
+    border: "rgba(255, 255, 255, 0.1)",
+    borderLight: "rgba(255, 255, 255, 0.05)",
+    borderHover: "#93C5FD",
+    champagne: "rgba(147, 197, 253, 0.12)",
+    success: "#22C55E",
+    successBg: "rgba(34, 197, 94, 0.16)",
+    warning: "#F59E0B",
+    warningBg: "rgba(245, 158, 11, 0.16)",
+    danger: "#EF4444",
+    dangerBg: "rgba(239, 68, 68, 0.16)",
+    info: "#93C5FD",
+    infoBg: "rgba(147, 197, 253, 0.16)",
+    cleaning: "#22D3EE",
+    cleaningBg: "rgba(34, 211, 238, 0.16)",
+    shadowCard: "0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    shadowHover: "0 14px 40px rgba(0, 0, 0, 0.6)",
+    shadowModal: "0 24px 60px rgba(0, 0, 0, 0.85)",
+  },
+
+  // ☀️ 10. Dark Sky Gold
+  palette10: {
+    name: "Dark Sky Gold",
+    mode: "dark",
+    primary: "#60A5FA",
+    primaryDark: "#2563EB",
+    primaryLight: "#FDE68A",
+    primaryGlow: "rgba(96, 165, 250, 0.35)",
+    bgMain: "#0D1424",
+    bgHeader: "#131C31",
+    bgCard: "#1B2742",
+    bgFooter: "#131C31",
+    textMain: "#F8FAFC",
+    textMuted: "#94A3B8",
+    textLight: "#64748B",
+    border: "rgba(255, 255, 255, 0.1)",
+    borderLight: "rgba(255, 255, 255, 0.05)",
+    borderHover: "#60A5FA",
+    champagne: "rgba(253, 230, 138, 0.12)",
+    success: "#22C55E",
+    successBg: "rgba(34, 197, 94, 0.16)",
+    warning: "#F59E0B",
+    warningBg: "rgba(245, 158, 11, 0.16)",
+    danger: "#EF4444",
+    dangerBg: "rgba(239, 68, 68, 0.16)",
+    info: "#60A5FA",
+    infoBg: "rgba(96, 165, 250, 0.16)",
+    cleaning: "#22D3EE",
+    cleaningBg: "rgba(34, 211, 238, 0.16)",
+    shadowCard: "0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    shadowHover: "0 14px 40px rgba(0, 0, 0, 0.6)",
+    shadowModal: "0 24px 60px rgba(0, 0, 0, 0.85)",
+  },
+};
+
+/**
+ * Helper to get active theme config based on paletteKey and mode ("light" | "dark")
+ */
+export function getThemeConfig(paletteKey = "palette1", mode = "light") {
+  if (mode === "dark") {
+    return darkThemePalettes[paletteKey] || darkThemePalettes.palette1;
+  }
+  return themePalettes[paletteKey] || themePalettes.palette1;
+}
 
 /**
  * 👉 DEFAULT ACTIVE THEME:

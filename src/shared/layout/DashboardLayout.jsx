@@ -38,7 +38,9 @@ import {
   Palette,
   Settings as SettingsIcon,
   Help as HelpIcon,
-} from "@mui/icons-material";
+  DarkMode,
+  LightMode,
+} from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 
 const DRAWER_WIDTH = 270;
@@ -52,22 +54,20 @@ export default function DashboardLayout({
   onLogout,
   children,
 }) {
-  const { themeConfig, paletteKey, setPaletteKey, themePalettes } = useAppTheme();
+  const { themeConfig, paletteKey, setPaletteKey, themePalettes, isDarkMode, toggleThemeMode } = useAppTheme();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
-  const [notifMenuAnchor, setNotifMenuAnchor] = useState(null);
   const [paletteMenuAnchor, setPaletteMenuAnchor] = useState(null);
 
-  // The Settings tab index is always the last item in navItems
+  // The Settings / More tab index is always the last item in navItems
   const settingsTabIndex = navItems.length - 1;
 
   const navigateToSettings = () => {
-    setUserMenuAnchor(null);
     if (isMobile) setSidebarOpen(false);
     if (onTabChange) onTabChange(settingsTabIndex);
   };
+
 
   const getRoleChip = (role) => {
     switch (role) {
@@ -143,12 +143,12 @@ export default function DashboardLayout({
             width: DRAWER_WIDTH,
             borderRadius: 0,
             boxSizing: "border-box",
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0F172A" : "#FFFFFF"),
             borderRight: `1px solid ${themeConfig.border}`,
             borderTop: "none",
             borderBottom: "none",
             borderLeft: "none",
-            boxShadow: "4px 0 24px rgba(12, 39, 59, 0.04)",
+            boxShadow: isDarkMode ? "4px 0 24px rgba(0, 0, 0, 0.4)" : "4px 0 24px rgba(12, 39, 59, 0.04)",
             display: "flex",
             flexDirection: "column",
             top: 0,
@@ -166,7 +166,7 @@ export default function DashboardLayout({
             alignItems: "center",
             justifyContent: "space-between",
             borderBottom: `1px solid ${themeConfig.border}`,
-            bgcolor: "#FFFFFF",
+            bgcolor: themeConfig.bgHeader || (isDarkMode ? "#0F172A" : "#FFFFFF"),
             boxSizing: "border-box",
             borderRadius: 0,
           }}
@@ -225,7 +225,7 @@ export default function DashboardLayout({
                       color: isSelected ? themeConfig.primaryDark : themeConfig.textMain,
                       border: `1px solid ${isSelected ? themeConfig.border : "transparent"}`,
                       boxShadow: isSelected
-                        ? `0 4px 12px ${themeConfig.primaryGlow}, inset 0 1px 0 #FFFFFF`
+                        ? (isDarkMode ? `0 4px 12px ${themeConfig.primaryGlow}` : `0 4px 12px ${themeConfig.primaryGlow}, inset 0 1px 0 #FFFFFF`)
                         : "none",
                       py: 1,
                       px: 1.5,
@@ -282,14 +282,20 @@ export default function DashboardLayout({
               p: 1.2,
               borderRadius: "14px",
               border: `1px solid ${themeConfig.border}`,
-              background: "linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)",
-              boxShadow: "0 4px 14px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
+              background: isDarkMode
+                ? "linear-gradient(135deg, #162032 0%, #1E293B 100%)"
+                : "linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)",
+              boxShadow: isDarkMode
+                ? "0 4px 14px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.05)"
+                : "0 4px 14px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
               cursor: "pointer",
               transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
               "&:hover": {
                 bgcolor: themeConfig.champagne,
                 transform: "translateY(-2px)",
-                boxShadow: "0 6px 18px rgba(12, 39, 59, 0.08), inset 0 1px 0 #FFFFFF",
+                boxShadow: isDarkMode
+                  ? "0 6px 18px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)"
+                  : "0 6px 18px rgba(12, 39, 59, 0.08), inset 0 1px 0 #FFFFFF",
               },
             }}
           >
@@ -348,38 +354,67 @@ export default function DashboardLayout({
             height: HEADER_HEIGHT,
             minHeight: HEADER_HEIGHT,
             maxHeight: HEADER_HEIGHT,
-            bgcolor: "rgba(255, 255, 255, 0.95)",
-            backdropFilter: "blur(12px)",
+            bgcolor: isDarkMode ? "rgba(15, 23, 42, 0.92)" : "rgba(255, 255, 255, 0.96)",
+            backdropFilter: "blur(14px)",
             borderBottom: `1px solid ${themeConfig.border}`,
             borderTop: "none",
             borderLeft: "none",
             borderRight: "none",
             borderRadius: 0,
-            boxShadow: "0 4px 20px -4px rgba(12, 39, 59, 0.04)",
+            boxShadow: isDarkMode ? "0 2px 14px rgba(0, 0, 0, 0.3)" : "0 2px 14px rgba(12, 39, 59, 0.04)",
             color: themeConfig.textMain,
             boxSizing: "border-box",
             justifyContent: "center",
             top: 0,
+            zIndex: 1100,
           }}
         >
-          <Toolbar sx={{ justifyContent: "space-between", px: { xs: 2, sm: 3 }, minHeight: `${HEADER_HEIGHT}px !important`, height: HEADER_HEIGHT }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Toolbar sx={{ justifyContent: "space-between", px: { xs: 1.5, sm: 3 }, minHeight: `${HEADER_HEIGHT}px !important`, height: HEADER_HEIGHT }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, overflow: "hidden" }}>
               {isMobile && (
-                <IconButton color="inherit" edge="start" onClick={() => setSidebarOpen(!sidebarOpen)} sx={{ mr: 1, borderRadius: "50%" }}>
+                <IconButton color="inherit" edge="start" onClick={() => setSidebarOpen(!sidebarOpen)} sx={{ mr: 0.5, borderRadius: "50%" }}>
                   <MenuIcon />
                 </IconButton>
               )}
 
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: themeConfig.textMain, display: { xs: "none", sm: "block" }, fontSize: "0.95rem", textTransform: "capitalize" }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: themeConfig.textMain, fontSize: { xs: "0.85rem", sm: "0.95rem" }, textTransform: "capitalize", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {user?.role === "SUPER_ADMIN"
                   ? "Grand Royale"
                   : user?.hotel?.name || "Hotel Management Portal"}
               </Typography>
             </Box>
 
-            {/* Right Tools & Profile */}
+            {/* Right Tools */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
               {getRoleChip(user?.role)}
+
+              {/* Light / Dark Mode Toggle Button */}
+              <Tooltip title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}>
+                <IconButton
+                  size="small"
+                  onClick={toggleThemeMode}
+                  sx={{
+                    bgcolor: isDarkMode ? "rgba(251, 191, 36, 0.15)" : themeConfig.champagne,
+                    color: isDarkMode ? "#FBBF24" : themeConfig.primaryDark,
+                    border: `1px solid ${themeConfig.border}`,
+                    borderRadius: "10px",
+                    width: 36,
+                    height: 36,
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+                    transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+                    "&:hover": {
+                      bgcolor: isDarkMode ? "rgba(251, 191, 36, 0.25)" : themeConfig.primaryGlow,
+                      transform: "scale(1.08) rotate(12deg)",
+                    },
+                  }}
+                >
+                  {isDarkMode ? (
+                    <LightMode fontSize="small" sx={{ fontSize: 20 }} />
+                  ) : (
+                    <DarkMode fontSize="small" sx={{ fontSize: 20 }} />
+                  )}
+                </IconButton>
+              </Tooltip>
 
               {/* Theme Palette Switcher Dropdown */}
               <Tooltip title="Quick Theme Switcher">
@@ -422,16 +457,6 @@ export default function DashboardLayout({
                   <Typography variant="subtitle2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
                     Theme Palettes
                   </Typography>
-                  <Button
-                    size="small"
-                    onClick={() => {
-                      setPaletteMenuAnchor(null);
-                      navigateToSettings();
-                    }}
-                    sx={{ fontSize: "0.72rem", p: 0, borderRadius: "6px" }}
-                  >
-                    Open Page
-                  </Button>
                 </Box>
                 <Divider sx={{ my: 0.5 }} />
                 {Object.entries(themePalettes).map(([key, pal]) => {
@@ -464,159 +489,6 @@ export default function DashboardLayout({
                   );
                 })}
               </Menu>
-
-              {/* Notification Icon & Rounded Badge Pin */}
-              <Tooltip title="Notifications">
-                <IconButton
-                  size="small"
-                  onClick={(e) => setNotifMenuAnchor(e.currentTarget)}
-                  sx={{
-                    color: themeConfig.textMuted,
-                    borderRadius: "10px",
-                    width: 36,
-                    height: 36,
-                    border: `1px solid ${themeConfig.border}`,
-                    bgcolor: "#FFFFFF",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
-                    transition: "all 0.2s ease",
-                    "&:hover": { bgcolor: themeConfig.champagne, transform: "translateY(-1px)" },
-                  }}
-                >
-                  <Badge
-                    badgeContent={2}
-                    color="primary"
-                    sx={{
-                      "& .MuiBadge-badge": {
-                        bgcolor: themeConfig.primary,
-                        color: "#FFFFFF",
-                        fontSize: "0.68rem",
-                        fontWeight: 800,
-                        borderRadius: "50%",
-                        minWidth: 18,
-                        height: 18,
-                        padding: "0 4px",
-                      },
-                    }}
-                  >
-                    <NotificationsOutlined fontSize="small" />
-                  </Badge>
-                </IconButton>
-              </Tooltip>
-
-              <Menu
-                anchorEl={notifMenuAnchor}
-                open={Boolean(notifMenuAnchor)}
-                onClose={() => setNotifMenuAnchor(null)}
-                slotProps={{
-                  paper: {
-                    sx: {
-                      width: 300,
-                      p: 1,
-                      borderRadius: "16px",
-                      border: `1px solid ${themeConfig.border}`,
-                      boxShadow: "0 16px 36px -6px rgba(12, 39, 59, 0.16), inset 0 1px 0 #FFFFFF",
-                    },
-                  },
-                }}
-              >
-                <Typography variant="subtitle2" sx={{ px: 2, py: 1, fontWeight: 800, color: themeConfig.textMain }}>
-                  Recent Notifications
-                </Typography>
-                <Divider sx={{ my: 0.5 }} />
-                <MenuItem onClick={() => setNotifMenuAnchor(null)} sx={{ borderRadius: "10px" }}>
-                  <ListItemIcon><CheckCircle fontSize="small" sx={{ color: themeConfig.success }} /></ListItemIcon>
-                  <Box>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, display: "block" }}>
-                      System Status Healthy
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.7rem" }}>
-                      All PMS nodes operational
-                    </Typography>
-                  </Box>
-                </MenuItem>
-              </Menu>
-
-              {/* Settings / Gear Icon -> Navigates to Settings Page */}
-              <Tooltip title="Settings & Profile Page">
-                <IconButton
-                  size="small"
-                  onClick={navigateToSettings}
-                  sx={{
-                    color: themeConfig.textMuted,
-                    borderRadius: "10px",
-                    width: 36,
-                    height: 36,
-                    border: `1px solid ${themeConfig.border}`,
-                    bgcolor: "#FFFFFF",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
-                    transition: "all 0.2s ease",
-                    "&:hover": { bgcolor: themeConfig.champagne, transform: "translateY(-1px)" },
-                  }}
-                >
-                  <SettingsIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-
-              {/* Profile Avatar & Menu (Rounded Circle) */}
-              <Tooltip title="User Account Menu">
-                <IconButton onClick={(e) => setUserMenuAnchor(e.currentTarget)} sx={{ p: 0, borderRadius: "10px" }}>
-                  <Avatar
-                    sx={{
-                      background: `linear-gradient(135deg, ${themeConfig.primary} 0%, ${themeConfig.primaryDark} 100%)`,
-                      width: 38,
-                      height: 38,
-                      fontSize: "0.9rem",
-                      fontWeight: 800,
-                      borderRadius: "10px",
-                      border: `2px solid #FFFFFF`,
-                      boxShadow: `0 4px 12px ${themeConfig.primaryGlow}`,
-                    }}
-                  >
-                    {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
-                  </Avatar>
-                </IconButton>
-              </Tooltip>
-
-              <Menu
-                anchorEl={userMenuAnchor}
-                open={Boolean(userMenuAnchor)}
-                onClose={() => setUserMenuAnchor(null)}
-                slotProps={{
-                  paper: {
-                    sx: {
-                      minWidth: 230,
-                      borderRadius: "16px",
-                      p: 0.5,
-                      border: `1px solid ${themeConfig.border}`,
-                      boxShadow: "0 16px 36px -6px rgba(12, 39, 59, 0.16), inset 0 1px 0 #FFFFFF",
-                    },
-                  },
-                }}
-              >
-                <Box sx={{ px: 2, py: 1.2 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                    {user?.name}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
-                    {user?.email}
-                  </Typography>
-                </Box>
-                <Divider sx={{ my: 0.5 }} />
-
-                <MenuItem onClick={navigateToSettings} sx={{ borderRadius: "10px" }}>
-                  <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: themeConfig.textMuted }} /></ListItemIcon>
-                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.85rem" }}>Profile & Settings</Typography>
-                </MenuItem>
-
-                <Divider sx={{ my: 0.5 }} />
-
-                <MenuItem onClick={onLogout} sx={{ color: themeConfig.danger, borderRadius: "10px" }}>
-                  <ListItemIcon sx={{ color: themeConfig.danger }}>
-                    <LogoutIcon fontSize="small" />
-                  </ListItemIcon>
-                  <Typography variant="body2" sx={{ fontWeight: 700, fontSize: "0.85rem", color: themeConfig.danger }}>Sign Out</Typography>
-                </MenuItem>
-              </Menu>
             </Box>
           </Toolbar>
         </AppBar>
@@ -631,9 +503,11 @@ export default function DashboardLayout({
                   maxWidth: 520,
                   textAlign: "center",
                   borderRadius: "20px",
-                  bgcolor: "#FFFFFF",
+                  bgcolor: themeConfig.bgCard,
                   border: `1.5px solid ${themeConfig.danger}`,
-                  boxShadow: "0 20px 45px -10px rgba(220, 38, 38, 0.15), inset 0 1px 0 #FFFFFF",
+                  boxShadow: isDarkMode
+                    ? "0 20px 45px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05)"
+                    : "0 20px 45px -10px rgba(220, 38, 38, 0.15), inset 0 1px 0 #FFFFFF",
                 }}
               >
                 <Box

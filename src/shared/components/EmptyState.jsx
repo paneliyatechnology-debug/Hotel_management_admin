@@ -1,7 +1,7 @@
 "use client";
 
 import { Box, Typography, Button } from "@mui/material";
-import { InboxOutlined } from "@mui/icons-material";
+import { InboxOutlined } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 
 export default function EmptyState({
@@ -12,7 +12,7 @@ export default function EmptyState({
   actionText,
   onAction,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
   const label = actionLabel || actionText;
 
   return (
@@ -24,7 +24,9 @@ export default function EmptyState({
         bgcolor: themeConfig.bgCard,
         borderRadius: "18px",
         border: `1px solid ${themeConfig.border}`,
-        boxShadow: "0 10px 25px -5px rgba(12, 39, 59, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.9)",
+        boxShadow: isDarkMode
+          ? "0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05)"
+          : "0 10px 25px -5px rgba(12, 39, 59, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.9)",
       }}
     >
       <Box
@@ -32,7 +34,9 @@ export default function EmptyState({
           width: 58,
           height: 58,
           borderRadius: "16px",
-          background: `linear-gradient(135deg, #FFFFFF 0%, ${themeConfig.champagne} 100%)`,
+          background: isDarkMode
+            ? `linear-gradient(135deg, ${themeConfig.bgCard} 0%, ${themeConfig.champagne || "rgba(255,255,255,0.05)"} 100%)`
+            : `linear-gradient(135deg, #FFFFFF 0%, ${themeConfig.champagne} 100%)`,
           color: themeConfig.primary,
           display: "flex",
           alignItems: "center",
@@ -40,7 +44,9 @@ export default function EmptyState({
           mx: "auto",
           mb: 2,
           border: `1px solid ${themeConfig.border}`,
-          boxShadow: `0 6px 16px -2px ${themeConfig.primaryGlow}, inset 0 1px 1px #FFFFFF`,
+          boxShadow: isDarkMode
+            ? `0 6px 16px -2px ${themeConfig.primaryGlow}`
+            : `0 6px 16px -2px ${themeConfig.primaryGlow}, inset 0 1px 1px #FFFFFF`,
         }}
       >
         <Icon sx={{ fontSize: 28 }} />

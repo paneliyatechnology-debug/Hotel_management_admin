@@ -48,7 +48,7 @@ import {
   Handshake,
   Search,
   FilterList,
-} from "@mui/icons-material";
+} from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
 import { useSocket } from "@/shared/context/SocketContext";

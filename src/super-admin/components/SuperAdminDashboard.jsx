@@ -13,7 +13,7 @@ import {
   Button,
   Chip,
 } from "@mui/material";
-import { WarningAmber, CheckCircle } from "@mui/icons-material";
+import { WarningAmber, CheckCircle } from "@/shared/icons";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
 import { useSocket } from "@/shared/context/SocketContext";
 import { useAppTheme } from "@/shared/context/ThemeContext";

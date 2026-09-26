@@ -46,7 +46,7 @@ import {
   Schedule,
   TrendingUp,
   MeetingRoom,
-} from "@mui/icons-material";
+} from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { apiRequest, API_ENDPOINTS } from "@/config/api";
 import EmptyState from "@/shared/components/EmptyState";

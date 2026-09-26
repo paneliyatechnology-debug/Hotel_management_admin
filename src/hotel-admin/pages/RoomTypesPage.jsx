@@ -67,10 +67,11 @@ import {
   Category,
   ViewModule,
   ViewList,
-} from "@mui/icons-material";
+} from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import StatusChip from "@/shared/components/StatusChip";
 import EmptyState from "@/shared/components/EmptyState";
+import { getAmenityIcon } from "@/shared/utils/amenityUtils";
 
 // Standard Popular Hotel Amenities with Icons & Labels
 export const POPULAR_AMENITIES = [
@@ -835,14 +836,19 @@ export default function RoomTypesPage({
                                       {roomAmenities.slice(0, 3).map((am, i) => (
                                         <Chip
                                           key={i}
+                                          icon={getAmenityIcon(am, 12)}
                                           label={am}
                                           size="small"
                                           sx={{
-                                            height: 20,
+                                            height: 22,
                                             fontSize: "0.65rem",
                                             fontWeight: 700,
-                                            bgcolor: "#F3F4F6",
-                                            color: "#374151",
+                                            bgcolor: isDarkMode ? "rgba(255,255,255,0.05)" : "#F3F4F6",
+                                            color: themeConfig.textMain,
+                                            border: `1px solid ${themeConfig.border}`,
+                                            "& .MuiChip-icon": {
+                                              color: `${themeConfig.primary} !important`,
+                                            },
                                           }}
                                         />
                                       ))}
@@ -1204,14 +1210,19 @@ export default function RoomTypesPage({
                             {roomAmenities.slice(0, 3).map((am, i) => (
                               <Chip
                                 key={i}
+                                icon={getAmenityIcon(am, 12)}
                                 label={am}
                                 size="small"
                                 sx={{
-                                  height: 20,
+                                  height: 22,
                                   fontSize: "0.65rem",
                                   fontWeight: 700,
-                                  bgcolor: "#F3F4F6",
-                                  color: "#374151",
+                                  bgcolor: isDarkMode ? "rgba(255,255,255,0.05)" : "#F3F4F6",
+                                  color: themeConfig.textMain,
+                                  border: `1px solid ${themeConfig.border}`,
+                                  "& .MuiChip-icon": {
+                                    color: `${themeConfig.primary} !important`,
+                                  },
                                 }}
                               />
                             ))}

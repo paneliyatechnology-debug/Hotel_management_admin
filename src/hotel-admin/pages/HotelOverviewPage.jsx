@@ -49,7 +49,7 @@ import {
   Bed,
   CalendarToday,
   Payments,
-} from "@mui/icons-material";
+} from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { API_ENDPOINTS } from "@/config/api";
 import StatCard from "@/shared/components/StatCard";

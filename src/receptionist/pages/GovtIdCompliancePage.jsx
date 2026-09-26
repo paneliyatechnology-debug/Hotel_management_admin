@@ -42,7 +42,7 @@ import {
   Person,
   CheckCircle,
   Badge as BadgeIcon,
-} from "@mui/icons-material";
+} from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import StatusChip from "@/shared/components/StatusChip";
 import EmptyState from "@/shared/components/EmptyState";
@@ -637,7 +637,8 @@ export default function GovtIdCompliancePage({
             }}
             sx={{
               borderTop: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
+              bgcolor: themeConfig.bgCard,
+              color: themeConfig.textMain,
             }}
           />
         )}

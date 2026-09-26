@@ -15,7 +15,7 @@ import {
   Button,
   Avatar,
 } from "@mui/material";
-import { VerifiedUser, Block, Business } from "@mui/icons-material";
+import { VerifiedUser, Block, Business } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import StatusChip from "@/shared/components/StatusChip";
 import EmptyState from "@/shared/components/EmptyState";
@@ -160,7 +160,8 @@ export default function PendingApprovalsPage({
             }}
             sx={{
               borderTop: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
+              bgcolor: themeConfig.bgCard,
+              color: themeConfig.textMain,
               borderRadius: "0 0 20px 20px",
             }}
           />

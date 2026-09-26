@@ -26,7 +26,7 @@ import {
   Visibility,
   VisibilityOff,
   Key as KeyIcon,
-} from "@mui/icons-material";
+} from "@/shared/icons";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 

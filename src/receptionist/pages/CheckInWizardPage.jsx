@@ -66,9 +66,19 @@ import {
   Receipt,
   Description,
   Close,
-} from "@mui/icons-material";
+  Favorite,
+  FamilyRestroom,
+  SingleBed,
+  Diamond,
+  Villa,
+  Work,
+  Draw,
+  Fingerprint,
+} from "@/shared/icons";
+import DigitalSignaturePad from "@/shared/components/DigitalSignaturePad";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { formatTime12Hour } from "@/shared/utils/timeUtils";
+import { getAmenityIcon } from "@/shared/utils/amenityUtils";
 import { apiRequest, API_ENDPOINTS } from "@/config/api";
 
 const CHECKIN_STEPS = [
@@ -123,8 +133,9 @@ export default function CheckInWizardPage({
   guests = [],
   bookings = [],
   onFinalCheckIn,
+  onBackToRooms,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
   const checkInTimeFormatted = formatTime12Hour(hotelSettings?.checkInTime || "14:00");
   const checkOutTimeFormatted = formatTime12Hour(hotelSettings?.checkOutTime || "12:00");
   const timezoneStr = hotelSettings?.timezone || "Asia/Kolkata";
@@ -136,8 +147,9 @@ export default function CheckInWizardPage({
   const [liveTime, setLiveTime] = useState(getCurrentLocalTime());
   const [liveDate, setLiveDate] = useState(getTodayLocalDate());
 
-  // Form validation feedback state
+  // Form validation feedback & Toast state
   const [stepError, setStepError] = useState("");
+  const [toast, setToast] = useState({ open: false, message: "", severity: "warning" });
 
   useEffect(() => {
     const initialTime = getCurrentLocalTime();
@@ -211,6 +223,100 @@ export default function CheckInWizardPage({
     return rt?.name || room.category || room.type || `Room ${room.roomNumber}`;
   };
 
+  // Dynamic Room Category Icon & Theme Config
+  const getRoomCategoryIconConfig = (room, customSize = 22) => {
+    const catName = (getRoomCategoryName(room) || "").toLowerCase();
+
+    // Couple / Copol / Honeymoon / Romantic
+    if (
+      catName.includes("coupl") ||
+      catName.includes("copol") ||
+      catName.includes("honey") ||
+      catName.includes("romant") ||
+      catName.includes("love")
+    ) {
+      return {
+        icon: <Favorite sx={{ fontSize: customSize }} />,
+        color: "#E11D48",
+        bg: "rgba(225, 29, 72, 0.12)",
+        label: "Couple / Romantic",
+      };
+    }
+    // Family Room
+    if (
+      catName.includes("fam") ||
+      catName.includes("family") ||
+      catName.includes("famaliy") ||
+      catName.includes("group") ||
+      catName.includes("quad")
+    ) {
+      return {
+        icon: <FamilyRestroom sx={{ fontSize: customSize }} />,
+        color: "#059669",
+        bg: "rgba(5, 150, 105, 0.12)",
+        label: "Family Suite",
+      };
+    }
+    // Super Deluxe / Deluxe / Luxury / Suite / VIP / Presidential
+    if (
+      catName.includes("super") ||
+      catName.includes("deluxe") ||
+      catName.includes("lux") ||
+      catName.includes("suite") ||
+      catName.includes("vip") ||
+      catName.includes("presid") ||
+      catName.includes("royal") ||
+      catName.includes("prem")
+    ) {
+      return {
+        icon: <Diamond sx={{ fontSize: customSize }} />,
+        color: "#D97706",
+        bg: "rgba(217, 119, 6, 0.12)",
+        label: "Premium Luxury",
+      };
+    }
+    // Villa / Cottage / Penthouse / Resort
+    if (
+      catName.includes("villa") ||
+      catName.includes("cottage") ||
+      catName.includes("penthouse") ||
+      catName.includes("resort") ||
+      catName.includes("bungalow")
+    ) {
+      return {
+        icon: <Villa sx={{ fontSize: customSize }} />,
+        color: "#0891B2",
+        bg: "rgba(8, 145, 178, 0.12)",
+        label: "Villa / Resort",
+      };
+    }
+    // Single / Solo
+    if (catName.includes("single") || catName.includes("solo") || catName.includes("one bed")) {
+      return {
+        icon: <SingleBed sx={{ fontSize: customSize }} />,
+        color: "#6366F1",
+        bg: "rgba(99, 102, 241, 0.12)",
+        label: "Single Bed",
+      };
+    }
+    // Business / Corporate / Executive
+    if (catName.includes("business") || catName.includes("exec") || catName.includes("corporate")) {
+      return {
+        icon: <Work sx={{ fontSize: customSize }} />,
+        color: "#2563EB",
+        bg: "rgba(37, 99, 235, 0.12)",
+        label: "Business Class",
+      };
+    }
+    // Default / Standard Room
+    return {
+      icon: <KingBed sx={{ fontSize: customSize }} />,
+      color: "#059669",
+      bg: "rgba(16, 185, 129, 0.12)",
+      label: "Standard Room",
+    };
+  };
+
   // Helper to extract room nightly tariff
   const getRoomTariff = (room) => {
     if (!room) return 3000;
@@ -250,18 +356,37 @@ export default function CheckInWizardPage({
     };
   };
 
+  // Helper to extract room amenities list
+  const getRoomAmenitiesList = (r) => {
+    if (Array.isArray(r?.amenities) && r.amenities.length > 0) {
+      return r.amenities;
+    }
+    if (Array.isArray(r?.roomType?.amenities) && r.roomType.amenities.length > 0) {
+      return r.roomType.amenities;
+    }
+    if (typeof r?.amenities === "string" && r.amenities.trim()) {
+      return r.amenities.split(",").map((s) => s.trim());
+    }
+    return ["AC", "Free Wi-Fi", "Smart TV", "Attached Bath"];
+  };
+
   // Selected Rooms List calculation
   const selectedRoomIds = (checkInData.roomIds && checkInData.roomIds.length > 0)
     ? checkInData.roomIds
     : checkInData.roomId
-    ? [checkInData.roomId]
-    : [];
+      ? [checkInData.roomId]
+      : [];
 
-  const selectedRoomsList = rooms.filter((r) =>
-    selectedRoomIds.includes(r._id) ||
-    (checkInData.selectedRoomNumbers && checkInData.selectedRoomNumbers.includes(String(r.roomNumber))) ||
-    (checkInData.roomNumber && String(checkInData.roomNumber).split(",").map((s) => s.trim()).includes(String(r.roomNumber)))
-  );
+  const selectedRoomsList = (() => {
+    const rawNumbers = checkInData.selectedRoomNumbers || (checkInData.roomNumber ? String(checkInData.roomNumber).split(",").map((s) => s.trim()) : []);
+    const matched = rooms.filter((r) =>
+      selectedRoomIds.includes(r._id) ||
+      rawNumbers.includes(String(r.roomNumber))
+    );
+    if (matched.length > 0) return matched;
+    if (checkInData.selectedRooms && checkInData.selectedRooms.length > 0) return checkInData.selectedRooms;
+    return [];
+  })();
 
   const totalPartySize = 1 + (checkInData.accompanyingGuests?.length || 0);
 
@@ -533,7 +658,7 @@ export default function CheckInWizardPage({
   // Remove a room from selection
   const handleRemoveSelectedRoom = (roomIdToRemove) => {
     if (selectedRoomIds.length <= 1) {
-      alert("At least one room must remain allocated.");
+      showErrorAlert("At least one room must remain allocated.", "warning");
       return;
     }
     const newIds = selectedRoomIds.filter((id) => id !== roomIdToRemove);
@@ -596,12 +721,10 @@ export default function CheckInWizardPage({
     }));
   };
 
-  // Step Validation Helpers & Error Alerts
-  const showErrorAlert = (msg) => {
+  // Step Validation Helpers & Error Alerts (Toast Notification System)
+  const showErrorAlert = (msg, severity = "warning") => {
     setStepError(msg);
-    if (typeof window !== "undefined") {
-      alert(msg);
-    }
+    setToast({ open: true, message: msg, severity });
   };
 
   const handleNext = () => {
@@ -678,26 +801,29 @@ export default function CheckInWizardPage({
 
   return (
     <Box sx={{ px: { xs: 1.5, sm: 3 }, py: { xs: 2, sm: 3 } }}>
-      {/* Top Floating Snackbar Error Alert */}
+      {/* Sleek Top Floating Toast Notification */}
       <Snackbar
-        open={Boolean(stepError)}
-        autoHideDuration={7000}
-        onClose={() => setStepError("")}
+        open={toast.open}
+        autoHideDuration={5000}
+        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        sx={{ zIndex: 99999 }}
       >
         <Alert
-          onClose={() => setStepError("")}
-          severity="error"
+          onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+          severity={toast.severity || "warning"}
           variant="filled"
           sx={{
             width: "100%",
             fontWeight: 800,
-            fontSize: "0.95rem",
-            boxShadow: "0 10px 30px rgba(220, 38, 38, 0.45)",
+            fontSize: "0.92rem",
+            boxShadow: "0 10px 30px rgba(0, 0, 0, 0.25)",
             borderRadius: "14px",
+            display: "flex",
+            alignItems: "center",
           }}
         >
-          {stepError}
+          {toast.message}
         </Alert>
       </Snackbar>
 
@@ -714,15 +840,34 @@ export default function CheckInWizardPage({
         }}
       >
         {/* Wizard Header Banner */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 2, mb: 1 }}>
-          <div>
-            <Typography variant="h5" sx={{ fontWeight: 900, color: themeConfig.textMain, mb: 0.5, letterSpacing: -0.5 }}>
-              4-Step Express Check-In & Guest Allocation
-            </Typography>
-            <Typography variant="body2" sx={{ color: themeConfig.textMuted }}>
-              Register main guest, add accompanying members, configure stay schedule, and complete instant billing.
-            </Typography>
-          </div>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 2, mb: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            {onBackToRooms && (
+              <Button
+                variant="outlined"
+                startIcon={<ArrowBack />}
+                onClick={onBackToRooms}
+                sx={{
+                  borderRadius: "12px",
+                  fontWeight: 800,
+                  fontSize: "0.82rem",
+                  borderColor: themeConfig.border,
+                  color: themeConfig.textMain,
+                  "&:hover": { bgcolor: themeConfig.champagne, borderColor: themeConfig.primary },
+                }}
+              >
+                Back to Rooms
+              </Button>
+            )}
+            <div>
+              <Typography variant="h5" sx={{ fontWeight: 900, color: themeConfig.textMain, mb: 0.2, letterSpacing: -0.5 }}>
+                Express Check-In & Guest Allocation
+              </Typography>
+              <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
+                Fill guest details, check-in duration, and complete allocation.
+              </Typography>
+            </div>
+          </Box>
 
           {isVipGuest && (
             <Chip
@@ -739,27 +884,394 @@ export default function CheckInWizardPage({
           )}
         </Box>
 
-        {/* 4-Step Stepper Navigation */}
-        <Stepper activeStep={activeStep} alternativeLabel sx={{ my: 3.5 }}>
-          {CHECKIN_STEPS.map((label, index) => (
-            <Step key={label}>
-              <StepLabel
-                slotProps={{
-                  stepIcon: {
-                    sx: {
-                      "&.Mui-active": { color: themeConfig.primary },
-                      "&.Mui-completed": { color: themeConfig.success },
-                    },
+        {/* ========================================================================= */}
+        {/* LUXURY STEP-BY-STEP CONNECTED HORIZONTAL STEPPER (AADI LINE COLOR FILL)   */}
+        {/* ========================================================================= */}
+        <Box sx={{ mb: 4, mt: 1.5 }}>
+          {/* Horizontal Nodes & Connecting Segment Lines Chain */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              px: { xs: 0.5, sm: 2 },
+            }}
+          >
+            {CHECKIN_STEPS.map((label, index) => {
+              const isCompleted = activeStep > index;
+              const isCurrent = activeStep === index;
+              const isUpcoming = activeStep < index;
+              const isLineFilled = activeStep > index; // Connecting line to next node fills when this step is passed
+
+              const stepIcons = [
+                <Person key="p" sx={{ fontSize: 20 }} />,
+                <KingBed key="k" sx={{ fontSize: 20 }} />,
+                <CreditCard key="c" sx={{ fontSize: 20 }} />,
+                <VerifiedUser key="v" sx={{ fontSize: 20 }} />,
+              ];
+
+              return (
+                <Box
+                  key={label}
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    flex: index < CHECKIN_STEPS.length - 1 ? 1 : 0,
+                  }}
+                >
+                  {/* Step Node Circle Badge & Label */}
+                  <Box
+                    onClick={() => {
+                      if (index < activeStep) setActiveStep(index);
+                    }}
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      cursor: index < activeStep ? "pointer" : "default",
+                      minWidth: { xs: 65, sm: 120 },
+                    }}
+                  >
+                    <Avatar
+                      sx={{
+                        width: { xs: 38, sm: 46 },
+                        height: { xs: 38, sm: 46 },
+                        fontSize: { xs: "0.85rem", sm: "0.95rem" },
+                        fontWeight: 900,
+                        bgcolor: isCompleted
+                          ? "#10B981"
+                          : isCurrent
+                            ? themeConfig.primary
+                            : "#FFFFFF",
+                        color: isCompleted || isCurrent ? "#FFFFFF" : "#94A3B8",
+                        border: isCurrent
+                          ? `3px solid #FFFFFF`
+                          : isCompleted
+                            ? "3px solid #FFFFFF"
+                            : "3px solid #E2E8F0",
+                        boxShadow: isCurrent
+                          ? `0 0 0 4px ${themeConfig.primaryGlow}, 0 6px 16px rgba(11, 142, 224, 0.35)`
+                          : isCompleted
+                            ? "0 0 0 4px rgba(16, 185, 129, 0.2), 0 4px 12px rgba(16, 185, 129, 0.25)"
+                            : "0 2px 6px rgba(0,0,0,0.04)",
+                        transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+                        transform: isCurrent ? "scale(1.1)" : "scale(1)",
+                        mb: 1,
+                      }}
+                    >
+                      {isCompleted ? <Check sx={{ fontSize: { xs: 20, sm: 24 }, fontWeight: 900 }} /> : stepIcons[index]}
+                    </Avatar>
+
+                    {/* Step Title & Status */}
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: isCurrent ? 900 : isCompleted ? 800 : 700,
+                        color: isCurrent
+                          ? themeConfig.primary
+                          : isCompleted
+                            ? "#065F46"
+                            : themeConfig.textMuted,
+                        fontSize: { xs: "0.72rem", sm: "0.78rem" },
+                        textAlign: "center",
+                        lineHeight: 1.2,
+                        whiteSpace: { xs: "normal", sm: "nowrap" },
+                      }}
+                    >
+                      Step {index + 1}
+                    </Typography>
+
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: isCurrent ? 800 : 600,
+                        color: isCurrent
+                          ? themeConfig.textMain
+                          : isCompleted
+                            ? themeConfig.textMain
+                            : themeConfig.textMuted,
+                        fontSize: { xs: "0.68rem", sm: "0.74rem" },
+                        textAlign: "center",
+                        lineHeight: 1.2,
+                        mt: 0.2,
+                        display: { xs: isCurrent ? "block" : "none", sm: "block" },
+                      }}
+                    >
+                      {label}
+                    </Typography>
+                  </Box>
+
+                  {/* Horizontal Connecting Line (Aadi Line filling color step-by-step) */}
+                  {index < CHECKIN_STEPS.length - 1 && (
+                    <Box
+                      sx={{
+                        flex: 1,
+                        mt: { xs: 2.2, sm: 2.6 },
+                        mx: { xs: 0.5, sm: 1.5 },
+                        height: 5,
+                        bgcolor: "#E2E8F0",
+                        borderRadius: "10px",
+                        position: "relative",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          height: "100%",
+                          width: isLineFilled ? "100%" : "0%",
+                          background: "linear-gradient(90deg, #10B981 0%, #0B8EE0 100%)",
+                          boxShadow: "0 0 8px rgba(16, 185, 129, 0.6)",
+                          borderRadius: "10px",
+                          transition: "width 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+                        }}
+                      />
+                    </Box>
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+        </Box>
+
+        {/* ========================================================================= */}
+        {/* SELECTED ROOM(S) DETAILS BANNER WITH ROOM AMENITIES & COMPACT PROPORTION  */}
+        {/* ========================================================================= */}
+        {selectedRoomsList.length > 0 ? (
+          selectedRoomsList.length === 1 ? (
+            (() => {
+              const r = selectedRoomsList[0];
+              const cap = calculateRoomCapacity(r);
+              const amenities = getRoomAmenitiesList(r);
+              const tariff = getRoomTariff(r);
+              const iconCfg = getRoomCategoryIconConfig(r, 24);
+
+              return (
+                <Card
+                  sx={{
+                    p: { xs: 1.5, sm: 1.8 },
+                    mb: 3,
+                    borderRadius: "16px",
+                    border: `1.5px solid ${iconCfg.color}40`,
+                    background: `linear-gradient(135deg, #FFFFFF 0%, ${iconCfg.bg} 100%)`,
+                    boxShadow: "0 4px 16px rgba(0, 0, 0, 0.05)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 2,
+                  }}
+                >
+                  {/* Left: Room Icon + Number + Category + Floor */}
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 170 }}>
+                    <Avatar
+                      sx={{
+                        bgcolor: iconCfg.bg,
+                        color: iconCfg.color,
+                        width: 44,
+                        height: 44,
+                        borderRadius: "12px",
+                        border: `1px solid ${iconCfg.color}30`,
+                      }}
+                    >
+                      {iconCfg.icon}
+                    </Avatar>
+
+                    <div>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 900, color: themeConfig.textMain, lineHeight: 1.15 }}>
+                        Room #{r.roomNumber}
+                      </Typography>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: iconCfg.color, display: "block" }}>
+                        {getRoomCategoryName(r)} &bull; Floor {r.floor || 1}
+                      </Typography>
+                    </div>
+                  </Box>
+
+                  {/* Middle: Room Amenities & Features Pills */}
+                  <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 0.8, flex: 1, justifyContent: { xs: "flex-start", md: "center" } }}>
+                    <Chip
+                      icon={<People sx={{ "&&": { fontSize: 15, color: themeConfig.primaryDark } }} />}
+                      label={`${cap.standardCapacity} Guests`}
+                      size="small"
+                      sx={{ fontWeight: 800, fontSize: "0.72rem", height: 26, bgcolor: themeConfig.champagne, color: themeConfig.primaryDark }}
+                    />
+                    <Chip
+                      icon={<KingBed sx={{ "&&": { fontSize: 15, color: themeConfig.primaryDark } }} />}
+                      label={cap.bedType || "King Bed"}
+                      size="small"
+                      sx={{ fontWeight: 800, fontSize: "0.72rem", height: 26, bgcolor: "rgba(11, 142, 224, 0.08)", color: themeConfig.primary }}
+                    />
+                    {amenities.slice(0, 4).map((am, i) => (
+                      <Chip
+                        key={i}
+                        icon={getAmenityIcon(am, 13)}
+                        label={am}
+                        size="small"
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: "0.7rem",
+                          height: 24,
+                          bgcolor: isDarkMode ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+                          color: themeConfig.textMain,
+                          border: `1px solid ${themeConfig.border}`,
+                          "& .MuiChip-icon": {
+                            color: `${themeConfig.primary} !important`,
+                          },
+                        }}
+                      />
+                    ))}
+                  </Box>
+
+                  {/* Right: Tariff / night + Check Badge */}
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.8, minWidth: 140, justifyContent: "flex-end" }}>
+                    <Box sx={{ textAlign: "right" }}>
+                      <Typography variant="h6" sx={{ fontWeight: 900, color: themeConfig.textMain, lineHeight: 1 }}>
+                        ₹{Number(tariff).toLocaleString()}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontWeight: 800, display: "block", fontSize: "0.7rem" }}>
+                        / night
+                      </Typography>
+                    </Box>
+
+                    <Avatar
+                      sx={{
+                        bgcolor: "#10B981",
+                        color: "#FFFFFF",
+                        width: 34,
+                        height: 34,
+                        boxShadow: "0 2px 8px rgba(16, 185, 129, 0.35)",
+                      }}
+                    >
+                      <Check sx={{ fontSize: 20, fontWeight: 900 }} />
+                    </Avatar>
+                  </Box>
+                </Card>
+              );
+            })()
+          ) : (
+            <Box sx={{ mb: 3 }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.2, flexWrap: "wrap", gap: 1 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.textMain, textTransform: "uppercase", letterSpacing: 0.5, fontSize: "0.78rem" }}>
+                  Allocated Rooms ({selectedRoomsList.length} Rooms Selected)
+                </Typography>
+                <Chip
+                  label={`Combined: ₹${selectedRoomsList.reduce((sum, r) => sum + getRoomTariff(r), 0).toLocaleString()} / night`}
+                  size="small"
+                  sx={{ bgcolor: themeConfig.champagne, color: themeConfig.primaryDark, fontWeight: 800 }}
+                />
+              </Box>
+
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: selectedRoomsList.length === 2 ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
                   },
+                  gap: 1.5,
                 }}
               >
-                <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                  Step {index + 1}: {label}
-                </Typography>
-              </StepLabel>
-            </Step>
-          ))}
-        </Stepper>
+                {selectedRoomsList.map((room) => {
+                  const tariff = getRoomTariff(room);
+                  const cap = calculateRoomCapacity(room);
+                  const amenities = getRoomAmenitiesList(room);
+                  const iconCfg = getRoomCategoryIconConfig(room, 20);
+
+                  return (
+                    <Card
+                      key={room._id || room.roomNumber}
+                      sx={{
+                        p: 1.5,
+                        borderRadius: "14px",
+                        border: `1.5px solid ${iconCfg.color}40`,
+                        background: `linear-gradient(135deg, #FFFFFF 0%, ${iconCfg.bg} 100%)`,
+                        boxShadow: "0 3px 10px rgba(0, 0, 0, 0.04)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                      }}
+                    >
+                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+                          <Avatar
+                            sx={{
+                              bgcolor: iconCfg.bg,
+                              color: iconCfg.color,
+                              width: 36,
+                              height: 36,
+                              borderRadius: "10px",
+                            }}
+                          >
+                            {iconCfg.icon}
+                          </Avatar>
+                          <div>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.textMain, lineHeight: 1.1 }}>
+                              Room #{room.roomNumber}
+                            </Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: iconCfg.color }}>
+                              {getRoomCategoryName(room)}
+                            </Typography>
+                          </div>
+                        </Box>
+
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Box sx={{ textAlign: "right" }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.textMain, lineHeight: 1 }}>
+                              ₹{Number(tariff).toLocaleString()}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontWeight: 700, fontSize: "0.65rem" }}>
+                              / night
+                            </Typography>
+                          </Box>
+
+                          {selectedRoomsList.length > 1 && (
+                            <IconButton
+                              size="small"
+                              onClick={() => handleRemoveSelectedRoom(room._id)}
+                              sx={{ p: 0.2, color: themeConfig.danger, "&:hover": { bgcolor: "rgba(239, 68, 68, 0.1)" } }}
+                            >
+                              <Close sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          )}
+                        </Box>
+                      </Box>
+
+                      {/* Amenities Pills */}
+                      <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
+                        <Chip
+                          label={`${cap.standardCapacity} Guests • ${cap.bedType || "King Bed"}`}
+                          size="small"
+                          sx={{ height: 20, fontSize: "0.65rem", fontWeight: 800, bgcolor: themeConfig.champagne, color: themeConfig.primaryDark }}
+                        />
+                        {amenities.slice(0, 3).map((am, idx) => (
+                          <Chip
+                            key={idx}
+                            icon={getAmenityIcon(am, 12)}
+                            label={am}
+                            size="small"
+                            sx={{
+                              height: 22,
+                              fontSize: "0.65rem",
+                              fontWeight: 700,
+                              bgcolor: isDarkMode ? "rgba(255, 255, 255, 0.05)" : "rgba(0,0,0,0.04)",
+                              color: themeConfig.textMain,
+                              border: `1px solid ${themeConfig.border}`,
+                              "& .MuiChip-icon": {
+                                color: `${themeConfig.primary} !important`,
+                              },
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Card>
+                  );
+                })}
+              </Box>
+            </Box>
+          )
+        ) : null}
 
         {/* ========================================================================= */}
         {/* STEP 1: GUEST & ACCOMPANYING MEMBERS PROFILE + ID VERIFICATION            */}
@@ -797,7 +1309,7 @@ export default function CheckInWizardPage({
                   <TextField
                     fullWidth
                     size="small"
-                    label="Primary Guest Full Name *"
+                    label="Primary Guest Full Name"
                     placeholder="e.g. Rahul Sharma"
                     value={checkInData.fullName}
                     onChange={(e) => setCheckInData({ ...checkInData, fullName: e.target.value })}
@@ -810,7 +1322,7 @@ export default function CheckInWizardPage({
                   <TextField
                     fullWidth
                     size="small"
-                    label="Mobile Phone Number *"
+                    label="Mobile Phone Number"
                     placeholder="e.g. 9876543210"
                     value={checkInData.mobile}
                     onChange={(e) => handlePhoneChange(e.target.value)}
@@ -828,7 +1340,7 @@ export default function CheckInWizardPage({
                     placeholder="e.g. rahul.sharma@example.com"
                     value={checkInData.email}
                     onChange={(e) => setCheckInData({ ...checkInData, email: e.target.value })}
-                    helperText="📧 Booking confirmation, room amenities & instructions will be emailed here"
+                    helperText="Booking confirmation, room amenities & instructions will be emailed here"
                   />
                 </Grid>
 
@@ -898,7 +1410,7 @@ export default function CheckInWizardPage({
                       select
                       fullWidth
                       size="small"
-                      label="Govt ID Type *"
+                      label="Govt ID Type"
                       value={checkInData.govtIdType || "AADHAAR"}
                       onChange={(e) => setCheckInData({ ...checkInData, govtIdType: e.target.value })}
                     >
@@ -914,7 +1426,7 @@ export default function CheckInWizardPage({
                     <TextField
                       fullWidth
                       size="small"
-                      label="Govt ID Number / Document *"
+                      label="Govt ID Number / Document"
                       placeholder={checkInData.govtIdType === "AADHAAR" ? "e.g. 1234 5678 9012" : "e.g. DL-0420110012345"}
                       value={checkInData.govtIdNumber || ""}
                       onChange={(e) => {
@@ -936,7 +1448,7 @@ export default function CheckInWizardPage({
                               mt: 0.3,
                             }}
                           >
-                            {validateAadhaar(checkInData.govtIdNumber).isValid ? "🟢 Valid 12-Digit Aadhaar Number" : `⚠️ ${validateAadhaar(checkInData.govtIdNumber).message}`}
+                            {validateAadhaar(checkInData.govtIdNumber).isValid ? "Valid 12-Digit Aadhaar Number" : validateAadhaar(checkInData.govtIdNumber).message}
                           </Typography>
                         ) : "Official document serial number"
                       }
@@ -949,7 +1461,7 @@ export default function CheckInWizardPage({
                   <Button
                     variant={!checkInData.frontImage ? "contained" : "outlined"}
                     component="label"
-                    startIcon={<CloudUpload />}
+                    startIcon={checkInData.frontImage ? <Refresh /> : <CloudUpload />}
                     size="small"
                     sx={{
                       borderRadius: "10px",
@@ -963,25 +1475,25 @@ export default function CheckInWizardPage({
                       },
                     }}
                   >
-                    {checkInData.frontImage ? "🔄 Change Front Photo" : "📷 Upload ID Front Photo *"}
+                    {checkInData.frontImage ? "Change Front Photo" : "Upload ID Front Photo"}
                     <input type="file" hidden accept="image/*" onChange={(e) => handleMainGuestImageUpload(e, "front")} />
                   </Button>
 
                   <Button
                     variant="outlined"
                     component="label"
-                    startIcon={<CloudUpload />}
+                    startIcon={checkInData.backImage ? <Refresh /> : <CloudUpload />}
                     size="small"
                     sx={{ borderRadius: "10px", fontWeight: 700, borderColor: themeConfig.border }}
                   >
-                    {checkInData.backImage ? "🔄 Change Back Photo" : "Upload ID Back Photo"}
+                    {checkInData.backImage ? "Change Back Photo" : "Upload ID Back Photo"}
                     <input type="file" hidden accept="image/*" onChange={(e) => handleMainGuestImageUpload(e, "back")} />
                   </Button>
 
                   {/* ID Upload Status / Mandatory Badge */}
                   {!checkInData.frontImage ? (
                     <Chip
-                      label="⚠️ ID Front Photo Required to unlock Step 2"
+                      label="ID Front Photo Required to unlock Step 2"
                       size="small"
                       sx={{
                         fontWeight: 800,
@@ -994,7 +1506,7 @@ export default function CheckInWizardPage({
                     />
                   ) : (
                     <Chip
-                      label="✅ ID Proof Attached (Ready for Step 2)"
+                      label="ID Proof Attached (Ready for Step 2)"
                       size="small"
                       sx={{
                         fontWeight: 800,
@@ -1114,6 +1626,18 @@ export default function CheckInWizardPage({
                     )}
                   </Box>
                 )}
+
+                {/* Main Guest Digital E-Signature Pad */}
+                <Box sx={{ mt: 3, pt: 2.5, borderTop: `1px dashed ${themeConfig.border}` }}>
+                  <DigitalSignaturePad
+                    title="Main Guest Signature (ડિજિટલ સહી)"
+                    signerName={checkInData.fullName || "Primary Guest"}
+                    signerRole="Primary Guest"
+                    value={checkInData.guestSignature}
+                    onChange={(sig) => setCheckInData((prev) => ({ ...prev, guestSignature: sig }))}
+                    themeConfig={themeConfig}
+                  />
+                </Box>
               </Box>
             </Paper>
 
@@ -1157,7 +1681,7 @@ export default function CheckInWizardPage({
                     px: 2,
                   }}
                 >
-                  + Add Member / Co-Guest
+                  Add Member / Co-Guest
                 </Button>
               </Box>
 
@@ -1167,7 +1691,7 @@ export default function CheckInWizardPage({
                     No accompanying members added. (Single Guest Stay)
                   </Typography>
                   <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
-                    If checking in as a couple, family, or group, click <strong>"+ Add Member / Co-Guest"</strong> above.
+                    If checking in as a couple, family, or group, click <strong>"Add Member / Co-Guest"</strong> above.
                   </Typography>
                 </Box>
               ) : (
@@ -1208,7 +1732,7 @@ export default function CheckInWizardPage({
                           <TextField
                             fullWidth
                             size="small"
-                            label="Member Full Name *"
+                            label="Member Full Name"
                             placeholder="e.g. Priya Sharma"
                             value={member.name}
                             onChange={(e) => handleUpdateMember(member.id, "name", e.target.value)}
@@ -1308,7 +1832,7 @@ export default function CheckInWizardPage({
                           <TextField
                             fullWidth
                             size="small"
-                            label="ID Proof Number *"
+                            label="ID Proof Number"
                             placeholder={member.idType === "AADHAAR" ? "1234 5678 9012" : "Document #"}
                             value={member.idNumber || ""}
                             onChange={(e) => {
@@ -1328,7 +1852,7 @@ export default function CheckInWizardPage({
                                     display: "block",
                                   }}
                                 >
-                                  {validateAadhaar(member.idNumber).isValid ? "🟢 Valid (12-Digit)" : `⚠️ ${validateAadhaar(member.idNumber).message}`}
+                                  {validateAadhaar(member.idNumber).isValid ? "Valid (12-Digit)" : validateAadhaar(member.idNumber).message}
                                 </Typography>
                               ) : null
                             }
@@ -1341,27 +1865,27 @@ export default function CheckInWizardPage({
                         <Button
                           variant="outlined"
                           component="label"
-                          startIcon={<CloudUpload />}
+                          startIcon={member.frontImage ? <Refresh /> : <CloudUpload />}
                           size="small"
                           sx={{ borderRadius: "8px", fontSize: "0.72rem", fontWeight: 700, borderColor: themeConfig.border }}
                         >
-                          {member.frontImage ? "🔄 Change Front Photo" : "Upload Member Front ID"}
+                          {member.frontImage ? "Change Front Photo" : "Upload Member Front ID"}
                           <input type="file" hidden accept="image/*" onChange={(e) => handleMemberImageUpload(e, member.id, "front")} />
                         </Button>
 
                         <Button
                           variant="outlined"
                           component="label"
-                          startIcon={<CloudUpload />}
+                          startIcon={member.backImage ? <Refresh /> : <CloudUpload />}
                           size="small"
                           sx={{ borderRadius: "8px", fontSize: "0.72rem", fontWeight: 700, borderColor: themeConfig.border }}
                         >
-                          {member.backImage ? "🔄 Change Back Photo" : "Upload Member Back ID"}
+                          {member.backImage ? "Change Back Photo" : "Upload Member Back ID"}
                           <input type="file" hidden accept="image/*" onChange={(e) => handleMemberImageUpload(e, member.id, "back")} />
                         </Button>
                       </Box>
 
-                      {/* Member Photo Previews (Medium Width & Height) */}
+                      {/* Member Photo Previews */}
                       {(member.frontImage || member.backImage) && (
                         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mt: 1.5 }}>
                           {member.frontImage && (
@@ -1467,6 +1991,28 @@ export default function CheckInWizardPage({
                           )}
                         </Box>
                       )}
+
+                      {/* Member Digital E-Signature Pad */}
+                      <Box sx={{ mt: 2, pt: 1.8, borderTop: `1px dashed ${themeConfig.border}` }}>
+                        <DigitalSignaturePad
+                          title={`Member #${index + 1} Signature (સહી)`}
+                          signerName={member.name || `Member #${index + 1}`}
+                          signerRole={member.relationship ? `Member (${member.relationship})` : "Co-Guest"}
+                          value={member.signature || (checkInData.memberSignatures && checkInData.memberSignatures[member.id])}
+                          onChange={(sig) => {
+                            handleUpdateMember(member.id, "signature", sig);
+                            setCheckInData((prev) => ({
+                              ...prev,
+                              memberSignature: sig,
+                              memberSignatures: {
+                                ...(prev.memberSignatures || {}),
+                                [member.id]: sig,
+                              },
+                            }));
+                          }}
+                          themeConfig={themeConfig}
+                        />
+                      </Box>
                     </Card>
                   ))}
                 </Box>
@@ -1518,7 +2064,7 @@ export default function CheckInWizardPage({
                   <TextField
                     fullWidth
                     size="small"
-                    label="Check-In Date *"
+                    label="Check-In Date"
                     type="date"
                     value={checkInData.checkInDate || getTodayLocalDate()}
                     onChange={(e) => handleCheckInDateChange(e.target.value)}
@@ -1560,7 +2106,7 @@ export default function CheckInWizardPage({
                   <TextField
                     fullWidth
                     size="small"
-                    label="Nights Count *"
+                    label="Nights Count"
                     placeholder="e.g. 1, 2"
                     value={checkInData.numberOfNights ?? 1}
                     onChange={(e) => handleNightsChange(e.target.value)}
@@ -1572,7 +2118,7 @@ export default function CheckInWizardPage({
                   <TextField
                     fullWidth
                     size="small"
-                    label="Check-Out Date *"
+                    label="Check-Out Date"
                     type="date"
                     value={checkInData.checkOutDate}
                     onChange={(e) => handleCheckOutDateChange(e.target.value)}
@@ -1597,7 +2143,7 @@ export default function CheckInWizardPage({
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2.5, flexWrap: "wrap", gap: 1.5 }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
                   <Avatar sx={{ bgcolor: themeConfig.champagne, color: themeConfig.primaryDark, width: 34, height: 34 }}>
-                    <MeetingRoom sx={{ fontSize: 20 }} />
+                    <KingBed sx={{ fontSize: 20 }} />
                   </Avatar>
                   <div>
                     <Typography variant="subtitle1" sx={{ fontWeight: 900, color: themeConfig.textMain }}>
@@ -1613,10 +2159,10 @@ export default function CheckInWizardPage({
                 <Chip
                   label={
                     isCapacityExceeded
-                      ? `🔴 Capacity Exceeded (${totalPartySize} Guests / ${totalStandardCapacity} Bed Capacity)`
+                      ? `Capacity Exceeded (${totalPartySize} Guests / ${totalStandardCapacity} Bed Capacity)`
                       : isBufferUsed
-                      ? `🟡 Extra Bedding Buffer Used (${totalPartySize} Guests / ${totalStandardCapacity} Beds)`
-                      : `🟢 Capacity Match (${totalPartySize} Guests / ${totalStandardCapacity} Bed Capacity)`
+                        ? `Extra Bedding Buffer Used (${totalPartySize} Guests / ${totalStandardCapacity} Beds)`
+                        : `Capacity Match (${totalPartySize} Guests / ${totalStandardCapacity} Bed Capacity)`
                   }
                   sx={{
                     fontWeight: 900,
@@ -1647,13 +2193,13 @@ export default function CheckInWizardPage({
                   </Box>
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 900, color: "#991B1B", mb: 0.5, fontSize: "0.95rem" }}>
-                      ⚠️ Guest Capacity Exceeded!
+                      Guest Capacity Exceeded!
                     </Typography>
                     <Typography variant="body2" sx={{ fontSize: "0.88rem", color: "#7F1D1D", lineHeight: 1.5 }}>
                       Total <strong style={{ color: "#991B1B", fontWeight: 900 }}>{totalPartySize} Guests</strong> (1 Main + {checkInData.accompanyingGuests?.length || 0} Members) cannot fit into the selected room(s) with total capacity of <strong style={{ color: "#991B1B", fontWeight: 900 }}>{totalStandardCapacity} guests</strong> (Max {totalMaxCapacity} with extra mattress).
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 900, mt: 0.8, fontSize: "0.88rem", color: "#B91C1C" }}>
-                      👉 Please allocate <strong style={{ textDecoration: "underline", color: "#7F1D1D" }}>additional room(s)</strong> below for the remaining <strong>{totalPartySize - totalStandardCapacity} guest(s)</strong>.
+                      Please allocate <strong style={{ textDecoration: "underline", color: "#7F1D1D" }}>additional room(s)</strong> below for the remaining <strong>{totalPartySize - totalStandardCapacity} guest(s)</strong>.
                     </Typography>
                   </Box>
                 </Box>
@@ -1679,7 +2225,7 @@ export default function CheckInWizardPage({
                   </Box>
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 900, color: "#92400E", mb: 0.2 }}>
-                      ℹ️ Extra Bedding Buffer Active
+                      Extra Bedding Buffer Active
                     </Typography>
                     <Typography variant="caption" sx={{ color: "#78350F", fontWeight: 700, display: "block" }}>
                       Total {totalPartySize} Guests comfortably fit in {selectedRoomsList.length} room(s) with standard {totalStandardCapacity} beds + extra rollaway mattress provided by housekeeping.
@@ -1690,24 +2236,31 @@ export default function CheckInWizardPage({
 
               {/* Multi-Room Assignment Dropdown */}
               <Box sx={{ mb: 3 }}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Select Room(s) for Check-In *</InputLabel>
+                <FormControl fullWidth size="medium">
+                  <InputLabel id="select-rooms-label" sx={{ fontWeight: 700 }}>Select Room(s) for Check-In</InputLabel>
                   <Select
+                    labelId="select-rooms-label"
                     multiple
                     value={selectedRoomIds}
                     onChange={handleDropdownRoomChange}
-                    input={<OutlinedInput label="Select Room(s) for Check-In *" />}
+                    input={<OutlinedInput label="Select Room(s) for Check-In" sx={{ borderRadius: "14px" }} />}
                     renderValue={(selected) => (
-                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, py: 0.5 }}>
                         {selected.map((val) => {
                           const r = rooms.find((x) => x._id === val);
                           const cap = calculateRoomCapacity(r);
                           return (
                             <Chip
                               key={val}
-                              label={`Room #${r?.roomNumber || val} (${getRoomCategoryName(r)} • ${cap.standardCapacity} Guests)`}
+                              label={`Room #${r?.roomNumber || val} • ${getRoomCategoryName(r)} (${cap.standardCapacity} Guests)`}
                               size="small"
-                              sx={{ fontWeight: 800, bgcolor: themeConfig.champagne, color: themeConfig.primaryDark }}
+                              sx={{
+                                fontWeight: 800,
+                                bgcolor: themeConfig.champagne,
+                                color: themeConfig.primaryDark,
+                                borderRadius: "8px",
+                                height: 26,
+                              }}
                             />
                           );
                         })}
@@ -1717,9 +2270,31 @@ export default function CheckInWizardPage({
                     {availableRooms.map((r) => {
                       const tariff = getRoomTariff(r);
                       const cap = calculateRoomCapacity(r);
+                      const iconCfg = getRoomCategoryIconConfig(r, 16);
                       return (
-                        <MenuItem key={r._id} value={r._id}>
-                          Room #{r.roomNumber} &bull; {getRoomCategoryName(r)} &bull; Floor {r.floor || 1} &bull; 👥 Capacity: {cap.standardCapacity} Guests ({cap.bedCount} Bed - {cap.bedType}) &bull; ₹{tariff}/n
+                        <MenuItem key={r._id} value={r._id} sx={{ py: 1.2 }}>
+                          <Box sx={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <Avatar sx={{ bgcolor: iconCfg.bg, color: iconCfg.color, width: 26, height: 26, borderRadius: "6px" }}>
+                                {iconCfg.icon}
+                              </Avatar>
+                              <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.textMain }}>
+                                Room #{r.roomNumber}
+                              </Typography>
+                              <Chip label={getRoomCategoryName(r)} size="small" sx={{ height: 20, fontSize: "0.7rem", fontWeight: 700, bgcolor: iconCfg.bg, color: iconCfg.color }} />
+                              <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
+                                Floor {r.floor || 1}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                              <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMuted }}>
+                                👥 {cap.standardCapacity} Guests ({cap.bedType})
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.primaryDark }}>
+                                ₹{tariff}/n
+                              </Typography>
+                            </Box>
+                          </Box>
                         </MenuItem>
                       );
                     })}
@@ -1728,7 +2303,7 @@ export default function CheckInWizardPage({
               </Box>
 
               {/* Selected Room Cards Preview with Capacity details & Remove Button */}
-              <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMuted, display: "block", mb: 1, textTransform: "uppercase" }}>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMuted, display: "block", mb: 1.5, textTransform: "uppercase", letterSpacing: "0.5px" }}>
                 Allocated Rooms ({selectedRoomsList.length}):
               </Typography>
               <Box
@@ -1736,8 +2311,7 @@ export default function CheckInWizardPage({
                   display: "grid",
                   gridTemplateColumns: {
                     xs: "1fr",
-                    sm: "repeat(2, 1fr)",
-                    md: "repeat(3, 1fr)",
+                    sm: "repeat(auto-fill, minmax(320px, 1fr))",
                   },
                   gap: 2,
                   mb: 3,
@@ -1746,34 +2320,77 @@ export default function CheckInWizardPage({
                 {selectedRoomsList.map((room) => {
                   const tariff = getRoomTariff(room);
                   const cap = calculateRoomCapacity(room);
+                  const iconCfg = getRoomCategoryIconConfig(room, 22);
 
                   return (
                     <Card
                       key={room._id}
                       sx={{
-                        p: 2,
+                        p: 2.2,
                         borderRadius: "16px",
-                        border: `1.5px solid ${themeConfig.primary}`,
-                        bgcolor: "rgba(11, 142, 224, 0.04)",
-                        position: "relative",
+                        border: `1.5px solid ${iconCfg.color}40`,
+                        background: `linear-gradient(135deg, #FFFFFF 0%, ${iconCfg.bg} 100%)`,
+                        boxShadow: "0 4px 14px rgba(0, 0, 0, 0.05)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1.2,
+                        transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                        "&:hover": {
+                          boxShadow: `0 6px 20px ${iconCfg.bg}`,
+                        },
                       }}
                     >
-                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.8 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 900, color: themeConfig.textMain }}>
-                          Room #{room.roomNumber}
-                        </Typography>
+                      {/* Top Header: Icon + Room Number & Category + Allocated badge / Delete */}
+                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 1 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+                          <Avatar
+                            sx={{
+                              bgcolor: iconCfg.bg,
+                              color: iconCfg.color,
+                              width: 40,
+                              height: 40,
+                              borderRadius: "10px",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {iconCfg.icon}
+                          </Avatar>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 900, color: themeConfig.textMain, lineHeight: 1.2, noWrap: true }}>
+                              Room #{room.roomNumber}
+                            </Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: iconCfg.color, display: "block" }}>
+                              {getRoomCategoryName(room)} &bull; Floor {room.floor || 1}
+                            </Typography>
+                          </Box>
+                        </Box>
 
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, flexShrink: 0 }}>
                           <Chip
-                            label={`Floor ${room.floor || 1}`}
+                            icon={<Check style={{ fontSize: 13, color: "#059669" }} />}
+                            label="Allocated"
                             size="small"
-                            sx={{ fontWeight: 800, height: 20, bgcolor: themeConfig.champagne, color: themeConfig.primaryDark }}
+                            sx={{
+                              bgcolor: "rgba(16, 185, 129, 0.12)",
+                              color: "#059669",
+                              fontWeight: 800,
+                              fontSize: "0.68rem",
+                              height: 24,
+                              border: "1px solid rgba(16, 185, 129, 0.3)",
+                            }}
                           />
                           {selectedRoomsList.length > 1 && (
                             <IconButton
                               size="small"
                               onClick={() => handleRemoveSelectedRoom(room._id)}
-                              sx={{ p: 0.2, color: themeConfig.danger, "&:hover": { bgcolor: "rgba(239, 68, 68, 0.1)" } }}
+                              title="Remove Room"
+                              sx={{
+                                color: themeConfig.danger,
+                                p: 0.5,
+                                borderRadius: "8px",
+                                bgcolor: "rgba(239, 68, 68, 0.06)",
+                                "&:hover": { bgcolor: "rgba(239, 68, 68, 0.15)" },
+                              }}
                             >
                               <Close sx={{ fontSize: 16 }} />
                             </IconButton>
@@ -1781,26 +2398,57 @@ export default function CheckInWizardPage({
                         </Box>
                       </Box>
 
-                      <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.primary, mb: 1 }}>
-                        {getRoomCategoryName(room)}
-                      </Typography>
-
-                      <Box sx={{ bgcolor: "#FFFFFF", p: 1.2, borderRadius: "10px", border: `1px solid ${themeConfig.border}`, mb: 1 }}>
-                        <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMain, display: "block" }}>
-                          👥 Bed Capacity: <strong>{cap.standardCapacity} Guests</strong> (Max {cap.maxCapacityWithBuffer})
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block", fontSize: "0.72rem" }}>
-                          🛏️ {cap.bedCount} Bed ({cap.bedType})
-                        </Typography>
+                      {/* Middle Row: Capacity & Bed Type Badges */}
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.8, my: 0.2 }}>
+                        <Chip
+                          label={`👥 ${cap.standardCapacity} Guests`}
+                          size="small"
+                          sx={{
+                            fontWeight: 800,
+                            fontSize: "0.72rem",
+                            height: 24,
+                            bgcolor: themeConfig.champagne,
+                            color: themeConfig.primaryDark,
+                            borderRadius: "6px",
+                          }}
+                        />
+                        <Chip
+                          label={`🛏️ ${cap.bedType || "Standard"}`}
+                          size="small"
+                          sx={{
+                            fontWeight: 700,
+                            fontSize: "0.72rem",
+                            height: 24,
+                            bgcolor: "rgba(0,0,0,0.04)",
+                            color: themeConfig.textMain,
+                            borderRadius: "6px",
+                          }}
+                        />
                       </Box>
 
-                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pt: 0.8, borderTop: `1px solid ${themeConfig.border}` }}>
-                        <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontWeight: 700 }}>
-                          Tariff:
+                      {/* Bottom Footer: Dedicated Price Strip (Never squished) */}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          pt: 1.2,
+                          mt: "auto",
+                          borderTop: `1px dashed rgba(16, 185, 129, 0.25)`,
+                        }}
+                      >
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMuted }}>
+                          Room Rate:
                         </Typography>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.primaryDark }}>
-                          ₹{tariff}/night
-                        </Typography>
+
+                        <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5 }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 900, color: "#059669", lineHeight: 1, whiteSpace: "nowrap" }}>
+                            ₹{Number(tariff).toLocaleString()}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontWeight: 700, fontSize: "0.72rem", whiteSpace: "nowrap" }}>
+                            / night
+                          </Typography>
+                        </Box>
                       </Box>
                     </Card>
                   );
@@ -1810,49 +2458,57 @@ export default function CheckInWizardPage({
               {/* QUICK SUGGESTER: ALLOCATE ADDITIONAL ROOMS (WHEN GUESTS EXCEED OR MULTI-ROOM NEEDED) */}
               {availableRooms.filter((r) => !selectedRoomIds.includes(r._id)).length > 0 && (
                 <Box sx={{ pt: 2, borderTop: `1px dashed ${themeConfig.border}` }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.textMain, mb: 1.5, display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.textMain, mb: 1.5, display: "flex", alignItems: "center", gap: 0.8 }}>
                     <Add sx={{ fontSize: 18, color: themeConfig.primary }} />
                     Quick Add Additional Available Room(s) {isCapacityExceeded && `(Needed for remaining ${totalPartySize - totalStandardCapacity} guests)`}:
                   </Typography>
 
-                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5 }}>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.2 }}>
                     {availableRooms
                       .filter((r) => !selectedRoomIds.includes(r._id))
                       .slice(0, 4)
                       .map((r) => {
                         const tariff = getRoomTariff(r);
                         const cap = calculateRoomCapacity(r);
+                        const iconCfg = getRoomCategoryIconConfig(r, 16);
 
                         return (
                           <Button
                             key={r._id}
                             variant="outlined"
                             size="small"
-                            startIcon={<Add />}
+                            startIcon={iconCfg.icon}
                             onClick={() => handleAddAdditionalRoom(r._id)}
                             sx={{
                               borderRadius: "12px",
-                              borderColor: themeConfig.border,
+                              border: `1.5px dashed ${iconCfg.color}60`,
+                              bgcolor: "#FFFFFF",
                               color: themeConfig.textMain,
                               fontWeight: 800,
                               py: 0.8,
                               px: 1.5,
-                              textAlign: "left",
-                              display: "flex",
-                              flexDirection: "column",
-                              alignItems: "flex-start",
+                              textTransform: "none",
+                              boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
+                              transition: "all 0.2s ease",
                               "&:hover": {
-                                borderColor: themeConfig.primary,
-                                bgcolor: themeConfig.champagne,
+                                borderColor: iconCfg.color,
+                                bgcolor: iconCfg.bg,
+                                transform: "translateY(-1px)",
+                                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
                               },
                             }}
                           >
-                            <Typography variant="caption" sx={{ fontWeight: 900, color: themeConfig.primaryDark }}>
-                              + Room #{r.roomNumber} ({getRoomCategoryName(r)})
-                            </Typography>
-                            <Typography variant="caption" sx={{ fontSize: "0.68rem", color: themeConfig.textMuted }}>
-                              👥 {cap.standardCapacity} Guests &bull; ₹{tariff}/n
-                            </Typography>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.82rem" }}>
+                                Room #{r.roomNumber}
+                              </Typography>
+                              <Typography variant="caption" sx={{ fontWeight: 800, color: iconCfg.color, fontSize: "0.75rem" }}>
+                                ({getRoomCategoryName(r)})
+                              </Typography>
+                              <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMuted, fontSize: "0.72rem" }}>
+                                &bull; 👥 {cap.standardCapacity} &bull; ₹{tariff}/n
+                              </Typography>
+                            </Box>
                           </Button>
                         );
                       })}
@@ -2009,14 +2665,14 @@ export default function CheckInWizardPage({
                     select
                     fullWidth
                     size="small"
-                    label="Payment Method *"
+                    label="Payment Method"
                     value={checkInData.paymentMethod || "UPI"}
                     onChange={(e) => setCheckInData({ ...checkInData, paymentMethod: e.target.value })}
                   >
-                    <MenuItem value="UPI">📱 UPI / QR Code (PhonePe/GPay)</MenuItem>
-                    <MenuItem value="CASH">💵 Cash at Front Desk</MenuItem>
-                    <MenuItem value="CARD">💳 Credit / Debit Card (POS)</MenuItem>
-                    <MenuItem value="NET_BANKING">🏦 Net Banking / NEFT</MenuItem>
+                    <MenuItem value="UPI">UPI / QR Code (PhonePe/GPay)</MenuItem>
+                    <MenuItem value="CASH">Cash at Front Desk</MenuItem>
+                    <MenuItem value="CARD">Credit / Debit Card (POS)</MenuItem>
+                    <MenuItem value="NET_BANKING">Net Banking / NEFT</MenuItem>
                   </TextField>
                 </Grid>
 
@@ -2025,7 +2681,7 @@ export default function CheckInWizardPage({
                   <TextField
                     fullWidth
                     size="small"
-                    label="Advance Amount Paid (₹) *"
+                    label="Advance Amount Paid (₹)"
                     placeholder="e.g. 3000"
                     value={checkInData.paid ?? calculatedGrandTotal}
                     onChange={(e) => {
@@ -2089,7 +2745,7 @@ export default function CheckInWizardPage({
               {/* 1. Primary Guest Details */}
               <Box sx={{ mb: 3, p: 2, borderRadius: "14px", bgcolor: themeConfig.champagne }}>
                 <Typography variant="caption" sx={{ fontWeight: 900, color: themeConfig.primaryDark, textTransform: "uppercase", display: "block", mb: 1 }}>
-                  👤 Primary / Main Guest Folio Holder:
+                  Primary / Main Guest Folio Holder:
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 12, sm: 4 }}>
@@ -2117,7 +2773,7 @@ export default function CheckInWizardPage({
               {checkInData.accompanyingGuests && checkInData.accompanyingGuests.length > 0 && (
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.textMain, mb: 1.5 }}>
-                    👥 Accompanying Members & Co-Guests ({checkInData.accompanyingGuests.length}):
+                    Accompanying Members & Co-Guests ({checkInData.accompanyingGuests.length}):
                   </Typography>
                   <TableContainer sx={{ borderRadius: "12px", border: `1px solid ${themeConfig.border}` }}>
                     <Table size="small">
@@ -2151,7 +2807,7 @@ export default function CheckInWizardPage({
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Paper sx={{ p: 2, borderRadius: "14px", border: `1px solid ${themeConfig.border}` }}>
                     <Typography variant="caption" sx={{ fontWeight: 900, color: themeConfig.primaryDark, textTransform: "uppercase", display: "block", mb: 0.8 }}>
-                      🕒 Stay Schedule:
+                      Stay Schedule:
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 800 }}>
                       In: {checkInData.checkInDate} &bull; {checkInData.checkInTime || liveTime}
@@ -2168,7 +2824,7 @@ export default function CheckInWizardPage({
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Paper sx={{ p: 2, borderRadius: "14px", border: `1px solid ${themeConfig.border}` }}>
                     <Typography variant="caption" sx={{ fontWeight: 900, color: themeConfig.primaryDark, textTransform: "uppercase", display: "block", mb: 0.8 }}>
-                      🏨 Room Allocation:
+                      Room Allocation:
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.primary }}>
                       Room {selectedRoomsList.map((r) => `#${r.roomNumber}`).join(", ") || checkInData.roomNumber}
@@ -2214,34 +2870,85 @@ export default function CheckInWizardPage({
                   </div>
                 </Box>
               </Box>
+
+              {/* 5. DIGITAL E-SIGNATURE VERIFICATION SECTION (ડિજિટલ સહી) */}
+              <Box sx={{ mt: 3.5, pt: 3, borderTop: `1.5px dashed ${themeConfig.border}` }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2, flexWrap: "wrap", gap: 1 }}>
+                  <div>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 900, color: themeConfig.textMain, display: "flex", alignItems: "center", gap: 1 }}>
+                      <Draw sx={{ color: themeConfig.primary, fontSize: 22 }} />
+                      Digital E-Signature Verification (ડિજિટલ સહી)
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontWeight: 700 }}>
+                      Collect digital sign-off from Primary Guest and accompanying members for check-in declaration.
+                    </Typography>
+                  </div>
+                  <Chip
+                    icon={<Fingerprint style={{ fontSize: 16, color: "#059669" }} />}
+                    label="Touchscreen / Mouse E-Sign"
+                    size="small"
+                    sx={{ bgcolor: "rgba(16, 185, 129, 0.12)", color: "#059669", fontWeight: 800 }}
+                  />
+                </Box>
+
+                <Grid container spacing={2.5}>
+                  {/* Primary Guest Signature Pad */}
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <DigitalSignaturePad
+                      title="Primary Guest Signature"
+                      signerName={checkInData.fullName || "Main Guest"}
+                      signerRole="Primary Guest"
+                      value={checkInData.guestSignature}
+                      onChange={(sig) => setCheckInData((prev) => ({ ...prev, guestSignature: sig }))}
+                      themeConfig={themeConfig}
+                    />
+                  </Grid>
+
+                  {/* Accompanying Member Signature (or Co-Guest/Staff) */}
+                  {checkInData.accompanyingGuests && checkInData.accompanyingGuests.length > 0 ? (
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <DigitalSignaturePad
+                        title={`Accompanying Member Signature`}
+                        signerName={checkInData.accompanyingGuests[0]?.name || "Co-Guest / Member"}
+                        signerRole={checkInData.accompanyingGuests[0]?.relationship ? `Member (${checkInData.accompanyingGuests[0].relationship})` : "Co-Guest"}
+                        value={checkInData.memberSignature}
+                        onChange={(sig) => setCheckInData((prev) => ({ ...prev, memberSignature: sig }))}
+                        themeConfig={themeConfig}
+                      />
+                    </Grid>
+                  ) : (
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <DigitalSignaturePad
+                        title="Duty Receptionist / Staff Authorization"
+                        signerName="Front Desk Executive"
+                        signerRole="Authorized Desk Staff"
+                        value={checkInData.receptionistSignature}
+                        onChange={(sig) => setCheckInData((prev) => ({ ...prev, receptionistSignature: sig }))}
+                        themeConfig={themeConfig}
+                      />
+                    </Grid>
+                  )}
+                </Grid>
+              </Box>
             </Paper>
           </Box>
         )}
 
-        {/* Step Validation Error Alert */}
-        {stepError && (
-          <Alert
-            severity="error"
-            onClose={() => setStepError("")}
-            sx={{
-              mt: 3,
-              borderRadius: "14px",
-              fontWeight: 800,
-              fontSize: "0.9rem",
-              border: "1.5px solid #FCA5A5",
-              bgcolor: "#FEF2F2",
-              color: "#991B1B",
-              boxShadow: "0 4px 14px rgba(239, 68, 68, 0.12)",
-              "& .MuiAlert-icon": { color: "#DC2626" },
-            }}
-          >
-            {stepError}
-          </Alert>
-        )}
-
         {/* Wizard Footer Navigation Controls */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 4, pt: 3, borderTop: `1px solid ${themeConfig.border}` }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexDirection: { xs: "column-reverse", sm: "row" },
+            gap: 2,
+            mt: 4,
+            pt: 3,
+            borderTop: `1px solid ${themeConfig.border}`,
+          }}
+        >
           <Button
+            fullWidth={false}
             variant="outlined"
             disabled={activeStep === 0}
             onClick={handleBack}
@@ -2253,15 +2960,16 @@ export default function CheckInWizardPage({
               py: 1,
               borderColor: themeConfig.border,
               color: themeConfig.textMain,
+              width: { xs: "100%", sm: "auto" },
             }}
           >
             Back
           </Button>
 
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, width: { xs: "100%", sm: "auto" }, justifyContent: { xs: "stretch", sm: "flex-end" } }}>
             {activeStep === 0 && !checkInData.frontImage && (
               <Chip
-                label="⚠️ ID upload required"
+                label="ID Upload Required"
                 size="small"
                 sx={{
                   bgcolor: "#FEF2F2",
@@ -2276,6 +2984,7 @@ export default function CheckInWizardPage({
 
             {activeStep < CHECKIN_STEPS.length - 1 ? (
               <Button
+                fullWidth
                 variant="contained"
                 onClick={handleNext}
                 endIcon={<ArrowForward />}
@@ -2285,15 +2994,17 @@ export default function CheckInWizardPage({
                   color: "#FFFFFF",
                   fontWeight: 900,
                   borderRadius: "12px",
-                  px: 3.5,
+                  px: { xs: 2.5, sm: 3.5 },
                   py: 1.1,
                   boxShadow: `0 6px 16px ${themeConfig.primaryGlow}`,
+                  width: { xs: "100%", sm: "auto" },
                 }}
               >
                 Continue to Step {activeStep + 2}
               </Button>
             ) : (
               <Button
+                fullWidth
                 variant="contained"
                 onClick={onFinalCheckIn}
                 startIcon={<CheckCircle />}
@@ -2303,16 +3014,17 @@ export default function CheckInWizardPage({
                   color: "#FFFFFF",
                   fontWeight: 900,
                   borderRadius: "12px",
-                  px: 4,
+                  px: { xs: 3, sm: 4 },
                   py: 1.2,
                   fontSize: "0.95rem",
                   boxShadow: "0 8px 24px rgba(16, 185, 129, 0.35)",
+                  width: { xs: "100%", sm: "auto" },
                   "&:hover": {
                     background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
                   },
                 }}
               >
-                🚀 Confirm & Complete Check-In
+                Confirm & Complete Check-In
               </Button>
             )}
           </Box>

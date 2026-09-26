@@ -297,6 +297,8 @@ export function openPrintOrSavePDF(title, htmlBody) {
   printWindow.document.close();
 }
 
+import { calculateOverstayFee, formatTime12Hour } from "./timeUtils";
+
 /**
  * 1. Generate & Download Official GST Tax Invoice PDF (Receptionist / Front Desk)
  */
@@ -313,8 +315,10 @@ export function downloadTaxInvoicePDF(booking = {}, hotel = {}) {
   const invoiceNum = booking.bookingNumber ? `INV-${booking.bookingNumber}` : `INV-${Date.now().toString().slice(-6)}`;
   const dateStr = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
-  const roomTariff = (booking.totalAmount || 4500) - charges.reduce((s, c) => s + (c.amount || 0), 0);
-  const subtotal = booking.totalAmount || 4500;
+  const overstay = calculateOverstayFee(booking, hotel);
+  const posTotal = charges.reduce((s, c) => s + (c.amount || 0), 0);
+  const roomTariff = (booking.totalAmount || 4500) > posTotal ? (booking.totalAmount - posTotal) : (booking.totalAmount || 4500);
+  const subtotal = roomTariff + posTotal + (overstay.lateFee || 0);
   const paidAmount = booking.paidAmount || 0;
   const balanceDue = Math.max(0, subtotal - paidAmount);
   const gstRate = 12;
@@ -354,9 +358,14 @@ export function downloadTaxInvoicePDF(booking = {}, hotel = {}) {
       <div class="info-block">
         <h4>Stay &amp; Room Allocation</h4>
         <p>Room #${booking.roomNumber || room.roomNumber || "101"} (${roomType.name || "Deluxe Suite"})</p>
-        <span>Check-In: <strong>${booking.checkInDate || "Today"} (${booking.checkInTime || "14:00"})</strong></span>
-        <span>Check-Out: <strong>${booking.checkOutDate || "Tomorrow"} (12:00 PM)</strong></span>
+        <span>Check-In: <strong>${booking.checkInDate || "Today"} (${booking.checkInTime ? formatTime12Hour(booking.checkInTime) : "02:00 PM"})</strong></span>
+        <span>Check-Out: <strong>${booking.checkOutDate || "Tomorrow"} (${formatTime12Hour(booking.checkOutTime || hotel.checkOutTime || "12:00")})</strong></span>
         <span>Booking Folio: #${booking.bookingNumber || "BK-8921"}</span>
+        ${overstay.isOverstay ? `
+          <div style="margin-top:5px;font-size:11px;color:#DC2626;font-weight:700;">
+            ⚠️ Late Check-Out: +${overstay.overdueHours} hrs past checkout (+₹${overstay.lateFee.toLocaleString("en-IN")} for ${overstay.extraDays} Extra Day)
+          </div>
+        ` : ""}
       </div>
     </div>
 
@@ -383,9 +392,22 @@ export function downloadTaxInvoicePDF(booking = {}, hotel = {}) {
           <td class="text-right">₹${roomTariff.toLocaleString("en-IN")}</td>
           <td class="text-right">₹${roomTariff.toLocaleString("en-IN")}</td>
         </tr>
+        ${overstay.isOverstay ? `
+          <tr>
+            <td>2</td>
+            <td>
+              <strong>Late Check-Out / Overstay Tariff</strong>
+              <div style="font-size:11px;color:#DC2626;">Stayed +${overstay.overdueHours}h past scheduled check-out (${overstay.extraDays} Extra Day Tariff)</div>
+            </td>
+            <td class="text-center">996311</td>
+            <td class="text-right">${overstay.extraDays}</td>
+            <td class="text-right">₹${overstay.dailyRate.toLocaleString("en-IN")}</td>
+            <td class="text-right">₹${overstay.lateFee.toLocaleString("en-IN")}</td>
+          </tr>
+        ` : ""}
         ${charges.map((c, i) => `
           <tr>
-            <td>${i + 2}</td>
+            <td>${(overstay.isOverstay ? 3 : 2) + i}</td>
             <td>
               <strong>${c.title || c.item || "POS Room Service / Mini-bar"}</strong>
               <div style="font-size:11px;color:#64748B;">F&amp;B / Sundry Service</div>

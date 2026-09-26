@@ -51,12 +51,12 @@ import {
   InfoOutlined,
   Fastfood,
   Check,
-} from "@mui/icons-material";
+} from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import StatusChip from "@/shared/components/StatusChip";
 import EmptyState from "@/shared/components/EmptyState";
 import StatCard from "@/shared/components/StatCard";
-import { formatTime12Hour } from "@/shared/utils/timeUtils";
+import { formatTime12Hour, calculateOverstayFee } from "@/shared/utils/timeUtils";
 
 export default function InHouseFoliosPage({
   bookings = [],
@@ -70,7 +70,7 @@ export default function InHouseFoliosPage({
   onOpenInvoice,
   onOpenPosCharge,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeStatusTab, setActiveStatusTab] = useState("ALL");
   const [balanceFilter, setBalanceFilter] = useState("ALL");
@@ -82,6 +82,8 @@ export default function InHouseFoliosPage({
   const [checkoutDialog, setCheckoutDialog] = useState({
     open: false,
     booking: null,
+    overstay: null,
+    lateFee: 0,
     paymentMethod: "CASH",
     amount: 0,
     transactionId: "",
@@ -107,12 +109,14 @@ export default function InHouseFoliosPage({
 
   const totalGrossLedger = bookings.reduce((sum, b) => {
     const pos = (b.posCharges || []).reduce((pSum, c) => pSum + (c.amount || 0), 0);
-    return sum + (b.totalAmount || 0) + pos;
+    const overstay = calculateOverstayFee(b, hotelSettings);
+    return sum + (b.totalAmount || 0) + pos + (overstay.lateFee || 0);
   }, 0);
 
   const totalPendingDues = bookings.reduce((sum, b) => {
     const pos = (b.posCharges || []).reduce((pSum, c) => pSum + (c.amount || 0), 0);
-    const gross = (b.totalAmount || 0) + pos;
+    const overstay = calculateOverstayFee(b, hotelSettings);
+    const gross = (b.totalAmount || 0) + pos + (overstay.lateFee || 0);
     const paid = b.paidAmount || 0;
     return sum + Math.max(0, gross - paid);
   }, 0);
@@ -122,14 +126,33 @@ export default function InHouseFoliosPage({
     return outDate && outDate <= todayStr;
   }).length;
 
+  // Helper to extract all room numbers from booking
+  const getBookingRoomNumbers = (b) => {
+    if (!b) return [];
+    if (Array.isArray(b.roomNumbers) && b.roomNumbers.length > 0) {
+      return b.roomNumbers.map(String);
+    }
+    if (Array.isArray(b.rooms) && b.rooms.length > 0 && typeof b.rooms[0] === "object" && b.rooms[0]?.roomNumber) {
+      return b.rooms.map((r) => String(r.roomNumber));
+    }
+    if (b.roomNumber) {
+      return String(b.roomNumber).split(",").map((s) => s.trim()).filter(Boolean);
+    }
+    if (b.room?.roomNumber) {
+      return [String(b.room.roomNumber)];
+    }
+    return ["N/A"];
+  };
+
   // Filter Bookings List
   const filteredBookings = bookings.filter((b) => {
     // Status Filter
     if (activeStatusTab !== "ALL" && b.status !== activeStatusTab) return false;
 
     // Balance Filter
+    const overstay = calculateOverstayFee(b, hotelSettings);
     const posChargesTotal = (b.posCharges || []).reduce((s, c) => s + (c.amount || 0), 0);
-    const grandTotal = (b.totalAmount || 0) + posChargesTotal;
+    const grandTotal = (b.totalAmount || 0) + posChargesTotal + (overstay.lateFee || 0);
     const paidTotal = b.paidAmount || 0;
     const dueBalance = Math.max(0, grandTotal - paidTotal);
 
@@ -142,7 +165,8 @@ export default function InHouseFoliosPage({
       const matchFolio = (b.bookingNumber || "").toLowerCase().includes(q);
       const matchGuest = (b.guest?.name || b.guest?.fullName || "").toLowerCase().includes(q);
       const matchPhone = (b.guest?.phone || b.guest?.mobileNumber || "").toLowerCase().includes(q);
-      const matchRoom = String(b.roomNumber || b.room?.roomNumber || "").toLowerCase().includes(q);
+      const roomsList = getBookingRoomNumbers(b);
+      const matchRoom = roomsList.some((rn) => rn.toLowerCase().includes(q)) || String(b.roomNumber || "").toLowerCase().includes(q);
       if (!matchFolio && !matchGuest && !matchPhone && !matchRoom) return false;
     }
 
@@ -150,14 +174,17 @@ export default function InHouseFoliosPage({
   });
 
   const handleOpenCheckout = (booking) => {
+    const overstay = calculateOverstayFee(booking, hotelSettings);
     const posChargesTotal = (booking.posCharges || []).reduce((s, c) => s + (c.amount || 0), 0);
-    const grandTotal = (booking.totalAmount || 0) + posChargesTotal;
+    const grandTotal = (booking.totalAmount || 0) + posChargesTotal + (overstay.lateFee || 0);
     const paidTotal = booking.paidAmount || 0;
     const due = Math.max(0, grandTotal - paidTotal);
 
     setCheckoutDialog({
       open: true,
       booking,
+      overstay,
+      lateFee: overstay.lateFee || 0,
       paymentMethod: due > 0 ? "UPI" : "CASH",
       amount: due,
       transactionId: "",
@@ -170,6 +197,8 @@ export default function InHouseFoliosPage({
       onCheckOut(checkoutDialog.booking, {
         paymentMethod: checkoutDialog.paymentMethod,
         settlementPaymentAmount: Number(checkoutDialog.amount) || 0,
+        lateCheckoutFee: Number(checkoutDialog.lateFee) || 0,
+        overstayData: checkoutDialog.overstay,
         transactionId: checkoutDialog.transactionId,
         paymentReference: checkoutDialog.paymentReference,
       });
@@ -293,9 +322,11 @@ export default function InHouseFoliosPage({
         sx={{
           p: { xs: 2, sm: 3 },
           borderRadius: "22px",
-          bgcolor: "#FFFFFF",
+          bgcolor: themeConfig.bgCard,
           border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 10px 30px -5px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
+          boxShadow: isDarkMode
+            ? "0 10px 30px -5px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05)"
+            : "0 10px 30px -5px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
         }}
       >
         {/* Controls Bar: Search, Status Tabs & Balance Filter */}
@@ -383,7 +414,7 @@ export default function InHouseFoliosPage({
             "&::-webkit-scrollbar-thumb:hover": { background: themeConfig.primary },
           }}
         >
-          <Table stickyHeader size="small" sx={{ minWidth: 900 }}>
+          <Table stickyHeader size="small" sx={{ minWidth: 1020 }}>
             <TableHead>
               <TableRow sx={{ "& th": { bgcolor: themeConfig.champagne, color: themeConfig.textMain, fontWeight: 800, py: 1.5 } }}>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>Folio #</TableCell>
@@ -393,7 +424,7 @@ export default function InHouseFoliosPage({
                 <TableCell sx={{ whiteSpace: "nowrap" }}>Ledger Breakdown</TableCell>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>Balance Due</TableCell>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>Status</TableCell>
-                <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>Front Desk Actions</TableCell>
+                <TableCell align="right" sx={{ whiteSpace: "nowrap", pr: 2 }}>Front Desk Actions</TableCell>
               </TableRow>
             </TableHead>
 
@@ -419,10 +450,11 @@ export default function InHouseFoliosPage({
                   .map((b) => {
                   const guestName = b.guest?.name || b.guest?.fullName || "Walk-In Guest";
                   const guestPhone = b.guest?.phone || b.guest?.mobileNumber || "";
-                  const roomNum = b.roomNumber || b.room?.roomNumber || "N/A";
+                  const roomsList = getBookingRoomNumbers(b);
                   const roomType = b.roomType?.name || b.room?.roomType?.name || "Room Stay";
+                  const overstay = calculateOverstayFee(b, hotelSettings);
                   const posChargesTotal = (b.posCharges || []).reduce((s, c) => s + (c.amount || 0), 0);
-                  const grandTotal = (b.totalAmount || 0) + posChargesTotal;
+                  const grandTotal = (b.totalAmount || 0) + posChargesTotal + (overstay.lateFee || 0);
                   const paidTotal = b.paidAmount || 0;
                   const dueBalance = Math.max(0, grandTotal - paidTotal);
                   const isCheckoutToday = b.checkOutDate && String(b.checkOutDate).split("T")[0] <= todayStr;
@@ -486,29 +518,67 @@ export default function InHouseFoliosPage({
 
                       {/* Room Details */}
                       <TableCell sx={{ whiteSpace: "nowrap" }}>
-                        <Chip
-                          icon={<MeetingRoom sx={{ fontSize: 14, color: `${themeConfig.primaryDark} !important` }} />}
-                          label={`Room ${roomNum}`}
-                          size="small"
-                          sx={{
-                            fontWeight: 800,
-                            bgcolor: themeConfig.champagne,
-                            color: themeConfig.primaryDark,
-                            border: `1px solid ${themeConfig.border}`,
-                            mb: 0.3,
-                          }}
-                        />
-                        <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block", fontSize: "0.72rem" }}>
-                          {roomType}
-                        </Typography>
+                        {roomsList.length > 1 ? (
+                          <Box sx={{ mb: 0.3 }}>
+                            <Chip
+                              icon={<MeetingRoom sx={{ fontSize: 14, color: `${themeConfig.primaryDark} !important` }} />}
+                              label={`Rooms ${roomsList.join(", ")}`}
+                              size="small"
+                              sx={{
+                                fontWeight: 800,
+                                bgcolor: themeConfig.champagne,
+                                color: themeConfig.primaryDark,
+                                border: `1px solid ${themeConfig.border}`,
+                                height: 24,
+                              }}
+                            />
+                            <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block", fontSize: "0.72rem", mt: 0.3 }}>
+                              {roomType} ({roomsList.length} Rooms)
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Box sx={{ mb: 0.3 }}>
+                            <Chip
+                              icon={<MeetingRoom sx={{ fontSize: 14, color: `${themeConfig.primaryDark} !important` }} />}
+                              label={`Room ${roomsList[0] || "N/A"}`}
+                              size="small"
+                              sx={{
+                                fontWeight: 800,
+                                bgcolor: themeConfig.champagne,
+                                color: themeConfig.primaryDark,
+                                border: `1px solid ${themeConfig.border}`,
+                                height: 24,
+                              }}
+                            />
+                            <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block", fontSize: "0.72rem", mt: 0.3 }}>
+                              {roomType}
+                            </Typography>
+                          </Box>
+                        )}
                       </TableCell>
 
                       {/* Stay Duration */}
                       <TableCell sx={{ color: themeConfig.textMuted, fontSize: "0.78rem", whiteSpace: "nowrap" }}>
                         <div><strong>In:</strong> {b.checkInDate || "Today"} ({b.checkInTime ? formatTime12Hour(b.checkInTime) : checkInTimeFormatted})</div>
                         <div>
-                          <strong>Out:</strong> {b.checkOutDate || "Tomorrow"} (12:00 PM)
-                          {isCheckoutToday && b.status === "CHECKED_IN" && (
+                          <strong>Out:</strong> {b.checkOutDate || "Tomorrow"} ({formatTime12Hour(b.checkOutTime || hotelSettings?.checkOutTime || "12:00")})
+                          {overstay.isOverstay ? (
+                            <Tooltip title={`Late Check-Out: Stayed +${overstay.overdueHours}h past check-out time. +₹${overstay.lateFee} (${overstay.extraDays} Extra Day Tariff) automatically applied.`}>
+                              <Chip
+                                label={`🚨 Overdue (+${overstay.overdueHours}h)`}
+                                size="small"
+                                sx={{
+                                  ml: 0.8,
+                                  height: 18,
+                                  fontSize: "0.65rem",
+                                  bgcolor: "rgba(220, 38, 38, 0.15)",
+                                  color: "#DC2626",
+                                  fontWeight: 900,
+                                  border: "1px solid rgba(220, 38, 38, 0.4)",
+                                }}
+                              />
+                            </Tooltip>
+                          ) : isCheckoutToday && b.status === "CHECKED_IN" ? (
                             <Chip
                               label="Due Today"
                               size="small"
@@ -521,7 +591,7 @@ export default function InHouseFoliosPage({
                                 fontWeight: 800,
                               }}
                             />
-                          )}
+                          ) : null}
                         </div>
                       </TableCell>
 
@@ -532,24 +602,40 @@ export default function InHouseFoliosPage({
                         </Typography>
                         <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.72rem", display: "block" }}>
                           Room: ₹{(b.totalAmount || 0).toLocaleString()}
+                          {overstay.isOverstay && ` + Extra Day: ₹${overstay.lateFee}`}
                           {posChargesTotal > 0 && ` + POS: ₹${posChargesTotal}`}
                         </Typography>
-                        {(b.posCharges || []).length > 0 && (
-                          <Chip
-                            label={`${b.posCharges.length} POS Items`}
-                            size="small"
-                            onClick={() => setDetailsModal({ open: true, booking: b })}
-                            sx={{
-                              height: 18,
-                              fontSize: "0.65rem",
-                              fontWeight: 800,
-                              cursor: "pointer",
-                              bgcolor: "rgba(11, 142, 224, 0.1)",
-                              color: themeConfig.primary,
-                              mt: 0.3,
-                            }}
-                          />
-                        )}
+                        <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", mt: 0.3 }}>
+                          {overstay.isOverstay && (
+                            <Chip
+                              label={`+₹${overstay.lateFee} Extra Day`}
+                              size="small"
+                              sx={{
+                                height: 18,
+                                fontSize: "0.65rem",
+                                fontWeight: 800,
+                                bgcolor: "rgba(220, 38, 38, 0.12)",
+                                color: "#DC2626",
+                                border: "1px solid rgba(220, 38, 38, 0.3)",
+                              }}
+                            />
+                          )}
+                          {(b.posCharges || []).length > 0 && (
+                            <Chip
+                              label={`${b.posCharges.length} POS Items`}
+                              size="small"
+                              onClick={() => setDetailsModal({ open: true, booking: b })}
+                              sx={{
+                                height: 18,
+                                fontSize: "0.65rem",
+                                fontWeight: 800,
+                                cursor: "pointer",
+                                bgcolor: "rgba(11, 142, 224, 0.1)",
+                                color: themeConfig.primary,
+                              }}
+                            />
+                          )}
+                        </Box>
                       </TableCell>
 
                       {/* Balance Due */}
@@ -590,27 +676,34 @@ export default function InHouseFoliosPage({
                       </TableCell>
 
                       {/* Actions */}
-                      <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
-                        <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                      <TableCell align="right" sx={{ whiteSpace: "nowrap", pr: 2 }}>
+                        <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end", alignItems: "center" }}>
                           {b.status === "CHECKED_IN" && (
                             <Tooltip title="Post POS Ancillary Charge (In-Room Dining / Laundry / Spa)">
                               <Button
                                 size="small"
                                 variant="outlined"
-                                startIcon={<Add />}
+                                startIcon={<Add sx={{ fontSize: 14 }} />}
                                 onClick={() => onOpenPosCharge(b)}
                                 className="btn-3d"
                                 sx={{
                                   borderColor: themeConfig.border,
-                                  bgcolor: "#FFFFFF",
+                                  bgcolor: themeConfig.bgCard,
                                   color: themeConfig.textMain,
                                   borderRadius: "10px",
                                   fontSize: "0.75rem",
                                   fontWeight: 700,
+                                  px: 1.2,
+                                  py: 0.4,
+                                  whiteSpace: "nowrap",
                                   boxShadow: "0 2px 4px rgba(0,0,0,0.03)",
+                                  "&:hover": {
+                                    bgcolor: themeConfig.champagne,
+                                    borderColor: themeConfig.primary,
+                                  },
                                 }}
                               >
-                                + Charge
+                                Charge
                               </Button>
                             </Tooltip>
                           )}
@@ -619,7 +712,7 @@ export default function InHouseFoliosPage({
                             <Button
                               size="small"
                               variant="contained"
-                              startIcon={<Receipt />}
+                              startIcon={<Receipt sx={{ fontSize: 14 }} />}
                               onClick={() => onOpenInvoice(b)}
                               className="btn-3d"
                               sx={{
@@ -628,6 +721,9 @@ export default function InHouseFoliosPage({
                                 borderRadius: "10px",
                                 fontSize: "0.75rem",
                                 fontWeight: 800,
+                                px: 1.4,
+                                py: 0.4,
+                                whiteSpace: "nowrap",
                                 boxShadow: `0 4px 12px ${themeConfig.primaryGlow}`,
                               }}
                             >
@@ -640,7 +736,7 @@ export default function InHouseFoliosPage({
                               <Button
                                 size="small"
                                 variant="outlined"
-                                startIcon={<Logout />}
+                                startIcon={<Logout sx={{ fontSize: 14 }} />}
                                 color="error"
                                 onClick={() => handleOpenCheckout(b)}
                                 className="btn-3d"
@@ -648,6 +744,9 @@ export default function InHouseFoliosPage({
                                   borderRadius: "10px",
                                   fontSize: "0.75rem",
                                   fontWeight: 800,
+                                  px: 1.2,
+                                  py: 0.4,
+                                  whiteSpace: "nowrap",
                                   borderColor: "rgba(220, 38, 38, 0.3)",
                                   color: themeConfig.danger,
                                   "&:hover": {
@@ -685,7 +784,8 @@ export default function InHouseFoliosPage({
             }}
             sx={{
               borderTop: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
+              bgcolor: themeConfig.bgCard,
+              color: themeConfig.textMain,
               mt: 1,
             }}
           />
@@ -701,7 +801,12 @@ export default function InHouseFoliosPage({
         slotProps={{ paper: { sx: { borderRadius: "22px", p: 2, maxWidth: 520, border: `1px solid ${themeConfig.border}` } } }}
       >
         <DialogTitle component="div" sx={{ fontWeight: 900, color: themeConfig.textMain, pb: 1, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span>Check-Out Settlement (Room {checkoutDialog.booking?.roomNumber || checkoutDialog.booking?.room?.roomNumber})</span>
+          <span>
+            Check-Out Settlement ({(() => {
+              const rList = getBookingRoomNumbers(checkoutDialog.booking);
+              return rList.length > 1 ? `Rooms ${rList.join(", ")}` : `Room ${rList[0] || ""}`;
+            })()})
+          </span>
           <IconButton size="small" onClick={() => setCheckoutDialog({ open: false, booking: null, paymentMethod: "CASH", amount: 0, transactionId: "", paymentReference: "" })}>
             <Close fontSize="small" />
           </IconButton>
@@ -717,7 +822,10 @@ export default function InHouseFoliosPage({
                     {checkoutDialog.booking?.guest?.name || checkoutDialog.booking?.guest?.fullName || "Resident Guest"}
                   </Typography>
                   <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block" }}>
-                    Folio #{checkoutDialog.booking?.bookingNumber} &bull; Room {checkoutDialog.booking?.roomNumber || checkoutDialog.booking?.room?.roomNumber}
+                    Folio #{checkoutDialog.booking?.bookingNumber} &bull; {(() => {
+                      const rList = getBookingRoomNumbers(checkoutDialog.booking);
+                      return rList.length > 1 ? `Rooms: ${rList.join(", ")}` : `Room ${rList[0] || ""}`;
+                    })()}
                   </Typography>
                 </div>
                 <Chip
@@ -731,6 +839,31 @@ export default function InHouseFoliosPage({
                 />
               </Box>
             </Paper>
+
+            {/* Automatic Late Check-Out Policy Notice */}
+            {checkoutDialog.lateFee > 0 && (
+              <Paper
+                sx={{
+                  p: 2,
+                  borderRadius: "14px",
+                  bgcolor: "rgba(239, 68, 68, 0.08)",
+                  border: "1.5px dashed rgba(239, 68, 68, 0.4)",
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.2 }}>
+                  <Warning sx={{ color: "#DC2626", fontSize: 24, mt: 0.2 }} />
+                  <div>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 900, color: "#DC2626" }}>
+                      ⏰ Automatic Late Check-Out Policy Applied (+₹{checkoutDialog.lateFee.toLocaleString()})
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: themeConfig.textMain, display: "block", mt: 0.4, lineHeight: 1.45 }}>
+                      The guest stayed <strong>+{checkoutDialog.overstay?.overdueHours} hours</strong> past standard check-out deadline ({formatTime12Hour(checkoutDialog.overstay?.scheduledCheckOutTime || "12:00")}).
+                      An additional <strong>{checkoutDialog.overstay?.extraDays} day room tariff</strong> (₹{checkoutDialog.overstay?.dailyRate?.toLocaleString()}/day) has been automatically added to this departure settlement bill.
+                    </Typography>
+                  </div>
+                </Box>
+              </Paper>
+            )}
 
             {/* Dues & Payment Section */}
             {checkoutDialog.amount > 0 ? (
@@ -762,7 +895,7 @@ export default function InHouseFoliosPage({
                     sx={{
                       p: 2,
                       borderRadius: "14px",
-                      bgcolor: "#FFFFFF",
+                      bgcolor: themeConfig.bgCard,
                       border: `1.5px solid ${themeConfig.primary}`,
                       display: "flex",
                       flexDirection: "column",
@@ -809,7 +942,7 @@ export default function InHouseFoliosPage({
                 )}
 
                 {checkoutDialog.paymentMethod === "CARD" && (
-                  <Paper sx={{ p: 2, borderRadius: "14px", bgcolor: "#FFFFFF", border: `1px solid ${themeConfig.border}` }}>
+                  <Paper sx={{ p: 2, borderRadius: "14px", bgcolor: themeConfig.bgCard, border: `1px solid ${themeConfig.border}` }}>
                     <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMuted, display: "block", mb: 1.5 }}>
                       💳 POS Card Terminal Details:
                     </Typography>
@@ -835,7 +968,7 @@ export default function InHouseFoliosPage({
                 )}
 
                 {checkoutDialog.paymentMethod === "CASH" && (
-                  <Paper sx={{ p: 2, borderRadius: "14px", bgcolor: "#FFFFFF", border: `1px solid ${themeConfig.border}` }}>
+                  <Paper sx={{ p: 2, borderRadius: "14px", bgcolor: themeConfig.bgCard, border: `1px solid ${themeConfig.border}` }}>
                     <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
                       💵 Cash Counter Settlement
                     </Typography>
@@ -846,7 +979,7 @@ export default function InHouseFoliosPage({
                 )}
 
                 {checkoutDialog.paymentMethod === "BANK_TRANSFER" && (
-                  <Paper sx={{ p: 2, borderRadius: "14px", bgcolor: "#FFFFFF", border: `1px solid ${themeConfig.border}` }}>
+                  <Paper sx={{ p: 2, borderRadius: "14px", bgcolor: themeConfig.bgCard, border: `1px solid ${themeConfig.border}` }}>
                     <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMuted, display: "block", mb: 1 }}>
                       🏦 Bank Transfer / NEFT / IMPS Reference:
                     </Typography>
@@ -921,93 +1054,129 @@ export default function InHouseFoliosPage({
         </DialogTitle>
 
         <DialogContent>
-          {detailsModal.booking && (
-            <Box sx={{ pt: 1, display: "flex", flexDirection: "column", gap: 2 }}>
-              <Paper sx={{ p: 2, borderRadius: "14px", bgcolor: themeConfig.champagne, border: `1px solid ${themeConfig.border}` }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-                  <div>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.textMain }}>
-                      {detailsModal.booking.guest?.name || detailsModal.booking.guest?.fullName}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
-                      Room {detailsModal.booking.roomNumber || detailsModal.booking.room?.roomNumber} &bull; Check-in: {detailsModal.booking.checkInDate} ({detailsModal.booking.checkInTime ? formatTime12Hour(detailsModal.booking.checkInTime) : checkInTimeFormatted}) &bull; Check-out: {detailsModal.booking.checkOutDate} (12:00 PM)
-                    </Typography>
-                  </div>
-                  <StatusChip status={detailsModal.booking.status} size="small" />
-                </Box>
+          {detailsModal.booking && (() => {
+            const b = detailsModal.booking;
+            const overstay = calculateOverstayFee(b, hotelSettings);
+            const posChargesTotal = (b.posCharges || []).reduce((s, c) => s + (c.amount || 0), 0);
+            const grandTotal = (b.totalAmount || 0) + posChargesTotal + (overstay.lateFee || 0);
+            const paidTotal = b.paidAmount || 0;
+            const dueBalance = Math.max(0, grandTotal - paidTotal);
 
-                {detailsModal.booking.accompanyingGuests && detailsModal.booking.accompanyingGuests.length > 0 && (
-                  <Box sx={{ mt: 1.5, pt: 1, borderTop: `1px dashed ${themeConfig.border}` }}>
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.primaryDark, display: "block", mb: 0.5 }}>
-                      👥 Accompanying Members ({detailsModal.booking.accompanyingGuests.length}):
-                    </Typography>
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                      {detailsModal.booking.accompanyingGuests.map((m, idx) => (
-                        <Chip
-                          key={idx}
-                          size="small"
-                          label={`${m.name} (${m.relationship || "Family"}${m.idNumber ? ` • ${m.idType}: ${m.idNumber}` : ""})`}
-                          sx={{ bgcolor: "#FFFFFF", color: themeConfig.textMain, fontSize: "0.72rem", border: `1px solid ${themeConfig.border}` }}
-                        />
-                      ))}
-                    </Box>
+            return (
+              <Box sx={{ pt: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+                <Paper sx={{ p: 2, borderRadius: "14px", bgcolor: themeConfig.champagne, border: `1px solid ${themeConfig.border}` }}>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+                    <div>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.textMain }}>
+                        {b.guest?.name || b.guest?.fullName}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
+                        {(() => {
+                          const rList = getBookingRoomNumbers(b);
+                          return rList.length > 1 ? `Rooms: ${rList.join(", ")}` : `Room ${rList[0] || ""}`;
+                        })()} &bull; Check-in: {b.checkInDate} ({b.checkInTime ? formatTime12Hour(b.checkInTime) : checkInTimeFormatted}) &bull; Check-out: {b.checkOutDate} ({formatTime12Hour(b.checkOutTime || hotelSettings?.checkOutTime || "12:00")})
+                      </Typography>
+                    </div>
+                    <StatusChip status={b.status} size="small" />
                   </Box>
+
+                  {b.accompanyingGuests && b.accompanyingGuests.length > 0 && (
+                    <Box sx={{ mt: 1.5, pt: 1, borderTop: `1px dashed ${themeConfig.border}` }}>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.primaryDark, display: "block", mb: 0.5 }}>
+                        👥 Accompanying Members ({b.accompanyingGuests.length}):
+                      </Typography>
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                        {b.accompanyingGuests.map((m, idx) => (
+                          <Chip
+                            key={idx}
+                            size="small"
+                            label={`${m.name} (${m.relationship || "Family"}${m.idNumber ? ` • ${m.idType}: ${m.idNumber}` : ""})`}
+                            sx={{ bgcolor: themeConfig.bgCard, color: themeConfig.textMain, fontSize: "0.72rem", border: `1px solid ${themeConfig.border}` }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+                </Paper>
+
+                {overstay.isOverstay && (
+                  <Paper sx={{ p: 1.8, borderRadius: "14px", bgcolor: "rgba(239, 68, 68, 0.08)", border: "1.5px dashed rgba(239, 68, 68, 0.4)" }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Warning sx={{ color: "#DC2626", fontSize: 20 }} />
+                      <Typography variant="body2" sx={{ fontWeight: 900, color: "#DC2626" }}>
+                        Late Check-Out Policy: +{overstay.overdueHours}h Overdue past {formatTime12Hour(overstay.scheduledCheckOutTime || "12:00")}
+                      </Typography>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: themeConfig.textMain, display: "block", mt: 0.5 }}>
+                      Automatic extra <strong>{overstay.extraDays} day room tariff</strong> (+₹{overstay.lateFee.toLocaleString()}) applied to this stay.
+                    </Typography>
+                  </Paper>
                 )}
-              </Paper>
 
-              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                Itemized Charges & Ancillary Services:
-              </Typography>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
+                  Itemized Charges & Ancillary Services:
+                </Typography>
 
-              <TableContainer sx={{ borderRadius: "12px", border: `1px solid ${themeConfig.border}` }}>
-                <Table size="small">
-                  <TableHead sx={{ bgcolor: themeConfig.champagne }}>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 800 }}>Description</TableCell>
-                      <TableCell sx={{ fontWeight: 800 }}>Category</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 800 }}>Amount</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 700 }}>Room Accommodation</TableCell>
-                      <TableCell><Chip label="STAY" size="small" sx={{ height: 20, fontSize: "0.65rem" }} /></TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 800 }}>₹{(detailsModal.booking.totalAmount || 0).toLocaleString()}</TableCell>
-                    </TableRow>
-
-                    {(detailsModal.booking.posCharges || []).map((c, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell>{c.item || c.title || "POS Service"}</TableCell>
-                        <TableCell><Chip label={c.type || "POS"} size="small" sx={{ height: 20, fontSize: "0.65rem" }} /></TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>₹{(c.amount || 0).toLocaleString()}</TableCell>
+                <TableContainer sx={{ borderRadius: "12px", border: `1px solid ${themeConfig.border}` }}>
+                  <Table size="small">
+                    <TableHead sx={{ bgcolor: themeConfig.champagne }}>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 800 }}>Description</TableCell>
+                        <TableCell sx={{ fontWeight: 800 }}>Category</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 800 }}>Amount</TableCell>
                       </TableRow>
-                    ))}
+                    </TableHead>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 700 }}>Room Accommodation</TableCell>
+                        <TableCell><Chip label="STAY" size="small" sx={{ height: 20, fontSize: "0.65rem" }} /></TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 800 }}>₹{(b.totalAmount || 0).toLocaleString()}</TableCell>
+                      </TableRow>
 
-                    <TableRow sx={{ bgcolor: themeConfig.champagne }}>
-                      <TableCell colSpan={2} sx={{ fontWeight: 900 }}>Total Billed Ledger</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 900, color: themeConfig.primary }}>
-                        ₹{((detailsModal.booking.totalAmount || 0) + (detailsModal.booking.posCharges || []).reduce((s, c) => s + (c.amount || 0), 0)).toLocaleString()}
-                      </TableCell>
-                    </TableRow>
+                      {overstay.isOverstay && (
+                        <TableRow sx={{ bgcolor: "rgba(239, 68, 68, 0.04)" }}>
+                          <TableCell sx={{ fontWeight: 700, color: "#DC2626" }}>
+                            ⏰ Late Check-Out ({overstay.extraDays} Extra Day past {formatTime12Hour(overstay.scheduledCheckOutTime || "12:00")})
+                          </TableCell>
+                          <TableCell><Chip label="OVERSTAY" size="small" sx={{ height: 20, fontSize: "0.65rem", bgcolor: "rgba(239, 68, 68, 0.15)", color: "#DC2626", fontWeight: 800 }} /></TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 800, color: "#DC2626" }}>+₹{overstay.lateFee.toLocaleString()}</TableCell>
+                        </TableRow>
+                      )}
 
-                    <TableRow>
-                      <TableCell colSpan={2} sx={{ fontWeight: 800, color: themeConfig.textMuted }}>Advance / Paid Amount</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 800, color: "#059669" }}>
-                        ₹{(detailsModal.booking.paidAmount || 0).toLocaleString()}
-                      </TableCell>
-                    </TableRow>
+                      {(b.posCharges || []).map((c, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>{c.item || c.title || "POS Service"}</TableCell>
+                          <TableCell><Chip label={c.type || "POS"} size="small" sx={{ height: 20, fontSize: "0.65rem" }} /></TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>₹{(c.amount || 0).toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))}
 
-                    <TableRow>
-                      <TableCell colSpan={2} sx={{ fontWeight: 900, color: themeConfig.danger }}>Outstanding Balance Due</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 900, color: themeConfig.danger }}>
-                        ₹{Math.max(0, ((detailsModal.booking.totalAmount || 0) + (detailsModal.booking.posCharges || []).reduce((s, c) => s + (c.amount || 0), 0)) - (detailsModal.booking.paidAmount || 0)).toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          )}
+                      <TableRow sx={{ bgcolor: themeConfig.champagne }}>
+                        <TableCell colSpan={2} sx={{ fontWeight: 900 }}>Total Billed Ledger</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 900, color: themeConfig.primary }}>
+                          ₹{grandTotal.toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+
+                      <TableRow>
+                        <TableCell colSpan={2} sx={{ fontWeight: 800, color: themeConfig.textMuted }}>Advance / Paid Amount</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 800, color: "#059669" }}>
+                          ₹{paidTotal.toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+
+                      <TableRow>
+                        <TableCell colSpan={2} sx={{ fontWeight: 900, color: themeConfig.danger }}>Outstanding Balance Due</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 900, color: themeConfig.danger }}>
+                          ₹{dueBalance.toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            );
+          })()}
         </DialogContent>
 
         <DialogActions sx={{ p: 2 }}>

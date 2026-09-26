@@ -9,7 +9,7 @@ import {
   Stars,
   Settings,
   Payments,
-} from "@mui/icons-material";
+} from "@/shared/icons";
 
 export const HOTEL_ADMIN_NAV = [
   { label: "Dashboard & Home", shortLabel: "Overview", path: "overview", icon: <DashboardIcon fontSize="small" /> },

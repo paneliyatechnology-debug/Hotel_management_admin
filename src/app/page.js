@@ -254,6 +254,7 @@ function AdminAppContent() {
                 user={user}
                 activeNav={activeTab}
                 onTabChange={handleTabChange}
+                onLogout={handleLogout}
               />
             </ReceptionistLayout>
           )}

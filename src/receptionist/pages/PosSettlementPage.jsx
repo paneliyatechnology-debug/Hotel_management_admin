@@ -11,7 +11,7 @@ import {
   Tabs,
   Tab,
 } from "@mui/material";
-import { Fastfood, Receipt, Payments, LocalDining } from "@mui/icons-material";
+import { Fastfood, Receipt, Payments, LocalDining } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { API_ENDPOINTS } from "@/config/api";
 import EmptyState from "@/shared/components/EmptyState";
@@ -138,7 +138,14 @@ export default function PosSettlementPage({
                     <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
                       <div>
                         <Typography variant="subtitle1" sx={{ fontWeight: 900, color: themeConfig.textMain }}>
-                          Room {b.roomNumber || b.room?.roomNumber} - {b.guest?.name || b.guest?.fullName}
+                          {(() => {
+                            const roomsList = Array.isArray(b.roomNumbers) && b.roomNumbers.length > 0
+                              ? b.roomNumbers.map(String)
+                              : b.roomNumber
+                              ? String(b.roomNumber).split(",").map((s) => s.trim()).filter(Boolean)
+                              : [b.room?.roomNumber || "N/A"];
+                            return roomsList.length > 1 ? `Rooms ${roomsList.join(", ")}` : `Room ${roomsList[0]}`;
+                          })()} - {b.guest?.name || b.guest?.fullName}
                         </Typography>
                         <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
                           Folio: #{b.bookingNumber} &bull; Due: <strong style={{ color: themeConfig.danger }}>₹{(b.dueAmount || 0).toLocaleString()}</strong>

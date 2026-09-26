@@ -1,7 +1,7 @@
 "use client";
 
 import { Box, Card, CardContent, Typography } from "@mui/material";
-import { TrendingUp, TrendingDown } from "@mui/icons-material";
+import { TrendingUp, TrendingDown } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 
 export default function StatCard({
@@ -14,7 +14,7 @@ export default function StatCard({
   color,
   badgeText,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
   const cardColor = color || themeConfig.primary;
 
   return (
@@ -25,9 +25,13 @@ export default function StatCard({
         minHeight: 175,
         display: "flex",
         flexDirection: "column",
-        background: `linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)`,
-        border: `1px solid ${themeConfig.borderLight || "#E2E8F0"}`,
-        boxShadow: "0 10px 25px -5px rgba(12, 39, 59, 0.06), 0 8px 10px -6px rgba(12, 39, 59, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.95)",
+        background: isDarkMode
+          ? `linear-gradient(135deg, ${themeConfig.bgCard || "#162032"} 0%, #1A2638 100%)`
+          : `linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)`,
+        border: `1px solid ${themeConfig.border}`,
+        boxShadow: isDarkMode
+          ? "0 10px 25px -5px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)"
+          : "0 10px 25px -5px rgba(12, 39, 59, 0.06), 0 8px 10px -6px rgba(12, 39, 59, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.95)",
         position: "relative",
         overflow: "hidden",
         boxSizing: "border-box",
@@ -100,13 +104,17 @@ export default function StatCard({
                 height: 38,
                 minWidth: 38,
                 borderRadius: "12px",
-                background: `linear-gradient(135deg, #FFFFFF 0%, ${themeConfig.champagne} 100%)`,
+                background: isDarkMode
+                  ? `linear-gradient(135deg, rgba(255,255,255,0.06) 0%, ${themeConfig.champagne} 100%)`
+                  : `linear-gradient(135deg, #FFFFFF 0%, ${themeConfig.champagne} 100%)`,
                 color: cardColor,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 border: `1px solid ${themeConfig.border}`,
-                boxShadow: `0 4px 12px -2px ${cardColor}25, inset 0 1px 1px #FFFFFF`,
+                boxShadow: isDarkMode
+                  ? `0 4px 12px -2px ${cardColor}35`
+                  : `0 4px 12px -2px ${cardColor}25, inset 0 1px 1px #FFFFFF`,
                 flexShrink: 0,
                 "& svg": {
                   fontSize: 20,
@@ -206,8 +214,10 @@ export default function StatCard({
                   px: 0.9,
                   py: 0.25,
                   borderRadius: "6px",
-                  background: `linear-gradient(135deg, ${themeConfig.champagne} 0%, #FFFFFF 100%)`,
-                  color: themeConfig.primaryDark,
+                  background: isDarkMode
+                    ? `linear-gradient(135deg, ${themeConfig.champagne} 0%, rgba(255,255,255,0.08) 100%)`
+                    : `linear-gradient(135deg, ${themeConfig.champagne} 0%, #FFFFFF 100%)`,
+                  color: isDarkMode ? "#FFFFFF" : themeConfig.primaryDark,
                   border: `1px solid ${themeConfig.border}`,
                   boxShadow: "0 2px 4px rgba(0,0,0,0.04)",
                   whiteSpace: "nowrap",

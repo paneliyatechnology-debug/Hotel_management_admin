@@ -54,7 +54,7 @@ import {
   ShieldOutlined,
   Bolt,
   Download,
-} from "@mui/icons-material";
+} from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import StatusChip from "@/shared/components/StatusChip";
 import EmptyState from "@/shared/components/EmptyState";
@@ -525,7 +525,8 @@ export default function HotelsDirectoryPage({
             }}
             sx={{
               borderTop: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
+              bgcolor: themeConfig.bgCard,
+              color: themeConfig.textMain,
               borderRadius: "0 0 20px 20px",
             }}
           />

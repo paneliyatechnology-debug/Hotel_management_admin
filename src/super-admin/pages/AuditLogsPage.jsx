@@ -17,7 +17,7 @@ import {
   Chip,
   Button,
 } from "@mui/material";
-import { Download, Shield } from "@mui/icons-material";
+import { Download, Shield } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import EmptyState from "@/shared/components/EmptyState";
 import { downloadAuditLogsPDF } from "@/shared/utils/pdfGenerator";
@@ -141,7 +141,8 @@ export default function AuditLogsPage({ logs = [] }) {
             }}
             sx={{
               borderTop: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
+              bgcolor: themeConfig.bgCard,
+              color: themeConfig.textMain,
               borderRadius: "0 0 20px 20px",
             }}
           />

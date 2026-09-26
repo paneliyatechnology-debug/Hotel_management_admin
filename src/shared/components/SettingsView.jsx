@@ -51,7 +51,11 @@ import {
   InfoOutlined,
   WarningAmber,
   Public,
-} from "@mui/icons-material";
+  DarkMode,
+  LightMode,
+  WbSunny,
+  NightlightRound,
+} from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
 import {
@@ -75,7 +79,18 @@ const TIMEZONE_OPTIONS = [
 ];
 
 export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSettings }) {
-  const { paletteKey, setPaletteKey, themeConfig, themePalettes, settings, updateSettings } = useAppTheme();
+  const {
+    paletteKey,
+    setPaletteKey,
+    themeConfig,
+    themePalettes,
+    settings,
+    updateSettings,
+    isDarkMode,
+    mode,
+    setThemeMode,
+    toggleThemeMode,
+  } = useAppTheme();
   const [activeSubTab, setActiveSubTab] = useState(0);
 
   // Profile Form State
@@ -308,8 +323,10 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
         sx={{
           borderRadius: "24px",
           border: `1.5px solid ${themeConfig.border}`,
-          bgcolor: "#FFFFFF",
-          boxShadow: "0 20px 45px -12px rgba(12, 39, 59, 0.08), 0 4px 16px rgba(0,0,0,0.02), inset 0 1px 0 #FFFFFF",
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#162032" : "#FFFFFF"),
+          boxShadow: isDarkMode
+            ? "0 20px 45px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.05)"
+            : "0 20px 45px -12px rgba(12, 39, 59, 0.08), 0 4px 16px rgba(0,0,0,0.02), inset 0 1px 0 #FFFFFF",
           overflow: "hidden",
         }}
       >
@@ -319,7 +336,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
             borderBottom: `1.5px solid ${themeConfig.border}`,
             px: { xs: 1.5, sm: 3 },
             py: 1,
-            bgcolor: "rgba(248, 250, 252, 0.7)",
+            bgcolor: isDarkMode ? "rgba(15, 23, 42, 0.8)" : "rgba(248, 250, 252, 0.7)",
             backdropFilter: "blur(10px)",
           }}
         >
@@ -371,12 +388,152 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
           {/* ========================================================================= */}
           {currentTab === "themes" && (
             <Box>
+              {/* Appearance Mode (Light / Dark) */}
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 0.5 }}>
+                  Appearance Mode
+                </Typography>
+                <Typography variant="body2" sx={{ color: themeConfig.textMuted, mb: 2 }}>
+                  Switch between Daylight Light Mode and OLED Dark Mode.
+                </Typography>
+
+                <Grid container spacing={2.5}>
+                  {/* Light Mode Card */}
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Card
+                      onClick={() => setThemeMode("light")}
+                      sx={{
+                        cursor: "pointer",
+                        borderRadius: "18px",
+                        p: 2.5,
+                        border: !isDarkMode ? `2.5px solid ${themeConfig.primary}` : `1.5px solid ${themeConfig.border}`,
+                        bgcolor: !isDarkMode ? "rgba(255, 255, 255, 0.9)" : "rgba(255, 255, 255, 0.02)",
+                        boxShadow: !isDarkMode ? `0 8px 24px ${themeConfig.primaryGlow}` : "none",
+                        transition: "all 0.25s ease",
+                        "&:hover": {
+                          borderColor: themeConfig.primary,
+                          transform: "translateY(-2px)",
+                        },
+                      }}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                          <Avatar
+                            sx={{
+                              bgcolor: "#FEF3C7",
+                              color: "#D97706",
+                              width: 44,
+                              height: 44,
+                              borderRadius: "12px",
+                              boxShadow: "0 2px 8px rgba(217, 119, 6, 0.2)",
+                            }}
+                          >
+                            <WbSunny sx={{ fontSize: 24 }} />
+                          </Avatar>
+                          <Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
+                              Light Mode
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
+                              Clean daylight theme &amp; sharp contrast
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        {!isDarkMode && (
+                          <Chip
+                            icon={<CheckCircle fontSize="small" sx={{ color: "#FFFFFF !important" }} />}
+                            label="ACTIVE"
+                            size="small"
+                            sx={{
+                              bgcolor: themeConfig.primary,
+                              color: "#FFFFFF",
+                              fontWeight: 800,
+                              fontSize: "0.7rem",
+                              borderRadius: "8px",
+                            }}
+                          />
+                        )}
+                      </Box>
+                      <Typography variant="body2" sx={{ color: themeConfig.textMuted, fontSize: "0.82rem" }}>
+                        Crisp white cards, subtle borders, and optimal contrast for bright work environments.
+                      </Typography>
+                    </Card>
+                  </Grid>
+
+                  {/* Dark Mode Card */}
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Card
+                      onClick={() => setThemeMode("dark")}
+                      sx={{
+                        cursor: "pointer",
+                        borderRadius: "18px",
+                        p: 2.5,
+                        border: isDarkMode ? `2.5px solid ${themeConfig.primary}` : `1.5px solid ${themeConfig.border}`,
+                        bgcolor: isDarkMode ? "rgba(22, 32, 50, 0.9)" : "rgba(15, 23, 42, 0.04)",
+                        boxShadow: isDarkMode ? `0 8px 24px ${themeConfig.primaryGlow}` : "none",
+                        transition: "all 0.25s ease",
+                        "&:hover": {
+                          borderColor: themeConfig.primary,
+                          transform: "translateY(-2px)",
+                        },
+                      }}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                          <Avatar
+                            sx={{
+                              bgcolor: "#312E81",
+                              color: "#A5B4FC",
+                              width: 44,
+                              height: 44,
+                              borderRadius: "12px",
+                              boxShadow: "0 2px 8px rgba(165, 180, 252, 0.2)",
+                            }}
+                          >
+                            <DarkMode sx={{ fontSize: 24 }} />
+                          </Avatar>
+                          <Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
+                              Dark Mode
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
+                              Sleek slate OLED theme &amp; reduced eye strain
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        {isDarkMode && (
+                          <Chip
+                            icon={<CheckCircle fontSize="small" sx={{ color: "#FFFFFF !important" }} />}
+                            label="ACTIVE"
+                            size="small"
+                            sx={{
+                              bgcolor: themeConfig.primary,
+                              color: "#FFFFFF",
+                              fontWeight: 800,
+                              fontSize: "0.7rem",
+                              borderRadius: "8px",
+                            }}
+                          />
+                        )}
+                      </Box>
+                      <Typography variant="body2" sx={{ color: themeConfig.textMuted, fontSize: "0.82rem" }}>
+                        Deep obsidian &amp; slate surfaces with glowing accent highlights for night shifts.
+                      </Typography>
+                    </Card>
+                  </Grid>
+                </Grid>
+              </Box>
+
+              <Divider sx={{ my: 3.5, borderColor: themeConfig.border }} />
+
               <Box sx={{ mb: 3.5 }}>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 0.5 }}>
-                  Select Theme Palette
+                  Select Color Palette ({isDarkMode ? "Dark Variants" : "Light Variants"})
                 </Typography>
                 <Typography variant="body2" sx={{ color: themeConfig.textMuted }}>
-                  Choose any color palette below to instantly update the entire dashboard across all panels.
+                  Choose any curated palette below to customize accent colors across your dashboard.
                 </Typography>
               </Box>
 
@@ -391,16 +548,16 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                           cursor: "pointer",
                           borderRadius: "20px",
                           border: isCurrent ? `2.5px solid ${pal.primary}` : `1.5px solid ${themeConfig.border}`,
-                          bgcolor: isCurrent ? pal.bgMain : "#FFFFFF",
+                          bgcolor: isCurrent ? pal.bgCard : (themeConfig.bgCard || (isDarkMode ? "#162032" : "#FFFFFF")),
                           transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
                           boxShadow: isCurrent
-                            ? `0 12px 28px -4px ${pal.primaryGlow}, 0 4px 12px rgba(0,0,0,0.04), inset 0 1px 0 #FFFFFF`
-                            : "0 4px 14px rgba(12, 39, 59, 0.03), inset 0 1px 0 #FFFFFF",
+                            ? `0 12px 28px -4px ${pal.primaryGlow}`
+                            : (isDarkMode ? "0 4px 14px rgba(0,0,0,0.3)" : "0 4px 14px rgba(12, 39, 59, 0.03)"),
                           transform: isCurrent ? "translateY(-3px) scale(1.01)" : "none",
                           "&:hover": {
                             transform: "translateY(-4px) scale(1.02)",
                             borderColor: pal.primary,
-                            boxShadow: `0 14px 30px -4px ${pal.primaryGlow}, inset 0 1px 0 #FFFFFF`,
+                            boxShadow: `0 14px 30px -4px ${pal.primaryGlow}`,
                           },
                         }}
                       >
@@ -436,7 +593,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                                   borderColor: pal.border,
                                   color: pal.primaryDark,
                                   borderRadius: "10px",
-                                  bgcolor: "#FFFFFF",
+                                  bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : "#FFFFFF",
                                   boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
                                   "&:hover": {
                                     bgcolor: pal.primaryGlow,
@@ -579,7 +736,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                     variant="outlined"
                     sx={{
                       borderColor: themeConfig.border,
-                      bgcolor: "#FFFFFF",
+                      bgcolor: themeConfig.bgCard,
                       color: themeConfig.textMain,
                       fontWeight: 800,
                       borderRadius: "12px",
@@ -663,8 +820,10 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                       height: "100%",
                       borderRadius: "18px",
                       border: `1.5px solid ${themeConfig.border}`,
-                      bgcolor: "#FFFFFF",
-                      boxShadow: "0 8px 20px -4px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
+                      bgcolor: themeConfig.bgCard,
+                      boxShadow: isDarkMode
+                        ? "0 8px 20px -4px rgba(0, 0, 0, 0.4)"
+                        : "0 8px 20px -4px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "space-between",
@@ -735,8 +894,10 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                       height: "100%",
                       borderRadius: "18px",
                       border: `1.5px solid ${themeConfig.border}`,
-                      bgcolor: "#FFFFFF",
-                      boxShadow: "0 8px 20px -4px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
+                      bgcolor: themeConfig.bgCard,
+                      boxShadow: isDarkMode
+                        ? "0 8px 20px -4px rgba(0, 0, 0, 0.4)"
+                        : "0 8px 20px -4px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "space-between",
@@ -771,7 +932,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
               )}
 
               {/* 3D Configurable Timing Inputs Card */}
-              <Card sx={{ mb: 3.5, borderRadius: "20px", bgcolor: themeConfig.bgMain, border: `1.5px solid ${themeConfig.border}`, boxShadow: "0 8px 24px -6px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF" }}>
+              <Card sx={{ mb: 3.5, borderRadius: "20px", bgcolor: themeConfig.bgCard, border: `1.5px solid ${themeConfig.border}`, boxShadow: isDarkMode ? "0 8px 24px -6px rgba(0,0,0,0.4)" : "0 8px 24px -6px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF" }}>
                 <CardContent sx={{ p: 3.5 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 2.5, display: "flex", alignItems: "center", gap: 1 }}>
                     <AccessTime fontSize="small" sx={{ color: themeConfig.primary }} /> Configurable Policy &amp; Schedule
@@ -791,7 +952,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                         onChange={(e) => setCheckInTime(e.target.value)}
                         helperText={`Formally: ${formatTime12Hour(checkInTime)} (Default: 02:00 PM)`}
                         sx={{
-                          bgcolor: "#FFFFFF",
+                          bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF",
                           "& .MuiOutlinedInput-root": {
                             borderRadius: "12px",
                             boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
@@ -814,7 +975,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                         onChange={(e) => setCheckOutTime(e.target.value)}
                         helperText={`Formally: ${formatTime12Hour(checkOutTime)} (Default: 12:00 PM)`}
                         sx={{
-                          bgcolor: "#FFFFFF",
+                          bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF",
                           "& .MuiOutlinedInput-root": {
                             borderRadius: "12px",
                             boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
@@ -834,7 +995,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                           value={timezone}
                           onChange={(e) => setTimezone(e.target.value)}
                           sx={{
-                            bgcolor: "#FFFFFF",
+                            bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF",
                             borderRadius: "12px",
                             boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
                           }}
@@ -850,7 +1011,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                   </Grid>
 
                   {/* Operational Rule Explanation Note */}
-                  <Paper sx={{ mt: 3, p: 2.5, borderRadius: "16px", bgcolor: "#FFFFFF", border: `1px solid ${themeConfig.border}`, boxShadow: "0 4px 12px rgba(0,0,0,0.02)" }}>
+                  <Paper sx={{ mt: 3, p: 2.5, borderRadius: "16px", bgcolor: themeConfig.bgCard, border: `1px solid ${themeConfig.border}`, boxShadow: isDarkMode ? "0 4px 12px rgba(0,0,0,0.3)" : "0 4px 12px rgba(0,0,0,0.02)" }}>
                     <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
                       <InfoOutlined sx={{ color: themeConfig.primary, fontSize: 22, mt: 0.2 }} />
                       <Box>
@@ -871,8 +1032,8 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                 sx={{
                   borderRadius: "20px",
                   border: `1.5px solid ${themeConfig.border}`,
-                  bgcolor: "rgba(248, 250, 252, 0.6)",
-                  boxShadow: "0 8px 25px -5px rgba(12, 39, 59, 0.05), inset 0 1px 0 #FFFFFF",
+                  bgcolor: themeConfig.bgCard,
+                  boxShadow: isDarkMode ? "0 8px 25px -5px rgba(0,0,0,0.4)" : "0 8px 25px -5px rgba(12, 39, 59, 0.05), inset 0 1px 0 #FFFFFF",
                   mb: 3.5,
                 }}
               >
@@ -903,7 +1064,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                         onChange={(e) => setUpiId(e.target.value)}
                         helperText="Guests scan this UPI ID on the Front Desk check-in screen"
                         sx={{
-                          bgcolor: "#FFFFFF",
+                          bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF",
                           borderRadius: "12px",
                           "& .MuiOutlinedInput-root": { borderRadius: "12px" },
                           "& .MuiFormHelperText-root": { fontWeight: 700, color: themeConfig.primaryDark },
@@ -923,7 +1084,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                         value={beneficiaryName}
                         onChange={(e) => setBeneficiaryName(e.target.value)}
                         sx={{
-                          bgcolor: "#FFFFFF",
+                          bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF",
                           borderRadius: "12px",
                           "& .MuiOutlinedInput-root": { borderRadius: "12px" },
                         }}
@@ -941,7 +1102,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                         placeholder="e.g. HDFC Bank"
                         value={bankName}
                         onChange={(e) => setBankName(e.target.value)}
-                        sx={{ bgcolor: "#FFFFFF", borderRadius: "12px", "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
+                        sx={{ bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF", borderRadius: "12px", "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
                       />
                     </Grid>
 
@@ -956,7 +1117,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                         placeholder="e.g. 50200012345678"
                         value={accountNumber}
                         onChange={(e) => setAccountNumber(e.target.value)}
-                        sx={{ bgcolor: "#FFFFFF", borderRadius: "12px", "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
+                        sx={{ bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF", borderRadius: "12px", "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
                       />
                     </Grid>
 
@@ -971,7 +1132,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                         placeholder="e.g. HDFC0001234"
                         value={ifscCode}
                         onChange={(e) => setIfscCode(e.target.value)}
-                        sx={{ bgcolor: "#FFFFFF", borderRadius: "12px", "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
+                        sx={{ bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF", borderRadius: "12px", "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
                       />
                     </Grid>
                   </Grid>
@@ -979,7 +1140,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
               </Card>
 
               {/* 3D Live Preview on Booking Documents */}
-              <Paper sx={{ p: 3, borderRadius: "18px", bgcolor: "#FFFFFF", border: `1.5px dashed ${themeConfig.primary}`, boxShadow: "0 4px 16px rgba(0,0,0,0.02)", mb: 3.5 }}>
+              <Paper sx={{ p: 3, borderRadius: "18px", bgcolor: themeConfig.bgCard, border: `1.5px dashed ${themeConfig.primary}`, boxShadow: isDarkMode ? "0 4px 16px rgba(0,0,0,0.3)" : "0 4px 16px rgba(0,0,0,0.02)", mb: 3.5 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 800, color: themeConfig.primaryDark, mb: 1.5 }}>
                   📋 Live Preview on Guest Reservation Folios &amp; Desk Screens:
                 </Typography>
@@ -1094,7 +1255,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Your Full Name"
                       sx={{
-                        bgcolor: "#FFFFFF",
+                        bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF",
                         "& .MuiOutlinedInput-root": {
                           borderRadius: "12px",
                           boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
@@ -1113,7 +1274,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="+91 98765 43210"
                       sx={{
-                        bgcolor: "#FFFFFF",
+                        bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF",
                         "& .MuiOutlinedInput-root": {
                           borderRadius: "12px",
                           boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
@@ -1174,7 +1335,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       placeholder="••••••••"
                       sx={{
-                        bgcolor: "#FFFFFF",
+                        bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF",
                         "& .MuiOutlinedInput-root": {
                           borderRadius: "12px",
                           boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
@@ -1194,7 +1355,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="••••••••"
                       sx={{
-                        bgcolor: "#FFFFFF",
+                        bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF",
                         "& .MuiOutlinedInput-root": {
                           borderRadius: "12px",
                           boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
@@ -1214,7 +1375,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="••••••••"
                       sx={{
-                        bgcolor: "#FFFFFF",
+                        bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF",
                         "& .MuiOutlinedInput-root": {
                           borderRadius: "12px",
                           boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
@@ -1262,9 +1423,9 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                 sx={{
                   p: 3.5,
                   borderRadius: "22px",
-                  bgcolor: themeConfig.bgMain,
+                  bgcolor: themeConfig.bgCard,
                   border: `1.5px solid ${themeConfig.border}`,
-                  boxShadow: "0 10px 28px -6px rgba(12, 39, 59, 0.05), inset 0 1px 0 #FFFFFF",
+                  boxShadow: isDarkMode ? "0 10px 28px -6px rgba(0,0,0,0.4)" : "0 10px 28px -6px rgba(12, 39, 59, 0.05), inset 0 1px 0 #FFFFFF",
                 }}
               >
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>

@@ -8,7 +8,7 @@ import {
   CreditCard,
   Shield,
   Settings,
-} from "@mui/icons-material";
+} from "@/shared/icons";
 
 export const SUPER_ADMIN_NAV = [
   { label: "Dashboard", shortLabel: "Overview", path: "overview", icon: <DashboardIcon fontSize="small" /> },
