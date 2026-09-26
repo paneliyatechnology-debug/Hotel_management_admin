@@ -114,9 +114,10 @@ export default function DigitalSignaturePad({
     img.src = dataUrl;
   }, []);
 
-  // Real-time polling for mobile signature submission
+  // Real-time polling for mobile signature submission ONLY when Mobile QR tab is active
   useEffect(() => {
-    if (hasSignature) return;
+    // Only poll when user is on the Mobile QR tab and signature is not yet received
+    if (mode !== "MOBILE" || hasSignature) return;
 
     const interval = setInterval(async () => {
       try {
@@ -131,10 +132,10 @@ export default function DigitalSignaturePad({
           }
         }
       } catch (_) {}
-    }, 1500);
+    }, 2000);
 
     return () => clearInterval(interval);
-  }, [sessionId, hasSignature, onChange, loadSignatureIntoCanvas]);
+  }, [mode, sessionId, hasSignature, onChange, loadSignatureIntoCanvas]);
 
   // Initialize canvas resolution & stroke styling
   const initCanvas = useCallback(
