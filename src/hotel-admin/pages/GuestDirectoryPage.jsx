@@ -449,6 +449,8 @@ export default function GuestDirectoryPage({
                               size="small"
                               onClick={() => setViewGuestModal?.({ open: true, guest })}
                               sx={{
+                                width: 32,
+                                height: 32,
                                 color: themeConfig.primaryDark,
                                 bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : themeConfig.champagne,
                                 borderRadius: "10px",
@@ -459,7 +461,7 @@ export default function GuestDirectoryPage({
                                 },
                               }}
                             >
-                              <Visibility sx={{ fontSize: 16, color: themeConfig.primaryDark }} />
+                              <Visibility fontSize="small" />
                             </IconButton>
                           </Tooltip>
 
@@ -468,6 +470,8 @@ export default function GuestDirectoryPage({
                               size="small"
                               onClick={() => handleSendWhatsApp(guest)}
                               sx={{
+                                width: 32,
+                                height: 32,
                                 color: "#10B981",
                                 bgcolor: "rgba(16, 185, 129, 0.12)",
                                 borderRadius: "10px",
@@ -475,7 +479,7 @@ export default function GuestDirectoryPage({
                                 "&:hover": { bgcolor: "rgba(16, 185, 129, 0.25)" },
                               }}
                             >
-                              <Phone sx={{ fontSize: 16 }} />
+                              <Phone fontSize="small" />
                             </IconButton>
                           </Tooltip>
                         </Box>

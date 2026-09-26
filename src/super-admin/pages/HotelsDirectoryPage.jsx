@@ -441,6 +441,8 @@ export default function HotelsDirectoryPage({
                             setDrawerOpen(true);
                           }}
                           sx={{
+                            width: 32,
+                            height: 32,
                             color: themeConfig.primaryDark,
                             bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : themeConfig.champagne,
                             borderRadius: "10px",
@@ -451,7 +453,7 @@ export default function HotelsDirectoryPage({
                             },
                           }}
                         >
-                          <Visibility sx={{ fontSize: 16, color: themeConfig.primaryDark }} />
+                          <Visibility fontSize="small" />
                         </IconButton>
                       </Tooltip>
 
