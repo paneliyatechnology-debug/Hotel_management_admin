@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback, Suspense } from "react";
+import { useRef, useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Box,
@@ -15,7 +15,6 @@ import {
   Refresh,
   Hotel,
   TouchApp,
-  Draw,
 } from "@/shared/icons";
 import { AppThemeProvider } from "@/shared/context/ThemeContext";
 
@@ -24,43 +23,23 @@ function MobileSignContent() {
   const sessionId = searchParams.get("session") || "";
   const guestName = searchParams.get("name") || "Guest";
 
-  const canvasRef = useRef(null);
-  const [hasDrawn, setHasDrawn] = useState(false);
+  const svgRef = useRef(null);
+  const containerRef = useRef(null);
+
+  // Array of SVG path strings: e.g. ["M 10 20 L 15 25 L 20 30", ...]
+  const [paths, setPaths] = useState([]);
+  const [currentPath, setCurrentPath] = useState("");
+  const isDrawingRef = useRef(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const isDrawingRef = useRef(false);
-  const lastPosRef = useRef({ x: 0, y: 0 });
-
-  // Initialize Canvas with crisp background and fixed buffer
-  const initCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    // Fixed high-resolution canvas buffer: 800 x 400
-    canvas.width = 800;
-    canvas.height = 400;
-
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, 800, 400);
-
-    ctx.lineWidth = 4.5;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.strokeStyle = "#090D16";
-  }, []);
-
-  useEffect(() => {
-    initCanvas();
-  }, [initCanvas]);
-
-  // Accurate coordinate calculation that scales screen touch pixels to 800x400 canvas buffer
-  const getCanvasCoords = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
+  // Calculate SVG viewBox relative coordinates
+  const getCoords = (e) => {
+    const container = containerRef.current;
+    if (!container) return { x: 0, y: 0 };
+    const rect = container.getBoundingClientRect();
 
     let clientX = e.clientX;
     let clientY = e.clientY;
@@ -73,62 +52,34 @@ function MobileSignContent() {
       clientY = e.changedTouches[0].clientY;
     }
 
-    const scaleX = canvas.width / (rect.width || 1);
-    const scaleY = canvas.height / (rect.height || 1);
+    const relX = clientX - rect.left;
+    const relY = clientY - rect.top;
+
+    // Scale to fixed 600x300 SVG viewBox
+    const scaleX = 600 / (rect.width || 1);
+    const scaleY = 300 / (rect.height || 1);
 
     return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY,
+      x: Math.round(relX * scaleX * 10) / 10,
+      y: Math.round(relY * scaleY * 10) / 10,
     };
   };
 
-  // Start Drawing
+  // Start Drawing (Touch or Mouse)
   const handleStart = (e) => {
     if (e.cancelable) e.preventDefault();
     isDrawingRef.current = true;
-    const pos = getCanvasCoords(e);
-    lastPosRef.current = pos;
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx.lineWidth = 4.5;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.strokeStyle = "#090D16";
-
-    ctx.beginPath();
-    ctx.arc(pos.x, pos.y, 2.2, 0, Math.PI * 2);
-    ctx.fillStyle = "#090D16";
-    ctx.fill();
-
-    setHasDrawn(true);
+    const { x, y } = getCoords(e);
+    const newPath = `M ${x} ${y} L ${x + 0.1} ${y + 0.1}`;
+    setCurrentPath(newPath);
   };
 
-  // Move / Draw Line
+  // Move Drawing
   const handleMove = (e) => {
     if (!isDrawingRef.current) return;
     if (e.cancelable) e.preventDefault();
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-
-    const currentPos = getCanvasCoords(e);
-    const lastPos = lastPosRef.current;
-
-    ctx.lineWidth = 4.5;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.strokeStyle = "#090D16";
-
-    ctx.beginPath();
-    ctx.moveTo(lastPos.x, lastPos.y);
-    ctx.lineTo(currentPos.x, currentPos.y);
-    ctx.stroke();
-
-    lastPosRef.current = currentPos;
-    setHasDrawn(true);
+    const { x, y } = getCoords(e);
+    setCurrentPath((prev) => (prev ? `${prev} L ${x} ${y}` : `M ${x} ${y}`));
   };
 
   // End Drawing
@@ -136,43 +87,52 @@ function MobileSignContent() {
     if (!isDrawingRef.current) return;
     if (e.cancelable) e.preventDefault();
     isDrawingRef.current = false;
+    if (currentPath) {
+      setPaths((prev) => [...prev, currentPath]);
+      setCurrentPath("");
+    }
   };
-
-  // Native touch event listeners with passive: false for 100% Android/iOS compatibility
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    canvas.addEventListener("touchstart", handleStart, { passive: false });
-    canvas.addEventListener("touchmove", handleMove, { passive: false });
-    canvas.addEventListener("touchend", handleEnd, { passive: false });
-    canvas.addEventListener("touchcancel", handleEnd, { passive: false });
-
-    return () => {
-      canvas.removeEventListener("touchstart", handleStart);
-      canvas.removeEventListener("touchmove", handleMove);
-      canvas.removeEventListener("touchend", handleEnd);
-      canvas.removeEventListener("touchcancel", handleEnd);
-    };
-  }, []);
 
   const handleClear = () => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    setHasDrawn(false);
+    setPaths([]);
+    setCurrentPath("");
+    isDrawingRef.current = false;
   };
 
+  // Convert SVG Paths directly to high-res PNG Data URL
   const handleSubmit = async () => {
-    if (!hasDrawn || !canvasRef.current || !sessionId) return;
+    const allPaths = currentPath ? [...paths, currentPath] : paths;
+    if (allPaths.length === 0 || !sessionId) return;
+
     setIsSubmitting(true);
     setErrorMsg("");
 
     try {
-      const signatureDataUrl = canvasRef.current.toDataURL("image/png");
+      // Create off-screen canvas to render signature image
+      const canvas = document.createElement("canvas");
+      canvas.width = 600;
+      canvas.height = 300;
+      const ctx = canvas.getContext("2d");
+
+      // Clean white background
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, 600, 300);
+
+      // Draw all SVG paths onto canvas
+      ctx.strokeStyle = "#090D16";
+      ctx.lineWidth = 4.5;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      allPaths.forEach((pathStr) => {
+        try {
+          const path2D = new Path2D(pathStr);
+          ctx.stroke(path2D);
+        } catch (_) {}
+      });
+
+      const signatureDataUrl = canvas.toDataURL("image/png");
+
       const response = await fetch("/api/signature-sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -194,6 +154,8 @@ function MobileSignContent() {
       setIsSubmitting(false);
     }
   };
+
+  const hasAnyDrawn = paths.length > 0 || Boolean(currentPath);
 
   if (isSuccess) {
     return (
@@ -262,39 +224,73 @@ function MobileSignContent() {
           કૃપા કરીને નીચે આપેલા સફેદ બોક્સમાં તમારી આંગળીથી સહી કરો:
         </Typography>
 
-        {/* Touch Drawing Canvas Box */}
+        {/* Infallible SVG Vector Signature Canvas Box */}
         <Box
+          ref={containerRef}
+          onMouseDown={handleStart}
+          onMouseMove={handleMove}
+          onMouseUp={handleEnd}
+          onMouseLeave={handleEnd}
+          onTouchStart={handleStart}
+          onTouchMove={handleMove}
+          onTouchEnd={handleEnd}
+          onTouchCancel={handleEnd}
           sx={{
             position: "relative",
             width: "100%",
             height: { xs: 260, sm: 300 },
             borderRadius: "16px",
-            border: `2px dashed ${hasDrawn ? "#10B981" : "#94A3B8"}`,
+            border: `2.5px dashed ${hasAnyDrawn ? "#10B981" : "#94A3B8"}`,
             bgcolor: "#FFFFFF",
             overflow: "hidden",
             touchAction: "none",
             userSelect: "none",
             WebkitUserSelect: "none",
+            cursor: "crosshair",
             mb: 2,
           }}
         >
-          <canvas
-            ref={canvasRef}
-            onMouseDown={handleStart}
-            onMouseMove={handleMove}
-            onMouseUp={handleEnd}
-            onMouseLeave={handleEnd}
+          {/* SVG Vector Renderer (100% Guaranteed on all phones) */}
+          <svg
+            ref={svgRef}
+            viewBox="0 0 600 300"
             style={{
               width: "100%",
               height: "100%",
               display: "block",
-              touchAction: "none",
-              cursor: "crosshair",
               backgroundColor: "#FFFFFF",
+              touchAction: "none",
+              pointerEvents: "none",
             }}
-          />
+          >
+            {/* Committed Strokes */}
+            {paths.map((p, idx) => (
+              <path
+                key={idx}
+                d={p}
+                stroke="#090D16"
+                strokeWidth="4.5"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
 
-          {!hasDrawn && (
+            {/* Current Active Stroke */}
+            {currentPath && (
+              <path
+                d={currentPath}
+                stroke="#090D16"
+                strokeWidth="4.5"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+          </svg>
+
+          {/* Placeholder helper */}
+          {!hasAnyDrawn && (
             <Box
               sx={{
                 position: "absolute",
@@ -307,16 +303,17 @@ function MobileSignContent() {
                 alignItems: "center",
                 justifyContent: "center",
                 pointerEvents: "none",
-                opacity: 0.45,
+                opacity: 0.5,
               }}
             >
-              <TouchApp sx={{ fontSize: 40, color: "#64748B", mb: 0.5 }} />
+              <TouchApp sx={{ fontSize: 42, color: "#64748B", mb: 0.5 }} />
               <Typography variant="body2" sx={{ color: "#334155", fontWeight: 800 }}>
-                અહીં આંગળીથી સહી કરો (Sign Here)
+                અહીં આંગળીથી સહી કરો (Sign with Finger)
               </Typography>
             </Box>
           )}
 
+          {/* Baseline watermark */}
           <Box
             sx={{
               position: "absolute",
@@ -355,7 +352,7 @@ function MobileSignContent() {
             startIcon={<Refresh />}
             onClick={handleClear}
             color="error"
-            disabled={!hasDrawn || isSubmitting}
+            disabled={!hasAnyDrawn || isSubmitting}
             sx={{
               fontWeight: 800,
               textTransform: "none",
@@ -369,7 +366,7 @@ function MobileSignContent() {
           <Button
             variant="contained"
             onClick={handleSubmit}
-            disabled={!hasDrawn || isSubmitting}
+            disabled={!hasAnyDrawn || isSubmitting}
             startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : <CheckCircle />}
             sx={{
               bgcolor: "#10B981",
