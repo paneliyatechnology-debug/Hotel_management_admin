@@ -25,6 +25,7 @@ import {
   TableRow,
   Paper,
   TablePagination,
+  Checkbox,
 } from "@mui/material";
 import {
   CleaningServices,
@@ -109,6 +110,70 @@ export default function AvailableRoomsPage({
   // Table Pagination
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Multi-Room Selection State for Quick Bulk Booking & Check-In
+  const [selectedRoomIds, setSelectedRoomIds] = useState([]);
+
+  // Toggle room selection for multi-room check-in
+  const handleToggleRoomSelection = (roomId, e) => {
+    if (e && typeof e.stopPropagation === "function") e.stopPropagation();
+    setSelectedRoomIds((prev) => {
+      if (prev.includes(roomId)) {
+        return prev.filter((id) => id !== roomId);
+      } else {
+        return [...prev, roomId];
+      }
+    });
+  };
+
+  // Selected room objects list
+  const selectedRoomsList = useMemo(() => {
+    return rooms.filter((r) => selectedRoomIds.includes(r._id));
+  }, [rooms, selectedRoomIds]);
+
+  // Combined stats for selected rooms
+  const selectedStats = useMemo(() => {
+    let totalRate = 0;
+    let totalAdultCapacity = 0;
+    selectedRoomsList.forEach((r) => {
+      const rtObj = typeof r.roomType === "object" ? r.roomType : null;
+      const rate = r.customPricePerNight || rtObj?.basePrice || r.basePrice || 3000;
+      const cap = r.seatingCapacity || rtObj?.capacity?.adults || 2;
+      totalRate += rate;
+      totalAdultCapacity += cap;
+    });
+    return {
+      count: selectedRoomsList.length,
+      totalRate,
+      totalAdultCapacity,
+      roomNumbers: selectedRoomsList.map((r) => `#${r.roomNumber}`).join(", "),
+    };
+  }, [selectedRoomsList]);
+
+  // Bulk select / deselect available rooms in current view
+  const handleSelectAllAvailable = (roomList = []) => {
+    const availIds = roomList.filter((r) => r.status === "AVAILABLE").map((r) => r._id);
+    if (availIds.length === 0) return;
+    setSelectedRoomIds((prev) => {
+      const allSelected = availIds.every((id) => prev.includes(id));
+      if (allSelected) {
+        return prev.filter((id) => !availIds.includes(id));
+      } else {
+        return Array.from(new Set([...prev, ...availIds]));
+      }
+    });
+  };
+
+  const handleClearSelection = () => {
+    setSelectedRoomIds([]);
+  };
+
+  const handleProceedWithSelectedRooms = () => {
+    if (selectedRoomsList.length === 0) return;
+    if (onSelectRoomForCheckIn) {
+      onSelectRoomForCheckIn(selectedRoomsList);
+    }
+  };
 
   // Room Status Modal
   const [statusDialog, setStatusDialog] = useState({ open: false, room: null, newStatus: "AVAILABLE" });
@@ -611,24 +676,29 @@ export default function AvailableRoomsPage({
                                 const isAvail = room.status === "AVAILABLE";
                                 const isOcc = room.status === "OCCUPIED" || room.status === "RESERVED";
                                 const isCln = room.status === "CLEANING";
+                                const isSelected = selectedRoomIds.includes(room._id);
 
-                                let badgeBg = isAvail
-                                  ? "rgba(16, 185, 129, 0.12)"
-                                  : isOcc
-                                    ? "rgba(11, 142, 224, 0.12)"
-                                    : isCln
-                                      ? "rgba(217, 119, 6, 0.12)"
-                                      : "rgba(239, 68, 68, 0.12)";
+                                let badgeBg = isSelected
+                                  ? "rgba(16, 185, 129, 0.25)"
+                                  : isAvail
+                                    ? "rgba(16, 185, 129, 0.12)"
+                                    : isOcc
+                                      ? "rgba(11, 142, 224, 0.12)"
+                                      : isCln
+                                        ? "rgba(217, 119, 6, 0.12)"
+                                        : "rgba(239, 68, 68, 0.12)";
 
-                                let badgeColor = isAvail
-                                  ? "#059669"
-                                  : isOcc
-                                    ? "#0284C7"
-                                    : isCln
-                                      ? "#D97706"
-                                      : "#DC2626";
+                                let badgeColor = isSelected
+                                  ? "#047857"
+                                  : isAvail
+                                    ? "#059669"
+                                    : isOcc
+                                      ? "#0284C7"
+                                      : isCln
+                                        ? "#D97706"
+                                        : "#DC2626";
 
-                                let dotSymbol = isAvail ? "🟢" : isOcc ? "🔵" : isCln ? "🟡" : "🔴";
+                                let dotSymbol = isSelected ? "✓" : isAvail ? "🟢" : isOcc ? "🔵" : isCln ? "🟡" : "🔴";
 
                                 return (
                                   <Chip
@@ -637,18 +707,24 @@ export default function AvailableRoomsPage({
                                     size="small"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleOpenStatusDialog(room);
+                                      if (isAvail) {
+                                        handleToggleRoomSelection(room._id, e);
+                                      } else {
+                                        handleOpenStatusDialog(room);
+                                      }
                                     }}
                                     sx={{
-                                      fontWeight: 800,
+                                      fontWeight: isSelected ? 900 : 800,
                                       fontSize: "0.7rem",
                                       bgcolor: badgeBg,
                                       color: badgeColor,
                                       borderRadius: "8px",
                                       cursor: "pointer",
+                                      border: isSelected ? "1.5px solid #10B981" : "1px solid transparent",
+                                      boxShadow: isSelected ? "0 0 0 2px rgba(16, 185, 129, 0.25)" : "none",
                                       transition: "all 0.15s ease",
                                       "&:hover": {
-                                        transform: "scale(1.06)",
+                                        transform: "scale(1.08)",
                                         boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
                                       },
                                     }}
@@ -927,49 +1003,74 @@ export default function AvailableRoomsPage({
                       const isAvail = room.status === "AVAILABLE";
                       const isOcc = room.status === "OCCUPIED" || room.status === "RESERVED";
                       const isCln = room.status === "CLEANING";
+                      const isSelected = selectedRoomIds.includes(room._id);
                       const tariff = room.customPricePerNight || activeCategory?.basePrice || 3000;
                       const roomGuestName = getRoomGuestName(room);
 
-                      let borderAccent = isAvail ? "#10B981" : isOcc ? "#0B8EE0" : isCln ? "#D97706" : "#EF4444";
+                      let borderAccent = isSelected ? "#10B981" : isAvail ? "#10B981" : isOcc ? "#0B8EE0" : isCln ? "#D97706" : "#EF4444";
 
                       return (
                         <Card
                           key={room._id || room.roomNumber}
                           className="card-3d"
+                          onClick={() => {
+                            if (isAvail) handleToggleRoomSelection(room._id);
+                          }}
                           sx={{
                             p: 2,
                             borderRadius: "18px",
-                            border: `1px solid ${themeConfig.border}`,
-                            borderTop: `4px solid ${borderAccent}`,
-                            background: themeConfig.bgCard,
-                            bgcolor: themeConfig.bgCard,
-                            boxShadow: isDarkMode
-                              ? "0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)"
-                              : "0 6px 20px rgba(12, 39, 59, 0.04)",
+                            border: isSelected ? "2px solid #10B981" : `1px solid ${themeConfig.border}`,
+                            borderTop: isSelected ? "5px solid #10B981" : `4px solid ${borderAccent}`,
+                            background: isSelected
+                              ? (isDarkMode ? "rgba(16, 185, 129, 0.12)" : "rgba(16, 185, 129, 0.05)")
+                              : themeConfig.bgCard,
+                            bgcolor: isSelected
+                              ? (isDarkMode ? "rgba(16, 185, 129, 0.12)" : "rgba(16, 185, 129, 0.05)")
+                              : themeConfig.bgCard,
+                            boxShadow: isSelected
+                              ? "0 0 0 2px rgba(16, 185, 129, 0.25), 0 8px 24px rgba(16, 185, 129, 0.18)"
+                              : isDarkMode
+                                ? "0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)"
+                                : "0 6px 20px rgba(12, 39, 59, 0.04)",
                             display: "flex",
                             flexDirection: "column",
                             justifyContent: "space-between",
+                            cursor: isAvail ? "pointer" : "default",
                             transition: "all 0.2s ease",
                             "&:hover": {
                               transform: "translateY(-3px)",
-                              boxShadow: isDarkMode
-                                ? "0 14px 32px rgba(0, 0, 0, 0.6)"
-                                : "0 12px 28px rgba(12, 39, 59, 0.08)",
+                              boxShadow: isSelected
+                                ? "0 0 0 2px rgba(16, 185, 129, 0.35), 0 12px 28px rgba(16, 185, 129, 0.25)"
+                                : isDarkMode
+                                  ? "0 14px 32px rgba(0, 0, 0, 0.6)"
+                                  : "0 12px 28px rgba(12, 39, 59, 0.08)",
                             },
                           }}
                         >
                           <div>
                             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.2 }}>
                               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                {isAvail && (
+                                  <Checkbox
+                                    size="small"
+                                    color="success"
+                                    checked={isSelected}
+                                    onChange={(e) => handleToggleRoomSelection(room._id, e)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    sx={{ p: 0.2, ml: -0.5 }}
+                                  />
+                                )}
                                 <Avatar
                                   sx={{
-                                    bgcolor: isAvail
-                                      ? "rgba(16, 185, 129, 0.15)"
-                                      : isOcc
-                                        ? "rgba(11, 142, 224, 0.15)"
-                                        : isCln
-                                          ? "rgba(217, 119, 6, 0.15)"
-                                          : "rgba(239, 68, 68, 0.15)",
+                                    bgcolor: isSelected
+                                      ? "rgba(16, 185, 129, 0.25)"
+                                      : isAvail
+                                        ? "rgba(16, 185, 129, 0.15)"
+                                        : isOcc
+                                          ? "rgba(11, 142, 224, 0.15)"
+                                          : isCln
+                                            ? "rgba(217, 119, 6, 0.15)"
+                                            : "rgba(239, 68, 68, 0.15)",
                                     color: borderAccent,
                                     width: 36,
                                     height: 36,
@@ -989,7 +1090,22 @@ export default function AvailableRoomsPage({
                                   </Typography>
                                 </div>
                               </Box>
-                              <StatusChip status={room.status} size="small" />
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                {isSelected && (
+                                  <Chip
+                                    label="✓ Selected"
+                                    size="small"
+                                    sx={{
+                                      fontWeight: 900,
+                                      fontSize: "0.65rem",
+                                      bgcolor: "#10B981",
+                                      color: "#FFFFFF",
+                                      height: 20,
+                                    }}
+                                  />
+                                )}
+                                <StatusChip status={room.status} size="small" />
+                              </Box>
                             </Box>
 
                             <Box sx={{ p: 1, borderRadius: "10px", bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#F8FAFC", border: `1px solid ${themeConfig.border}`, mb: 1.2 }}>
@@ -1014,7 +1130,10 @@ export default function AvailableRoomsPage({
                                 size="small"
                                 variant="contained"
                                 startIcon={<Bolt sx={{ fontSize: 13 }} />}
-                                onClick={() => onSelectRoomForCheckIn(room)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onSelectRoomForCheckIn(room);
+                                }}
                                 sx={{
                                   borderRadius: "8px",
                                   fontWeight: 900,
@@ -1033,7 +1152,10 @@ export default function AvailableRoomsPage({
                               size="small"
                               variant="outlined"
                               startIcon={<Edit sx={{ fontSize: 12 }} />}
-                              onClick={() => handleOpenStatusDialog(room)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenStatusDialog(room);
+                              }}
                               sx={{
                                 borderRadius: "8px",
                                 fontWeight: 800,
@@ -1084,7 +1206,22 @@ export default function AvailableRoomsPage({
                       <Table stickyHeader size="small" sx={{ minWidth: 680 }}>
                         <TableHead>
                           <TableRow sx={{ bgcolor: themeConfig.champagne }}>
-                            <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, py: 1.2, pl: 2.5, fontSize: "0.82rem", whiteSpace: "nowrap" }}>
+                            <TableCell padding="checkbox" sx={{ pl: 2, bgcolor: themeConfig.champagne }}>
+                              <Checkbox
+                                size="small"
+                                color="success"
+                                checked={
+                                  filteredCategoryRooms.filter((r) => r.status === "AVAILABLE").length > 0 &&
+                                  filteredCategoryRooms.filter((r) => r.status === "AVAILABLE").every((r) => selectedRoomIds.includes(r._id))
+                                }
+                                indeterminate={
+                                  filteredCategoryRooms.some((r) => r.status === "AVAILABLE" && selectedRoomIds.includes(r._id)) &&
+                                  !filteredCategoryRooms.filter((r) => r.status === "AVAILABLE").every((r) => selectedRoomIds.includes(r._id))
+                                }
+                                onChange={() => handleSelectAllAvailable(filteredCategoryRooms)}
+                              />
+                            </TableCell>
+                            <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, py: 1.2, fontSize: "0.82rem", whiteSpace: "nowrap" }}>
                               Room Number
                             </TableCell>
                             <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.82rem", whiteSpace: "nowrap" }}>
@@ -1111,6 +1248,7 @@ export default function AvailableRoomsPage({
                               const isAvail = room.status === "AVAILABLE";
                               const isOcc = room.status === "OCCUPIED" || room.status === "RESERVED";
                               const isCln = room.status === "CLEANING";
+                              const isSelected = selectedRoomIds.includes(room._id);
                               const tariff = room.customPricePerNight || activeCategory?.basePrice || 3000;
                               const roomGuestName = getRoomGuestName(room);
 
@@ -1119,18 +1257,41 @@ export default function AvailableRoomsPage({
                                   key={room._id || room.roomNumber}
                                   hover
                                   onClick={() => {
-                                    if (isAvail && onSelectRoomForCheckIn) {
-                                      onSelectRoomForCheckIn(room);
+                                    if (isAvail) {
+                                      handleToggleRoomSelection(room._id);
                                     } else {
                                       handleOpenStatusDialog(room);
                                     }
                                   }}
                                   sx={{
                                     cursor: "pointer",
-                                    "&:hover": { bgcolor: "rgba(11, 142, 224, 0.04)" },
+                                    bgcolor: isSelected
+                                      ? (isDarkMode ? "rgba(16, 185, 129, 0.12)" : "rgba(16, 185, 129, 0.06)")
+                                      : "transparent",
+                                    "&:hover": {
+                                      bgcolor: isSelected
+                                        ? (isDarkMode ? "rgba(16, 185, 129, 0.18)" : "rgba(16, 185, 129, 0.1)")
+                                        : "rgba(11, 142, 224, 0.04)",
+                                    },
                                     transition: "background 0.15s ease",
                                   }}
                                 >
+                                  {/* Multi-select Checkbox */}
+                                  <TableCell padding="checkbox" sx={{ pl: 2 }} onClick={(e) => {
+                                    if (isAvail) handleToggleRoomSelection(room._id, e);
+                                  }}>
+                                    {isAvail ? (
+                                      <Checkbox
+                                        size="small"
+                                        color="success"
+                                        checked={isSelected}
+                                        onChange={(e) => handleToggleRoomSelection(room._id, e)}
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                    ) : (
+                                      <Box sx={{ width: 24, height: 24 }} />
+                                    )}
+                                  </TableCell>
                                   {/* Room Number */}
                                   <TableCell sx={{ py: 1.2, pl: 2.5, whiteSpace: "nowrap" }}>
                                     <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
@@ -1455,7 +1616,22 @@ export default function AvailableRoomsPage({
                 <Table stickyHeader size="small" sx={{ minWidth: 720 }}>
                   <TableHead>
                     <TableRow sx={{ bgcolor: themeConfig.champagne }}>
-                      <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, py: 1.4, pl: 2.5, fontSize: "0.82rem", whiteSpace: "nowrap" }}>
+                      <TableCell padding="checkbox" sx={{ pl: 2, bgcolor: themeConfig.champagne }}>
+                        <Checkbox
+                          size="small"
+                          color="success"
+                          checked={
+                            filteredAllRooms.filter((r) => r.status === "AVAILABLE").length > 0 &&
+                            filteredAllRooms.filter((r) => r.status === "AVAILABLE").every((r) => selectedRoomIds.includes(r._id))
+                          }
+                          indeterminate={
+                            filteredAllRooms.some((r) => r.status === "AVAILABLE" && selectedRoomIds.includes(r._id)) &&
+                            !filteredAllRooms.filter((r) => r.status === "AVAILABLE").every((r) => selectedRoomIds.includes(r._id))
+                          }
+                          onChange={() => handleSelectAllAvailable(filteredAllRooms)}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, py: 1.4, fontSize: "0.82rem", whiteSpace: "nowrap" }}>
                         Room Number
                       </TableCell>
                       <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.82rem", whiteSpace: "nowrap" }}>
@@ -1485,6 +1661,7 @@ export default function AvailableRoomsPage({
                         const isAvail = room.status === "AVAILABLE";
                         const isOcc = room.status === "OCCUPIED" || room.status === "RESERVED";
                         const isCln = room.status === "CLEANING";
+                        const isSelected = selectedRoomIds.includes(room._id);
 
                         const rtObj = typeof room.roomType === "object" ? room.roomType : null;
                         const catName = rtObj?.name || room.type || "Standard Room";
@@ -1496,18 +1673,41 @@ export default function AvailableRoomsPage({
                             key={room._id || room.roomNumber}
                             hover
                             onClick={() => {
-                              if (isAvail && onSelectRoomForCheckIn) {
-                                onSelectRoomForCheckIn(room);
+                              if (isAvail) {
+                                handleToggleRoomSelection(room._id);
                               } else {
                                 handleOpenStatusDialog(room);
                               }
                             }}
                             sx={{
                               cursor: "pointer",
-                              "&:hover": { bgcolor: "rgba(11, 142, 224, 0.04)" },
+                              bgcolor: isSelected
+                                ? (isDarkMode ? "rgba(16, 185, 129, 0.12)" : "rgba(16, 185, 129, 0.06)")
+                                : "transparent",
+                              "&:hover": {
+                                bgcolor: isSelected
+                                  ? (isDarkMode ? "rgba(16, 185, 129, 0.18)" : "rgba(16, 185, 129, 0.1)")
+                                  : "rgba(11, 142, 224, 0.04)",
+                              },
                               transition: "background 0.15s ease",
                             }}
                           >
+                            {/* Multi-select Checkbox */}
+                            <TableCell padding="checkbox" sx={{ pl: 2 }} onClick={(e) => {
+                              if (isAvail) handleToggleRoomSelection(room._id, e);
+                            }}>
+                              {isAvail ? (
+                                <Checkbox
+                                  size="small"
+                                  color="success"
+                                  checked={isSelected}
+                                  onChange={(e) => handleToggleRoomSelection(room._id, e)}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              ) : (
+                                <Box sx={{ width: 24, height: 24 }} />
+                              )}
+                            </TableCell>
                             {/* Room Number */}
                             <TableCell sx={{ py: 1.2, pl: 2.5, whiteSpace: "nowrap" }}>
                               <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
@@ -1754,6 +1954,117 @@ export default function AvailableRoomsPage({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* ========================================================================= */}
+      {/* FLOATING MULTI-ROOM SELECTION ACTION DOCK                                 */}
+      {/* ========================================================================= */}
+      {selectedRoomIds.length > 0 && (
+        <Paper
+          elevation={12}
+          sx={{
+            position: "fixed",
+            bottom: { xs: 16, sm: 24 },
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "calc(100% - 32px)",
+            maxWidth: 880,
+            zIndex: 1300,
+            p: { xs: 1.5, sm: 2 },
+            borderRadius: "22px",
+            background: isDarkMode ? "rgba(15, 23, 42, 0.95)" : "rgba(255, 255, 255, 0.96)",
+            backdropFilter: "blur(20px)",
+            border: "2px solid #10B981",
+            boxShadow: isDarkMode
+              ? "0 20px 48px rgba(0, 0, 0, 0.7), 0 0 24px rgba(16, 185, 129, 0.35)"
+              : "0 16px 40px rgba(12, 39, 59, 0.18), 0 0 20px rgba(16, 185, 129, 0.25)",
+            animation: "slideUpDock 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+            "@keyframes slideUpDock": {
+              "0%": { transform: "translate(-50%, 30px)", opacity: 0 },
+              "100%": { transform: "translate(-50%, 0)", opacity: 1 },
+            },
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexDirection: { xs: "column", md: "row" },
+              gap: 1.5,
+            }}
+          >
+            {/* Left: Selection details & summary */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", width: { xs: "100%", md: "auto" } }}>
+              <Chip
+                label={`⚡ ${selectedRoomsList.length} Room${selectedRoomsList.length > 1 ? "s" : ""} Selected`}
+                sx={{
+                  fontWeight: 900,
+                  fontSize: "0.82rem",
+                  bgcolor: "#10B981",
+                  color: "#FFFFFF",
+                  height: 32,
+                  px: 0.5,
+                  boxShadow: "0 2px 8px rgba(16, 185, 129, 0.4)",
+                }}
+              />
+              <div>
+                <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.9rem", lineHeight: 1.2 }}>
+                  {selectedStats.roomNumbers}
+                </Typography>
+                <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontWeight: 700, fontSize: "0.75rem" }}>
+                  👥 Capacity: ~{selectedStats.totalAdultCapacity} Guests &bull; 💰 Total: <strong>₹{selectedStats.totalRate.toLocaleString()} / night</strong>
+                </Typography>
+              </div>
+            </Box>
+
+            {/* Right: Actions */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.2, width: { xs: "100%", md: "auto" }, justifyContent: { xs: "flex-end", md: "flex-end" } }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleClearSelection}
+                sx={{
+                  borderRadius: "12px",
+                  fontWeight: 800,
+                  fontSize: "0.78rem",
+                  borderColor: themeConfig.border,
+                  color: themeConfig.textMain,
+                  px: 1.8,
+                  py: 0.8,
+                  "&:hover": { bgcolor: "rgba(239, 68, 68, 0.08)", borderColor: "#EF4444", color: "#DC2626" },
+                }}
+              >
+                Clear
+              </Button>
+
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<Bolt sx={{ fontSize: 16 }} />}
+                endIcon={<ArrowForward sx={{ fontSize: 16 }} />}
+                onClick={handleProceedWithSelectedRooms}
+                sx={{
+                  borderRadius: "12px",
+                  fontWeight: 900,
+                  fontSize: "0.85rem",
+                  textTransform: "none",
+                  background: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
+                  color: "#FFFFFF",
+                  px: 2.5,
+                  py: 0.8,
+                  boxShadow: "0 4px 16px rgba(16, 185, 129, 0.45)",
+                  "&:hover": {
+                    background: "#059669",
+                    boxShadow: "0 6px 20px rgba(16, 185, 129, 0.6)",
+                  },
+                }}
+              >
+                Proceed to Check-In ({selectedRoomsList.length} Rooms)
+              </Button>
+            </Box>
+          </Box>
+        </Paper>
+      )}
     </Box>
   );
 }

@@ -2463,53 +2463,75 @@ export default function CheckInWizardPage({
                     Quick Add Additional Available Room(s) {isCapacityExceeded && `(Needed for remaining ${totalPartySize - totalStandardCapacity} guests)`}:
                   </Typography>
 
-                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.2 }}>
+                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }, gap: 1.5 }}>
                     {availableRooms
                       .filter((r) => !selectedRoomIds.includes(r._id))
-                      .slice(0, 4)
                       .map((r) => {
                         const tariff = getRoomTariff(r);
                         const cap = calculateRoomCapacity(r);
-                        const iconCfg = getRoomCategoryIconConfig(r, 16);
+                        const iconCfg = getRoomCategoryIconConfig(r, 18);
 
                         return (
-                          <Button
+                          <Card
                             key={r._id}
-                            variant="outlined"
-                            size="small"
-                            startIcon={iconCfg.icon}
                             onClick={() => handleAddAdditionalRoom(r._id)}
                             sx={{
-                              borderRadius: "12px",
-                              border: `1.5px dashed ${iconCfg.color}60`,
+                              p: 1.5,
+                              borderRadius: "14px",
+                              border: `1.5px dashed ${iconCfg.color}70`,
                               bgcolor: "#FFFFFF",
-                              color: themeConfig.textMain,
-                              fontWeight: 800,
-                              py: 0.8,
-                              px: 1.5,
-                              textTransform: "none",
-                              boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
                               transition: "all 0.2s ease",
                               "&:hover": {
                                 borderColor: iconCfg.color,
                                 bgcolor: iconCfg.bg,
-                                transform: "translateY(-1px)",
-                                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+                                transform: "translateY(-2px)",
+                                boxShadow: "0 6px 16px rgba(0, 0, 0, 0.08)",
                               },
                             }}
                           >
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.82rem" }}>
-                                Room #{r.roomNumber}
-                              </Typography>
-                              <Typography variant="caption" sx={{ fontWeight: 800, color: iconCfg.color, fontSize: "0.75rem" }}>
-                                ({getRoomCategoryName(r)})
-                              </Typography>
-                              <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMuted, fontSize: "0.72rem" }}>
-                                &bull; 👥 {cap.standardCapacity} &bull; ₹{tariff}/n
-                              </Typography>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1.2, minWidth: 0 }}>
+                              <Avatar sx={{ bgcolor: iconCfg.bg, color: iconCfg.color, width: 32, height: 32, borderRadius: "8px", flexShrink: 0 }}>
+                                {iconCfg.icon}
+                              </Avatar>
+                              <Box sx={{ minWidth: 0 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.85rem", lineHeight: 1.2 }}>
+                                  Room #{r.roomNumber}
+                                </Typography>
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: iconCfg.color, fontSize: "0.72rem", display: "block", noWrap: true }}>
+                                  {getRoomCategoryName(r)} &bull; Floor {r.floor || 1}
+                                </Typography>
+                                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMuted, fontSize: "0.7rem" }}>
+                                  👥 {cap.standardCapacity} Guests
+                                </Typography>
+                              </Box>
                             </Box>
-                          </Button>
+
+                            <Box sx={{ textAlign: "right", flexShrink: 0, pl: 1 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 900, color: "#059669", fontSize: "0.88rem" }}>
+                                ₹{tariff}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.68rem", fontWeight: 700, display: "block" }}>
+                                / night
+                              </Typography>
+                              <Chip
+                                label="+ Add"
+                                size="small"
+                                sx={{
+                                  height: 20,
+                                  fontSize: "0.68rem",
+                                  fontWeight: 900,
+                                  bgcolor: "rgba(16, 185, 129, 0.12)",
+                                  color: "#059669",
+                                  mt: 0.3,
+                                }}
+                              />
+                            </Box>
+                          </Card>
                         );
                       })}
                   </Box>

@@ -354,30 +354,47 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
     }
   };
 
-  const handleSelectRoomForCheckIn = (room) => {
-    if (!room) return;
-    const rt = typeof room.roomType === "object" && room.roomType !== null
-      ? room.roomType
-      : roomTypes.find((t) => String(t._id) === String(room.roomType));
-    const categoryName = rt?.name || room.category || room.type || `Room ${room.roomNumber}`;
-    const tariff = room.customPricePerNight || rt?.basePrice || room.basePrice || 3000;
+  const handleSelectRoomForCheckIn = (roomOrRooms) => {
+    if (!roomOrRooms) return;
+    const roomsArr = Array.isArray(roomOrRooms) ? roomOrRooms : [roomOrRooms];
+    if (roomsArr.length === 0) return;
+
+    const firstRoom = roomsArr[0];
+    const totalTariff = roomsArr.reduce((sum, r) => {
+      const rt = typeof r.roomType === "object" && r.roomType !== null
+        ? r.roomType
+        : roomTypes.find((t) => String(t._id) === String(r.roomType));
+      return sum + (r.customPricePerNight || rt?.basePrice || r.basePrice || 3000);
+    }, 0);
+
+    const roomNumbersStr = roomsArr.map((r) => String(r.roomNumber)).join(", ");
+    const categoryNames = Array.from(
+      new Set(
+        roomsArr.map((r) => {
+          const rt = typeof r.roomType === "object" && r.roomType !== null
+            ? r.roomType
+            : roomTypes.find((t) => String(t._id) === String(r.roomType));
+          return rt?.name || r.category || r.type || `Room ${r.roomNumber}`;
+        })
+      )
+    ).join(", ");
 
     setCheckInData((prev) => {
       const n = prev.numberOfNights || 1;
-      const baseTot = tariff * n;
+      const baseTot = totalTariff * n;
       const isVip = Boolean(prev.isRepeatGuest || (prev.totalVisits && prev.totalVisits >= 2));
       const disc = isVip ? Math.round(baseTot * 0.10) : (prev.discountAmount || 0);
       const netTot = Math.max(0, baseTot - disc) + (prev.collectSecurityDeposit ? (Number(prev.securityDepositAmount) || 1000) : 0);
       return {
         ...prev,
-        roomId: room._id,
-        roomIds: [room._id],
-        roomNumber: String(room.roomNumber),
-        selectedRooms: [room],
-        selectedRoomNumbers: [String(room.roomNumber)],
-        roomType: categoryName,
-        floor: room.floor || 1,
-        rate: tariff,
+        roomId: firstRoom._id,
+        roomIds: roomsArr.map((r) => r._id),
+        roomNumber: roomNumbersStr,
+        selectedRooms: roomsArr,
+        selectedRoomNumbers: roomsArr.map((r) => String(r.roomNumber)),
+        roomType: categoryNames,
+        floor: firstRoom.floor || 1,
+        rate: totalTariff,
         discountAmount: disc,
         total: netTot,
         paid: netTot,
