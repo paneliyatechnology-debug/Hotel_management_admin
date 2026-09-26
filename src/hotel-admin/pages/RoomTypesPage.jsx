@@ -1583,7 +1583,7 @@ export default function RoomTypesPage({
                 >
                   {roomTypes.map((rt) => (
                     <MenuItem key={rt._id} value={rt._id}>
-                      {rt.name} (Base Tariff: ₹{rt.basePrice})
+                      {rt.name}{rt.basePrice > 0 ? ` (Price: ₹${rt.basePrice})` : ""}
                     </MenuItem>
                   ))}
                 </TextField>
@@ -1699,10 +1699,10 @@ export default function RoomTypesPage({
                 />
               </Grid>
 
-              {/* Custom Tariff */}
+              {/* Custom Price */}
               <Grid size={{ xs: 12, sm: 4 }}>
                 <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Daily Tariff per Night (₹)
+                  Daily Price per Night (₹)
                 </Typography>
                 <TextField
                   fullWidth
