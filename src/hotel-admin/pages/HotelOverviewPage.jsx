@@ -100,15 +100,6 @@ export default function HotelOverviewPage({
   const [roomPage, setRoomPage] = useState(1);
   const roomsPerPage = 8;
 
-  // Quick Action Modal States
-  const [quickChargeModal, setQuickChargeModal] = useState({ open: false, room: null, booking: null });
-  const [chargeData, setChargeData] = useState({ chargeType: "FOOD_BEVERAGE", description: "Room Service / Dinner", amount: 350 });
-  const [chargeLoading, setChargeLoading] = useState(false);
-
-  const [quickCheckoutModal, setQuickCheckoutModal] = useState({ open: false, room: null, booking: null });
-  const [checkoutData, setCheckoutData] = useState({ paymentMethod: "UPI", amountPaid: 0, discount: 0, notes: "" });
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-
   const [notification, setNotification] = useState({ show: false, message: "", severity: "success" });
 
   // 1-second interval ticker for live housekeeping cleaning countdown & real-time clock
@@ -319,82 +310,6 @@ export default function HotelOverviewPage({
       `Wish you a pleasant stay!`
     );
     window.open(`https://wa.me/${targetPhone}?text=${msgText}`, "_blank");
-  };
-
-  // Quick Action: Instant Room Cleaned Status Update
-  const handleMarkRoomCleaned = async (roomId) => {
-    try {
-      const res = await apiRequest(API_ENDPOINTS.RECEPTIONIST.UPDATE_ROOM_STATUS(roomId), {
-        method: "PUT",
-        body: { status: "AVAILABLE" },
-      });
-      if (res?.success) {
-        setNotification({ show: true, message: "Room marked AVAILABLE and ready for check-in!", severity: "success" });
-        if (onRefresh) onRefresh();
-      }
-    } catch (err) {
-      setNotification({ show: true, message: err.message || "Failed to update room status", severity: "error" });
-    }
-  };
-
-  // Quick Action: Add Room Service / POS Charge
-  const handleAddChargeSubmit = async () => {
-    if (!quickChargeModal.booking?._id && !quickChargeModal.room) return;
-    setChargeLoading(true);
-    try {
-      const bookingId = quickChargeModal.booking?._id || bookings.find((b) => String(b.roomNumber) === String(quickChargeModal.room?.roomNumber))?._id;
-      if (!bookingId) {
-        throw new Error("No active booking folio linked to this room.");
-      }
-      const res = await apiRequest(API_ENDPOINTS.RECEPTIONIST.ADD_CHARGE(bookingId), {
-        method: "POST",
-        body: {
-          chargeType: chargeData.chargeType,
-          description: chargeData.description,
-          amount: Number(chargeData.amount) || 0,
-          tax: Math.round((Number(chargeData.amount) || 0) * 0.05),
-          paymentStatus: "UNPAID",
-        },
-      });
-      if (res?.success) {
-        setNotification({ show: true, message: "Extra charge successfully posted to room folio!", severity: "success" });
-        setQuickChargeModal({ open: false, room: null, booking: null });
-        if (onRefresh) onRefresh();
-      }
-    } catch (err) {
-      setNotification({ show: true, message: err.message || "Failed to post room charge", severity: "error" });
-    } finally {
-      setChargeLoading(false);
-    }
-  };
-
-  // Quick Action: Fast Checkout & Settle
-  const handleQuickCheckoutSubmit = async () => {
-    setCheckoutLoading(true);
-    try {
-      const bookingId = quickCheckoutModal.booking?._id || bookings.find((b) => String(b.roomNumber) === String(quickCheckoutModal.room?.roomNumber))?._id;
-      if (!bookingId) throw new Error("No active booking folio found.");
-
-      const res = await apiRequest(API_ENDPOINTS.RECEPTIONIST.CHECKOUT(bookingId), {
-        method: "POST",
-        body: {
-          paymentMethod: checkoutData.paymentMethod,
-          amountPaid: Number(checkoutData.amountPaid) || 0,
-          discount: Number(checkoutData.discount) || 0,
-          notes: checkoutData.notes || "Fast checkout via Admin Command Center",
-        },
-      });
-
-      if (res?.success) {
-        setNotification({ show: true, message: "Guest checked out successfully! Room set to CLEANING.", severity: "success" });
-        setQuickCheckoutModal({ open: false, room: null, booking: null });
-        if (onRefresh) onRefresh();
-      }
-    } catch (err) {
-      setNotification({ show: true, message: err.message || "Checkout failed", severity: "error" });
-    } finally {
-      setCheckoutLoading(false);
-    }
   };
 
   // Greeting according to local time
@@ -659,11 +574,12 @@ export default function HotelOverviewPage({
           {/* Filter Bar with Floor & Status Dropdowns */}
           <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", mb: 2.5, gap: 2 }}>
             <div>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, letterSpacing: -0.3 }}>
-                🎮 Interactive Room Command Matrix
+              <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, letterSpacing: -0.3, display: "flex", alignItems: "center", gap: 1 }}>
+                <HotelIcon sx={{ color: themeConfig.primary, fontSize: 24 }} />
+                Live Room &amp; Occupancy Monitor
               </Typography>
               <Typography variant="body2" sx={{ color: themeConfig.textMuted, fontSize: "0.82rem" }}>
-                Touch any room tile to instant check-in, post room service, or fast check-out
+                Real-time room occupancy, in-house guest details, tariffs, and payment dues
               </Typography>
             </div>
 
@@ -726,7 +642,7 @@ export default function HotelOverviewPage({
             <Box sx={{ py: 6 }}>
               <EmptyState
                 title="No Rooms Found"
-                description={rooms.length === 0 ? "No rooms added yet. Go to Room Management to add rooms." : "No rooms match your filter criteria."}
+                description={rooms.length === 0 ? "No rooms configured yet." : "No rooms match your filter criteria."}
               />
             </Box>
           ) : (
@@ -740,74 +656,92 @@ export default function HotelOverviewPage({
                     md: "repeat(3, 1fr)",
                     lg: "repeat(4, 1fr)",
                   },
-                  gap: 2,
+                  gap: 2.2,
                 }}
               >
                 {paginatedRooms.map((room) => {
-                  let statusBg = "rgba(16, 185, 129, 0.08)";
-                  let statusBorder = "#10B981";
-                  let statusGlow = "rgba(16, 185, 129, 0.25)";
+                  let statusBg = "rgba(16, 185, 129, 0.05)";
+                  let statusBorder = "rgba(16, 185, 129, 0.35)";
+                  let statusGlow = "rgba(16, 185, 129, 0.15)";
+                  let statusLabel = "Available for Check-in";
+                  let statusLabelColor = "#10B981";
 
                   if (room.status === "OCCUPIED") {
-                    statusBg = "rgba(11, 142, 224, 0.08)";
-                    statusBorder = "#0B8EE0";
-                    statusGlow = "rgba(11, 142, 224, 0.25)";
+                    statusBg = "rgba(59, 130, 246, 0.05)";
+                    statusBorder = "rgba(59, 130, 246, 0.35)";
+                    statusGlow = "rgba(59, 130, 246, 0.15)";
+                    statusLabel = "Active In-House Stay";
+                    statusLabelColor = "#3B82F6";
                   } else if (room.status === "RESERVED") {
-                    statusBg = "rgba(245, 158, 11, 0.08)";
-                    statusBorder = "#F59E0B";
-                    statusGlow = "rgba(245, 158, 11, 0.25)";
+                    statusBg = "rgba(245, 158, 11, 0.05)";
+                    statusBorder = "rgba(245, 158, 11, 0.35)";
+                    statusGlow = "rgba(245, 158, 11, 0.15)";
+                    statusLabel = "Upcoming Reservation";
+                    statusLabelColor = "#F59E0B";
                   } else if (room.status === "CLEANING") {
-                    statusBg = "rgba(139, 92, 246, 0.08)";
-                    statusBorder = "#8B5CF6";
-                    statusGlow = "rgba(139, 92, 246, 0.25)";
+                    statusBg = "rgba(139, 92, 246, 0.05)";
+                    statusBorder = "rgba(139, 92, 246, 0.35)";
+                    statusGlow = "rgba(139, 92, 246, 0.15)";
+                    statusLabel = "Housekeeping In Progress";
+                    statusLabelColor = "#8B5CF6";
                   } else if (room.status === "MAINTENANCE" || room.status === "BLOCKED") {
-                    statusBg = "rgba(239, 68, 68, 0.08)";
-                    statusBorder = "#EF4444";
-                    statusGlow = "rgba(239, 68, 68, 0.25)";
+                    statusBg = "rgba(239, 68, 68, 0.05)";
+                    statusBorder = "rgba(239, 68, 68, 0.35)";
+                    statusGlow = "rgba(239, 68, 68, 0.15)";
+                    statusLabel = "Under Maintenance / Blocked";
+                    statusLabelColor = "#EF4444";
                   }
 
-                  const matchedBooking = bookings.find((b) => String(b.roomNumber) === String(room.roomNumber) && (b.status === "CHECKED_IN" || b.status === "IN-HOUSE"));
+                  const matchedBooking = bookings.find(
+                    (b) => String(b.roomNumber) === String(room.roomNumber) && (b.status === "CHECKED_IN" || b.status === "IN-HOUSE")
+                  );
+
+                  const guestName = room.guestName || matchedBooking?.guestName || (room.status === "OCCUPIED" ? "Resident Guest" : null);
+                  const totalBill = matchedBooking?.totalAmount || room.customPricePerNight || room.pricePerNight || 0;
+                  const advancePaid = matchedBooking?.advancePayment || 0;
+                  const duesAmount = Math.max(0, totalBill - advancePaid);
 
                   return (
                     <Card
                       key={room._id}
-                      className="card-3d"
+                      elevation={0}
                       sx={{
-                        p: 2,
-                        borderRadius: "18px",
+                        p: 2.2,
+                        borderRadius: "20px",
                         border: `1.5px solid ${statusBorder}`,
-                        background: isDarkMode
-                          ? `linear-gradient(135deg, ${themeConfig.bgCard || "#0E312C"} 0%, ${statusBg} 100%)`
-                          : `linear-gradient(135deg, #FFFFFF 0%, ${statusBg} 100%)`,
-                        boxShadow: `0 4px 14px rgba(0, 0, 0, 0.04), 0 2px 6px ${statusGlow}`,
+                        bgcolor: isDarkMode ? (themeConfig.bgCard || "#0E312C") : "#FFFFFF",
+                        boxShadow: `0 8px 24px -6px ${statusGlow}`,
                         display: "flex",
                         flexDirection: "column",
                         justifyContent: "space-between",
-                        transition: "all 0.22s cubic-bezier(0.16, 1, 0.3, 1)",
+                        transition: "all 0.25s ease",
                         "&:hover": {
-                          transform: "translateY(-4px) scale(1.01)",
-                          boxShadow: `0 12px 24px -4px ${statusGlow}`,
+                          transform: "translateY(-3px)",
+                          boxShadow: `0 14px 28px -4px ${statusGlow}`,
+                          borderColor: statusLabelColor,
                         },
                       }}
                     >
-                      <Box sx={{ width: "100%" }}>
-                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.8 }}>
+                      <Box>
+                        {/* Header: Floor Badge + Price Per Night */}
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.2 }}>
                           <Chip
                             label={`Floor ${room.floor || 1}`}
                             size="small"
                             sx={{
-                              fontSize: "0.62rem",
+                              fontSize: "0.68rem",
                               fontWeight: 800,
-                              height: 18,
-                              bgcolor: themeConfig.champagne,
-                              color: themeConfig.primaryDark,
+                              height: 20,
+                              bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : themeConfig.champagne,
+                              color: isDarkMode ? "#E2E8F0" : themeConfig.primaryDark,
                             }}
                           />
-                          <Typography variant="caption" sx={{ fontWeight: 800, fontSize: "0.72rem", color: themeConfig.primary }}>
-                            ₹{room.customPricePerNight || room.roomType?.basePrice || room.pricePerNight || 3500}/n
+                          <Typography variant="caption" sx={{ fontWeight: 800, fontSize: "0.82rem", color: themeConfig.primary }}>
+                            ₹{(room.customPricePerNight || room.roomType?.basePrice || room.pricePerNight || 3500).toLocaleString("en-IN")}/night
                           </Typography>
                         </Box>
 
+                        {/* Room Number & Live Status Badge */}
                         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.5 }}>
                           <Typography variant="h5" sx={{ fontWeight: 900, color: themeConfig.textMain, letterSpacing: -0.5 }}>
                             Room #{room.roomNumber}
@@ -815,154 +749,158 @@ export default function HotelOverviewPage({
                           <StatusChip status={room.status} size="small" />
                         </Box>
 
-                        <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block", mb: 1, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-                          {room.roomType?.name || "Deluxe Room"}
+                        {/* Room Category */}
+                        <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block", mb: 1.5, fontWeight: 600 }}>
+                          {room.roomType?.name || "Standard Room"} &bull; {room.roomType?.ac ? "AC" : "Non-AC"}
                         </Typography>
 
-                        {/* Occupied Guest Details */}
+                        {/* OCCUPIED: Sleek Guest Details Box */}
                         {room.status === "OCCUPIED" && (
-                          <Box sx={{ p: 1, borderRadius: "10px", bgcolor: isDarkMode ? "rgba(0,0,0,0.3)" : "rgba(11, 142, 224, 0.08)", mb: 1.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.primaryDark, display: "block" }}>
-                              👤 {room.guestName || matchedBooking?.guestName || "Resident Guest"}
+                          <Box
+                            sx={{
+                              p: 1.4,
+                              borderRadius: "14px",
+                              bgcolor: isDarkMode ? "rgba(59, 130, 246, 0.1)" : "rgba(59, 130, 246, 0.05)",
+                              border: `1px solid ${isDarkMode ? "rgba(59, 130, 246, 0.2)" : "rgba(59, 130, 246, 0.15)"}`,
+                              mb: 1,
+                            }}
+                          >
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.6 }}>
+                              <Avatar sx={{ width: 26, height: 26, bgcolor: "#3B82F6", color: "#FFFFFF", fontSize: "0.75rem", fontWeight: 800 }}>
+                                {guestName ? guestName[0].toUpperCase() : "G"}
+                              </Avatar>
+                              <Box sx={{ minWidth: 0, flex: 1 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                                  {guestName}
+                                </Typography>
+                                {matchedBooking?.guestPhone && (
+                                  <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.68rem", display: "block" }}>
+                                    📱 {matchedBooking.guestPhone}
+                                  </Typography>
+                                )}
+                              </Box>
+                            </Box>
+
+                            {/* Dues & Settlement Indicator */}
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                pt: 0.8,
+                                mt: 0.6,
+                                borderTop: `1px dashed ${isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"}`,
+                              }}
+                            >
+                              <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.7rem", fontWeight: 600 }}>
+                                Dues Balance:
+                              </Typography>
+                              <Chip
+                                size="small"
+                                label={duesAmount > 0 ? `₹${duesAmount.toLocaleString("en-IN")} Pending` : "✓ Bill Settled"}
+                                sx={{
+                                  height: 20,
+                                  fontSize: "0.68rem",
+                                  fontWeight: 800,
+                                  bgcolor: duesAmount > 0 ? "rgba(239, 68, 68, 0.12)" : "rgba(16, 185, 129, 0.12)",
+                                  color: duesAmount > 0 ? "#EF4444" : "#10B981",
+                                  border: `1px solid ${duesAmount > 0 ? "rgba(239, 68, 68, 0.25)" : "rgba(16, 185, 129, 0.25)"}`,
+                                }}
+                              />
+                            </Box>
+                          </Box>
+                        )}
+
+                        {/* AVAILABLE: Clean Ready Details Box */}
+                        {room.status === "AVAILABLE" && (
+                          <Box
+                            sx={{
+                              p: 1.4,
+                              borderRadius: "14px",
+                              bgcolor: isDarkMode ? "rgba(16, 185, 129, 0.08)" : "rgba(16, 185, 129, 0.05)",
+                              border: `1px solid ${isDarkMode ? "rgba(16, 185, 129, 0.2)" : "rgba(16, 185, 129, 0.15)"}`,
+                              mb: 1,
+                            }}
+                          >
+                            <Typography variant="caption" sx={{ color: "#10B981", fontWeight: 800, display: "flex", alignItems: "center", gap: 0.6, mb: 0.5 }}>
+                              <CheckCircle sx={{ fontSize: 15 }} /> Clean &amp; Sanitized
                             </Typography>
-                            <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.68rem" }}>
-                              Dues: <strong>₹{matchedBooking ? Math.max(0, (matchedBooking.totalAmount || 0) - (matchedBooking.advancePayment || 0)) : 0}</strong>
+                            <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block", fontSize: "0.7rem" }}>
+                              🛏️ Ready for Walk-in &amp; Online Booking
                             </Typography>
                           </Box>
                         )}
 
-                        {/* Cleaning Countdown Ticker */}
+                        {/* CLEANING: Housekeeping Countdown Box */}
                         {room.status === "CLEANING" && (() => {
                           const timerData = getCleaningTimerData(room);
-                          if (!timerData) return null;
                           return (
-                            <Box sx={{ mb: 1.5 }}>
-                              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.4 }}>
-                                <Typography variant="caption" sx={{ fontWeight: 800, color: "#8B5CF6", fontSize: "0.7rem" }}>
-                                  🧹 Cleaning: {timerData.formatted}
+                            <Box
+                              sx={{
+                                p: 1.4,
+                                borderRadius: "14px",
+                                bgcolor: isDarkMode ? "rgba(139, 92, 246, 0.08)" : "rgba(139, 92, 246, 0.05)",
+                                border: `1px solid ${isDarkMode ? "rgba(139, 92, 246, 0.2)" : "rgba(139, 92, 246, 0.15)"}`,
+                                mb: 1,
+                              }}
+                            >
+                              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: "#8B5CF6", fontSize: "0.72rem" }}>
+                                  🧹 Turnaround: {timerData?.formatted || "12:00"}
                                 </Typography>
-                                <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.68rem" }}>
-                                  {timerData.progressPercent}%
+                                <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.7rem", fontWeight: 700 }}>
+                                  {timerData?.progressPercent || 50}%
                                 </Typography>
                               </Box>
-                              <LinearProgress variant="determinate" value={timerData.progressPercent} sx={{ borderRadius: "6px", height: 6, bgcolor: "rgba(139, 92, 246, 0.2)", "& .MuiLinearProgress-bar": { bgcolor: "#8B5CF6" } }} />
+                              <LinearProgress
+                                variant="determinate"
+                                value={timerData?.progressPercent || 50}
+                                sx={{
+                                  borderRadius: "6px",
+                                  height: 6,
+                                  bgcolor: "rgba(139, 92, 246, 0.2)",
+                                  "& .MuiLinearProgress-bar": { bgcolor: "#8B5CF6" },
+                                }}
+                              />
                             </Box>
                           );
                         })()}
+
+                        {/* MAINTENANCE / BLOCKED: Issue Box */}
+                        {(room.status === "MAINTENANCE" || room.status === "BLOCKED") && (
+                          <Box
+                            sx={{
+                              p: 1.4,
+                              borderRadius: "14px",
+                              bgcolor: "rgba(239, 68, 68, 0.06)",
+                              border: "1px solid rgba(239, 68, 68, 0.2)",
+                              mb: 1,
+                            }}
+                          >
+                            <Typography variant="caption" sx={{ color: "#EF4444", fontWeight: 800, display: "flex", alignItems: "center", gap: 0.6 }}>
+                              ⚠️ Service / Repair Inspection
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block", fontSize: "0.7rem", mt: 0.3 }}>
+                              Temporarily blocked from allocation
+                            </Typography>
+                          </Box>
+                        )}
                       </Box>
 
-                      {/* 1-Tap Quick Action Buttons on Every Room Tile */}
-                      <Box sx={{ pt: 1, borderTop: `1px dashed ${themeConfig.border}`, display: "flex", gap: 1, width: "100%" }}>
-                        {room.status === "AVAILABLE" && (
-                          <Button
-                            fullWidth
-                            size="small"
-                            variant="contained"
-                            onClick={() => onTabChange && onTabChange(2)}
-                            sx={{
-                              bgcolor: "#10B981",
-                              color: "#FFFFFF",
-                              fontWeight: 800,
-                              fontSize: "0.72rem",
-                              borderRadius: "8px",
-                              py: 0.6,
-                              textTransform: "none",
-                              "&:hover": { bgcolor: "#059669" },
-                            }}
-                          >
-                            ⚡ + Check-In
-                          </Button>
-                        )}
-
-                        {room.status === "OCCUPIED" && (
-                          <>
-                            <Button
-                              fullWidth
-                              size="small"
-                              variant="outlined"
-                              onClick={() => setQuickChargeModal({ open: true, room, booking: matchedBooking })}
-                              sx={{
-                                fontWeight: 800,
-                                fontSize: "0.7rem",
-                                borderRadius: "8px",
-                                py: 0.5,
-                                textTransform: "none",
-                                borderColor: "#8B5CF6",
-                                color: "#8B5CF6",
-                              }}
-                            >
-                              + Food
-                            </Button>
-                            <Button
-                              fullWidth
-                              size="small"
-                              variant="contained"
-                              onClick={() => {
-                                setCheckoutData({
-                                  paymentMethod: "UPI",
-                                  amountPaid: matchedBooking ? Math.max(0, (matchedBooking.totalAmount || 0) - (matchedBooking.advancePayment || 0)) : 0,
-                                  discount: 0,
-                                  notes: "",
-                                });
-                                setQuickCheckoutModal({ open: true, room, booking: matchedBooking });
-                              }}
-                              sx={{
-                                bgcolor: "#0B8EE0",
-                                color: "#FFFFFF",
-                                fontWeight: 800,
-                                fontSize: "0.7rem",
-                                borderRadius: "8px",
-                                py: 0.5,
-                                textTransform: "none",
-                                "&:hover": { bgcolor: "#0284C7" },
-                              }}
-                            >
-                              Check-Out
-                            </Button>
-                          </>
-                        )}
-
-                        {room.status === "CLEANING" && (
-                          <Button
-                            fullWidth
-                            size="small"
-                            variant="contained"
-                            onClick={() => handleMarkRoomCleaned(room._id)}
-                            sx={{
-                              bgcolor: "#8B5CF6",
-                              color: "#FFFFFF",
-                              fontWeight: 800,
-                              fontSize: "0.72rem",
-                              borderRadius: "8px",
-                              py: 0.6,
-                              textTransform: "none",
-                              "&:hover": { bgcolor: "#7C3AED" },
-                            }}
-                          >
-                            ✅ Mark Ready
-                          </Button>
-                        )}
-
-                        {(room.status === "MAINTENANCE" || room.status === "BLOCKED") && (
-                          <Button
-                            fullWidth
-                            size="small"
-                            variant="contained"
-                            onClick={() => handleMarkRoomCleaned(room._id)}
-                            sx={{
-                              bgcolor: "#EF4444",
-                              color: "#FFFFFF",
-                              fontWeight: 800,
-                              fontSize: "0.72rem",
-                              borderRadius: "8px",
-                              py: 0.6,
-                              textTransform: "none",
-                              "&:hover": { bgcolor: "#DC2626" },
-                            }}
-                          >
-                            🛠️ Mark Fixed
-                          </Button>
-                        )}
+                      {/* Clean Executive Telemetry Footer (No operational buttons) */}
+                      <Box
+                        sx={{
+                          pt: 1.2,
+                          borderTop: `1px solid ${isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"}`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Typography variant="caption" sx={{ fontSize: "0.68rem", fontWeight: 700, color: statusLabelColor }}>
+                          {statusLabel}
+                        </Typography>
+                        <Box sx={{ width: 7, height: 7, borderRadius: "50%", bgcolor: statusLabelColor }} />
                       </Box>
                     </Card>
                   );
@@ -1156,157 +1094,6 @@ export default function HotelOverviewPage({
           )}
         </CardContent>
       </Card>
-
-      {/* ========================================================================= */}
-      {/* 7. QUICK ADD ROOM SERVICE / EXTRA CHARGE MODAL                           */}
-      {/* ========================================================================= */}
-      <Dialog
-        open={quickChargeModal.open}
-        onClose={() => setQuickChargeModal({ open: false, room: null, booking: null })}
-        maxWidth="xs"
-        fullWidth
-        slotProps={{ paper: { sx: { borderRadius: "20px" } } }}
-      >
-        <DialogTitle component="div" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pb: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 900 }}>
-            🍽️ Post Room Charge
-          </Typography>
-          <IconButton size="small" onClick={() => setQuickChargeModal({ open: false, room: null, booking: null })}>
-            <Close fontSize="small" />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
-            Posting charge to <strong>Room #{quickChargeModal.room?.roomNumber}</strong> ({quickChargeModal.room?.guestName || "Resident Guest"})
-          </Typography>
-
-          <TextField
-            select
-            label="Service Category"
-            size="small"
-            value={chargeData.chargeType}
-            onChange={(e) => setChargeData((prev) => ({ ...prev, chargeType: e.target.value }))}
-            fullWidth
-          >
-            <MenuItem value="FOOD_BEVERAGE">🍽️ Food &amp; Beverage / Dining</MenuItem>
-            <MenuItem value="LAUNDRY">🧺 Laundry &amp; Dry Cleaning</MenuItem>
-            <MenuItem value="EXTRA_BED">🛏️ Extra Mattress / Bedding</MenuItem>
-            <MenuItem value="MINIBAR">🥤 Minibar &amp; Beverages</MenuItem>
-            <MenuItem value="DAMAGE">⚠️ Damage / Repair Recovery</MenuItem>
-            <MenuItem value="OTHER">🧾 Other Hotel Service</MenuItem>
-          </TextField>
-
-          <TextField
-            label="Description / Item Details"
-            size="small"
-            value={chargeData.description}
-            onChange={(e) => setChargeData((prev) => ({ ...prev, description: e.target.value }))}
-            fullWidth
-          />
-
-          <TextField
-            label="Amount (₹)"
-            type="number"
-            size="small"
-            value={chargeData.amount}
-            onChange={(e) => setChargeData((prev) => ({ ...prev, amount: e.target.value }))}
-            fullWidth
-            slotProps={{
-              input: {
-                startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-              },
-            }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setQuickChargeModal({ open: false, room: null, booking: null })} sx={{ fontWeight: 700 }}>
-            Cancel
-          </Button>
-          <Button variant="contained" onClick={handleAddChargeSubmit} disabled={chargeLoading} sx={{ borderRadius: "10px", fontWeight: 800 }}>
-            {chargeLoading ? "Posting..." : "Post to Bill"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* ========================================================================= */}
-      {/* 8. QUICK FAST CHECK-OUT & SETTLEMENT MODAL                                */}
-      {/* ========================================================================= */}
-      <Dialog
-        open={quickCheckoutModal.open}
-        onClose={() => setQuickCheckoutModal({ open: false, room: null, booking: null })}
-        maxWidth="xs"
-        fullWidth
-        slotProps={{ paper: { sx: { borderRadius: "20px" } } }}
-      >
-        <DialogTitle component="div" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pb: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 900 }}>
-            🚪 Fast Check-Out
-          </Typography>
-          <IconButton size="small" onClick={() => setQuickCheckoutModal({ open: false, room: null, booking: null })}>
-            <Close fontSize="small" />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: themeConfig.champagne }}>
-            <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block" }}>
-              Settling Room #{quickCheckoutModal.room?.roomNumber}
-            </Typography>
-            <Typography variant="body1" sx={{ fontWeight: 900, color: themeConfig.primaryDark }}>
-              {quickCheckoutModal.room?.guestName || "Resident Guest"}
-            </Typography>
-          </Box>
-
-          <TextField
-            select
-            label="Settlement Payment Mode"
-            size="small"
-            value={checkoutData.paymentMethod}
-            onChange={(e) => setCheckoutData((prev) => ({ ...prev, paymentMethod: e.target.value }))}
-            fullWidth
-          >
-            <MenuItem value="UPI">⚡ UPI / PhonePe / GPay QR</MenuItem>
-            <MenuItem value="CASH">💵 Physical Cash</MenuItem>
-            <MenuItem value="CARD">💳 Credit / Debit Card</MenuItem>
-            <MenuItem value="BANK_TRANSFER">🏦 Net Banking</MenuItem>
-          </TextField>
-
-          <TextField
-            label="Final Amount Collected (₹)"
-            type="number"
-            size="small"
-            value={checkoutData.amountPaid}
-            onChange={(e) => setCheckoutData((prev) => ({ ...prev, amountPaid: e.target.value }))}
-            fullWidth
-            slotProps={{
-              input: {
-                startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-              },
-            }}
-          />
-
-          <TextField
-            label="Checkout Notes"
-            size="small"
-            placeholder="Key returned, minibar verified..."
-            value={checkoutData.notes}
-            onChange={(e) => setCheckoutData((prev) => ({ ...prev, notes: e.target.value }))}
-            fullWidth
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setQuickCheckoutModal({ open: false, room: null, booking: null })} sx={{ fontWeight: 700 }}>
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleQuickCheckoutSubmit}
-            disabled={checkoutLoading}
-            sx={{ borderRadius: "10px", fontWeight: 800, bgcolor: "#0B8EE0" }}
-          >
-            {checkoutLoading ? "Checking Out..." : "Complete Check-Out"}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }
