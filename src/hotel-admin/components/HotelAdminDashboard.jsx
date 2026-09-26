@@ -430,8 +430,8 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
   // Room Type CRUD Handlers
   const handleSaveRoomType = async (e) => {
     e.preventDefault();
-    if (!typeModal.data.name || !typeModal.data.basePrice) {
-      showToast("Category name and base price are required", "error");
+    if (!typeModal.data.name) {
+      showToast("Category name is required", "error");
       return;
     }
 
@@ -439,10 +439,10 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
       const payload = {
         name: typeModal.data.name,
         description: typeModal.data.description || "",
-        basePrice: Number(typeModal.data.basePrice),
+        basePrice: Number(typeModal.data.basePrice) || 0,
         capacity: {
-          adults: Number(typeModal.data.maxAdults || 2),
-          children: Number(typeModal.data.maxChildren || 1),
+          adults: Number(typeModal.data.maxAdults) || 2,
+          children: Number(typeModal.data.maxChildren) || 0,
         },
         bedCount: Number(typeModal.data.bedCount) || 1,
         bedType: typeModal.data.bedType || "1 King Size Bed",

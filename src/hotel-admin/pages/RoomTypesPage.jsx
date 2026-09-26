@@ -1936,7 +1936,7 @@ export default function RoomTypesPage({
 
           <DialogContent dividers sx={{ borderColor: themeConfig.border }}>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   label="Room Category Name *"
                   required
@@ -1944,90 +1944,7 @@ export default function RoomTypesPage({
                   size="small"
                   value={typeModal.data.name}
                   onChange={(e) => setTypeModal({ ...typeModal, data: { ...typeModal.data, name: e.target.value } })}
-                  placeholder="e.g. Royal Presidential Suite, Deluxe AC"
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="Base Tariff per Night (₹) *"
-                  required
-                  fullWidth
-                  size="small"
-                  value={typeModal.data.basePrice ?? ""}
-                  onChange={(e) => setTypeModal({ ...typeModal, data: { ...typeModal.data, basePrice: e.target.value } })}
-                  placeholder="e.g. 4000"
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="Max Adults (Guest Capacity)"
-                  fullWidth
-                  size="small"
-                  value={typeModal.data.maxAdults ?? ""}
-                  onChange={(e) => setTypeModal({ ...typeModal, data: { ...typeModal.data, maxAdults: e.target.value } })}
-                  placeholder="e.g. 2"
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="Max Children"
-                  fullWidth
-                  size="small"
-                  value={typeModal.data.maxChildren ?? ""}
-                  onChange={(e) => setTypeModal({ ...typeModal, data: { ...typeModal.data, maxChildren: e.target.value } })}
-                  placeholder="e.g. 1"
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  select
-                  fullWidth
-                  size="small"
-                  label="🛏️ Bed Setup"
-                  value={typeModal.data.bedType || ""}
-                  onChange={(e) => {
-                    const selectedBed = e.target.value;
-                    const preset = BED_OPTIONS.find((b) => b.label === selectedBed);
-                    setTypeModal({
-                      ...typeModal,
-                      data: {
-                        ...typeModal.data,
-                        bedType: selectedBed,
-                        bedCount: preset ? preset.count : typeModal.data.bedCount || "",
-                        maxAdults: preset ? preset.capacity : typeModal.data.maxAdults || "",
-                      },
-                    });
-                  }}
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                >
-                  <MenuItem value="">
-                    <em>Select Bed Configuration</em>
-                  </MenuItem>
-                  {BED_OPTIONS.map((opt, i) => (
-                    <MenuItem key={i} value={opt.label}>
-                      🛏️ {opt.label} ({opt.capacity} Persons)
-                    </MenuItem>
-                  ))}
-                  <MenuItem value="Custom Setup">🛠️ Custom Bed Configuration</MenuItem>
-                </TextField>
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="🛏️ Number of Beds"
-                  fullWidth
-                  size="small"
-                  value={typeModal.data.bedCount ?? ""}
-                  onChange={(e) => setTypeModal({ ...typeModal, data: { ...typeModal.data, bedCount: e.target.value } })}
-                  placeholder="e.g. 1, 2"
+                  placeholder="e.g. Deluxe Room, Executive Suite, Family Room"
                   sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
                 />
               </Grid>
