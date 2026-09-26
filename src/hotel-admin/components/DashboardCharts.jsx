@@ -195,45 +195,51 @@ export function OccupancyDonutChart({ rooms = [] }) {
         </Box>
 
         {/* Legend Grid */}
-        <Grid container spacing={1.5} sx={{ mt: 2 }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "repeat(2, 1fr)" },
+            gap: 1.5,
+            mt: 2,
+          }}
+        >
           {segments.map((s) => {
             const pct = Math.round((s.count / total) * 100);
             return (
-              <Grid size={{ xs: 6 }} key={s.label}>
-                <Box
-                  onMouseEnter={() => setHoveredSegment(s.label)}
-                  onMouseLeave={() => setHoveredSegment(null)}
-                  sx={{
-                    p: 1.2,
-                    borderRadius: "12px",
-                    bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
-                    border: hoveredSegment === s.label ? `1px solid ${s.color}` : `1px solid transparent`,
-                    transition: "all 0.2s ease",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: s.color, boxShadow: `0 0 8px ${s.color}` }} />
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain }}>
-                      {s.label}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ textAlign: "right" }}>
-                    <Typography variant="caption" sx={{ fontWeight: 900, color: themeConfig.textMain }}>
-                      {s.count}
-                    </Typography>
-                    <Typography variant="caption" sx={{ fontSize: "0.65rem", color: themeConfig.textMuted, ml: 0.5 }}>
-                      ({pct}%)
-                    </Typography>
-                  </Box>
+              <Box
+                key={s.label}
+                onMouseEnter={() => setHoveredSegment(s.label)}
+                onMouseLeave={() => setHoveredSegment(null)}
+                sx={{
+                  p: 1.2,
+                  borderRadius: "12px",
+                  bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                  border: hoveredSegment === s.label ? `1px solid ${s.color}` : `1px solid transparent`,
+                  transition: "all 0.2s ease",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: s.color, boxShadow: `0 0 8px ${s.color}` }} />
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain }}>
+                    {s.label}
+                  </Typography>
                 </Box>
-              </Grid>
+                <Box sx={{ textAlign: "right" }}>
+                  <Typography variant="caption" sx={{ fontWeight: 900, color: themeConfig.textMain }}>
+                    {s.count}
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontSize: "0.65rem", color: themeConfig.textMuted, ml: 0.5 }}>
+                    ({pct}%)
+                  </Typography>
+                </Box>
+              </Box>
             );
           })}
-        </Grid>
+        </Box>
       </CardContent>
     </Card>
   );

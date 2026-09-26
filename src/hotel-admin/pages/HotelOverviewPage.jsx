@@ -812,30 +812,36 @@ export default function HotelOverviewPage({
           />
         </Box>
 
-        <Grid container spacing={2.5}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "repeat(12, 1fr)" },
+            gap: 2.5,
+          }}
+        >
           {/* 1. Circular Occupancy Donut */}
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Box sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
             <OccupancyDonutChart rooms={rooms} />
-          </Grid>
+          </Box>
 
           {/* 2. 7-Day Revenue Curve Wave */}
-          <Grid size={{ xs: 12, md: 8 }}>
+          <Box sx={{ gridColumn: { xs: "span 12", md: "span 8" } }}>
             <RevenueWaveChart dashboardData={dashboardData} isDarkMode={isDarkMode} />
-          </Grid>
+          </Box>
 
           {/* 3. Daily Target Gauge */}
-          <Grid size={{ xs: 12, md: 5 }}>
+          <Box sx={{ gridColumn: { xs: "span 12", md: "span 5" } }}>
             <DailyTargetGauge
               currentRevenue={liveTodayRevNum || 18500}
               targetRevenue={hotelSettings?.dailyRevenueTarget || 35000}
             />
-          </Grid>
+          </Box>
 
           {/* 4. Hourly Reception Traffic Heat Bars */}
-          <Grid size={{ xs: 12, md: 7 }}>
+          <Box sx={{ gridColumn: { xs: "span 12", md: "span 7" } }}>
             <HourlyActivityBarChart />
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </Box>
 
       {/* ========================================================================= */}
