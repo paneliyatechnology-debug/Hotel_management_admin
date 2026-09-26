@@ -325,7 +325,17 @@ function AdminAppContent() {
   );
 }
 
-function AdminAppRoot() {
+export default function Page() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
   return (
     <AppThemeProvider>
       <SocketProvider>
@@ -334,30 +344,3 @@ function AdminAppRoot() {
     </AppThemeProvider>
   );
 }
-
-export default dynamic(() => Promise.resolve(AdminAppRoot), {
-  ssr: false,
-  loading: () => (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#0D2B26",
-      }}
-    >
-      <div
-        style={{
-          width: "36px",
-          height: "36px",
-          border: "3px solid rgba(20, 184, 166, 0.2)",
-          borderTopColor: "#14B8A6",
-          borderRadius: "50%",
-          animation: "spin 0.8s linear infinite",
-        }}
-      />
-      <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-    </div>
-  ),
-});
