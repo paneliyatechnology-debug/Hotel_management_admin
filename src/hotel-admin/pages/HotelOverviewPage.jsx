@@ -177,6 +177,9 @@ export default function HotelOverviewPage({
   }, [rooms]);
 
   // Real live calculated data from backend & database
+  const fin = dashboardData?.financials || {};
+  const ops = dashboardData?.operationsSummary || {};
+
   const liveTodayRevNum = Number(fin.todayRevenue ?? (dashboardData?.todayRevenue || 0));
   const effectiveTodayRev = liveTodayRevNum > 0 ? liveTodayRevNum : (occupiedTariffSum > 0 ? occupiedTariffSum : 0);
   const liveTodayEarnNum = Number(fin.todayEarnings ?? (dashboardData?.todayEarnings || Math.round(effectiveTodayRev * 0.785)));
