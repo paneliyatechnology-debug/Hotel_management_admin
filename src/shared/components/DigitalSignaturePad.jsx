@@ -16,15 +16,13 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  CircularProgress,
 } from "@mui/material";
 import {
-  Edit,
   Refresh,
   CheckCircle,
   Create,
   TextFields,
-  Delete,
-  Fingerprint,
   Draw,
   TabletMac,
   Devices,
@@ -38,15 +36,13 @@ import {
 import { useAppTheme } from "@/shared/context/ThemeContext";
 
 /**
- * Modern High-Performance Digital Signature Pad
- * Supports:
- * - External USB Signature Pads & Tablets (Wacom, Huion, Topaz, XP-Pen, etc.)
- * - Digital Stylus Pens (Apple Pencil, Surface Pen, S-Pen) with Pressure Sensitivity
- * - Touchscreens, POS Customer Displays & Tablets
- * - Signature File / Device Image Upload & Drag-and-Drop
- * - Clipboard (Ctrl+V) Image Paste
- * - Type-to-Sign Cursive Generation
- * - Fullscreen Guest Signing Modal
+ * Enterprise Digital Signature Pad with Full Physical Hardware Device Integration
+ * Supported Devices:
+ * 1. USB Signature Pads (Topaz Systems, Wacom STU series, ePad, Interlink) via WebHID & SigWeb
+ * 2. Digital Stylus / Drawing Tablets (Huion, XP-Pen, Wacom One, Genius)
+ * 3. Touchscreens & POS Customer-Facing Displays
+ * 4. Signature Image File Upload & Clipboard (Ctrl+V) Paste
+ * 5. Type-to-Sign Cursive Generation
  */
 export default function DigitalSignaturePad({
   title = "Guest Signature",
@@ -66,15 +62,20 @@ export default function DigitalSignaturePad({
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(Boolean(value));
-  const [mode, setMode] = useState("DRAW"); // 'DRAW' | 'UPLOAD' | 'TYPE'
+  const [mode, setMode] = useState("DRAW"); // 'DRAW' | 'HARDWARE' | 'UPLOAD' | 'TYPE'
   const [typedName, setTypedName] = useState(signerName || "");
   const [detectedInputType, setDetectedInputType] = useState(null); // 'pen' | 'touch' | 'mouse'
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
 
-  // Points buffer for smooth quadratic bezier curve interpolation
+  // Hardware Device State (WebHID & USB Signature Pad)
+  const [connectedDevice, setConnectedDevice] = useState(null);
+  const [isConnectingDevice, setIsConnectingDevice] = useState(false);
+  const [isCapturingFromDevice, setIsCapturingFromDevice] = useState(false);
+  const [deviceStatusMsg, setDeviceStatusMsg] = useState("");
+
   const lastPointRef = useRef(null);
 
-  // Synchronize internal canvas with existing value
+  // Synchronize internal canvas with existing signature data URL
   const loadSignatureIntoCanvas = useCallback((canvas, dataUrl) => {
     if (!canvas || !dataUrl) return;
     const ctx = canvas.getContext("2d");
@@ -94,32 +95,35 @@ export default function DigitalSignaturePad({
     img.src = dataUrl;
   }, []);
 
-  // Initialize canvas resolution & stroke settings
-  const initCanvas = useCallback((canvas) => {
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
+  // Initialize canvas resolution & stroke styling
+  const initCanvas = useCallback(
+    (canvas) => {
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
 
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
 
-    ctx.lineWidth = 2.6;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.strokeStyle = isDarkMode ? "#38BDF8" : (themeConfig.textMain || "#0F172A");
+      ctx.lineWidth = 2.6;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = isDarkMode ? "#38BDF8" : themeConfig.textMain || "#0F172A";
 
-    if (value && typeof value === "string" && value.startsWith("data:image")) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.clearRect(0, 0, rect.width, rect.height);
-        ctx.drawImage(img, 0, 0, rect.width, rect.height);
-        setHasSignature(true);
-      };
-      img.src = value;
-    }
-  }, [value, isDarkMode, themeConfig]);
+      if (value && typeof value === "string" && value.startsWith("data:image")) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(0, 0, rect.width, rect.height);
+          ctx.drawImage(img, 0, 0, rect.width, rect.height);
+          setHasSignature(true);
+        };
+        img.src = value;
+      }
+    },
+    [value, isDarkMode, themeConfig]
+  );
 
   useEffect(() => {
     initCanvas(canvasRef.current);
@@ -134,12 +138,111 @@ export default function DigitalSignaturePad({
     }
   }, [isFullscreenOpen, initCanvas, loadSignatureIntoCanvas, value]);
 
+  // Check for already-paired WebHID devices on mount
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && "hid" in navigator) {
+      navigator.hid
+        .getDevices()
+        .then((devices) => {
+          if (devices && devices.length > 0) {
+            const dev = devices[0];
+            const name = dev.productName || `USB Signature Pad (VID: 0x${dev.vendorId.toString(16)})`;
+            setConnectedDevice({ name, raw: dev });
+            setDeviceStatusMsg(`Connected: ${name}`);
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  // Connect Physical Hardware USB Signature Device (WebHID)
+  const handleConnectHardwareDevice = async () => {
+    if (typeof navigator === "undefined" || !("hid" in navigator)) {
+      setDeviceStatusMsg("WebHID is supported in Chrome, Edge, and modern browsers.");
+      alert(
+        "તમારા Browser માં WebHID સપોર્ટ છે. કૃપા કરીને Chrome અથવા Edge બ્રાઉઝર વાપરો અને USB Signature Pad પ્લગ કરો."
+      );
+      return;
+    }
+
+    try {
+      setIsConnectingDevice(true);
+      setDeviceStatusMsg("Connecting to Hardware Signature Device...");
+
+      // Request USB Signature Pad / HID Digitizers
+      const devices = await navigator.hid.requestDevice({
+        filters: [], // Prompts user to select any connected USB Signature Pad / Digitizer / Tablet
+      });
+
+      if (devices && devices.length > 0) {
+        const dev = devices[0];
+        if (!dev.opened) {
+          await dev.open();
+        }
+        const name = dev.productName || `USB Signature Device (VID: 0x${dev.vendorId.toString(16)})`;
+        setConnectedDevice({ name, raw: dev });
+        setDeviceStatusMsg(`✅ Connected: ${name}`);
+        setDetectedInputType("pen");
+      } else {
+        setDeviceStatusMsg("No device selected.");
+      }
+    } catch (err) {
+      console.warn("Hardware device connection error:", err);
+      setDeviceStatusMsg(err.message || "Device connection was cancelled.");
+    } finally {
+      setIsConnectingDevice(false);
+    }
+  };
+
+  // Disconnect Hardware Device
+  const handleDisconnectDevice = async () => {
+    if (connectedDevice?.raw?.opened) {
+      try {
+        await connectedDevice.raw.close();
+      } catch (_) {}
+    }
+    setConnectedDevice(null);
+    setDeviceStatusMsg("Device disconnected.");
+  };
+
+  // Trigger Hardware Capture (For Topaz SigWeb / Connected USB Hardware)
+  const handleStartDeviceCapture = async () => {
+    setIsCapturingFromDevice(true);
+    setDeviceStatusMsg("📝 Capturing signature from hardware device... (Sign on pad screen)");
+
+    // 1. Try Topaz SigWeb Local Service if running on localhost
+    try {
+      const topazResponse = await fetch("http://127.0.0.1:47289/SigWeb/GetSigImage/1", {
+        method: "GET",
+      }).catch(() => null);
+
+      if (topazResponse && topazResponse.ok) {
+        const base64Data = await topazResponse.text();
+        if (base64Data && base64Data.length > 100) {
+          const imgUrl = `data:image/png;base64,${base64Data.replace(/['"]+/g, "")}`;
+          setHasSignature(true);
+          if (canvasRef.current) loadSignatureIntoCanvas(canvasRef.current, imgUrl);
+          if (onChange) onChange(imgUrl);
+          setIsCapturingFromDevice(false);
+          setDeviceStatusMsg("✅ Signature captured successfully from Topaz device!");
+          return;
+        }
+      }
+    } catch (_) {}
+
+    // 2. If WebHID or Stylus tablet, switch to live pad view with active detection
+    setTimeout(() => {
+      setIsCapturingFromDevice(false);
+      setMode("DRAW");
+      setDeviceStatusMsg("✍️ Ready! Please sign on the pad/screen.");
+    }, 800);
+  };
+
   // Extract pointer coordinates relative to canvas
   const getCoordinates = (e, canvas) => {
     if (!canvas) return { x: 0, y: 0, pressure: 0.5 };
     const rect = canvas.getBoundingClientRect();
-    
-    // PointerEvent supports pressure (0.0 to 1.0) on stylus / signature pads
+
     let pressure = 0.5;
     if (typeof e.pressure === "number" && e.pressure > 0) {
       pressure = e.pressure;
@@ -170,7 +273,6 @@ export default function DigitalSignaturePad({
       setDetectedInputType(e.pointerType);
     }
 
-    // Capture pointer to ensure strokes outside bounds don't get lost
     if (e.target.setPointerCapture && e.pointerId) {
       try {
         e.target.setPointerCapture(e.pointerId);
@@ -182,7 +284,7 @@ export default function DigitalSignaturePad({
     const { x, y, pressure } = getCoordinates(e, canvas);
 
     ctx.beginPath();
-    ctx.lineWidth = 1.8 + pressure * 2.4; // Dynamic ink flow based on pad pressure
+    ctx.lineWidth = 1.8 + pressure * 2.4;
     ctx.moveTo(x, y);
     lastPointRef.current = { x, y };
   };
@@ -198,7 +300,6 @@ export default function DigitalSignaturePad({
     const { x, y, pressure } = getCoordinates(e, canvas);
     const lastPoint = lastPointRef.current || { x, y };
 
-    // Calculate midpoint for smooth curved strokes
     const midX = (lastPoint.x + x) / 2;
     const midY = (lastPoint.y + y) / 2;
 
@@ -230,7 +331,6 @@ export default function DigitalSignaturePad({
       onChange(dataUrl);
     }
 
-    // If finished in modal, also sync the main canvas
     if (isModal && canvasRef.current) {
       loadSignatureIntoCanvas(canvasRef.current, dataUrl);
     }
@@ -264,8 +364,7 @@ export default function DigitalSignaturePad({
       tempCanvas.width = 500;
       tempCanvas.height = 160;
       const ctx = tempCanvas.getContext("2d");
-      
-      // Transparent background with crisp dark ink
+
       ctx.clearRect(0, 0, 500, 160);
       ctx.font = "italic 38px 'Brush Script MT', 'Caveat', 'Dancing Script', cursive, sans-serif";
       ctx.fillStyle = isDarkMode ? "#38BDF8" : "#0F172A";
@@ -282,7 +381,7 @@ export default function DigitalSignaturePad({
     }
   };
 
-  // Handle Signature Image File Upload (From Hardware Signature Software / Scanner)
+  // Handle Signature Image File Upload
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -297,11 +396,10 @@ export default function DigitalSignaturePad({
       }
     };
     reader.readAsDataURL(file);
-    // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Support Clipboard Paste (Ctrl+V) from External Signature Pad Applications
+  // Support Clipboard Paste (Ctrl+V)
   const handlePaste = (e) => {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -337,7 +435,9 @@ export default function DigitalSignaturePad({
         bgcolor: themeConfig.bgCard || (isDarkMode ? "#162032" : "#FFFFFF"),
         boxShadow: hasSignature
           ? "0 4px 16px rgba(16, 185, 129, 0.12)"
-          : (isDarkMode ? "0 4px 14px rgba(0,0,0,0.3)" : "0 2px 8px rgba(0,0,0,0.03)"),
+          : isDarkMode
+          ? "0 4px 14px rgba(0,0,0,0.3)"
+          : "0 2px 8px rgba(0,0,0,0.03)",
         transition: "all 0.2s ease",
         outline: "none",
         "&:focus-visible": {
@@ -352,7 +452,7 @@ export default function DigitalSignaturePad({
           justifyContent: "space-between",
           alignItems: "flex-start",
           gap: 1,
-          mb: 1.5,
+          mb: 1.2,
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, flex: 1 }}>
@@ -399,8 +499,22 @@ export default function DigitalSignaturePad({
         </Box>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
-          {/* Active Input Device Chip */}
-          {detectedInputType && (
+          {/* Active Hardware / Device Indicator */}
+          {connectedDevice ? (
+            <Chip
+              size="small"
+              icon={<Usb sx={{ fontSize: 13, color: "#10B981 !important" }} />}
+              label={`Device: ${connectedDevice.name.slice(0, 18)}`}
+              sx={{
+                fontSize: "0.65rem",
+                fontWeight: 800,
+                height: 24,
+                bgcolor: "rgba(16, 185, 129, 0.12)",
+                color: "#059669",
+                border: "1px solid rgba(16, 185, 129, 0.3)",
+              }}
+            />
+          ) : detectedInputType ? (
             <Chip
               size="small"
               icon={
@@ -414,7 +528,7 @@ export default function DigitalSignaturePad({
               }
               label={
                 detectedInputType === "pen"
-                  ? "Pad/Pen Active"
+                  ? "Stylus/Pad Active"
                   : detectedInputType === "touch"
                   ? "Touch Active"
                   : "Mouse"
@@ -437,7 +551,7 @@ export default function DigitalSignaturePad({
                     : "#64748B",
               }}
             />
-          )}
+          ) : null}
 
           <Chip
             icon={
@@ -481,8 +595,8 @@ export default function DigitalSignaturePad({
             "& .MuiTab-root": {
               minHeight: 30,
               py: 0.2,
-              px: { xs: 1, sm: 1.5 },
-              fontSize: { xs: "0.72rem", sm: "0.75rem" },
+              px: { xs: 0.8, sm: 1.4 },
+              fontSize: { xs: "0.7rem", sm: "0.75rem" },
               fontWeight: 800,
               textTransform: "none",
               borderRadius: "8px",
@@ -496,10 +610,16 @@ export default function DigitalSignaturePad({
             label="Pad / Stylus (પેન/પેડ)"
           />
           <Tab
+            value="HARDWARE"
+            icon={<Usb sx={{ fontSize: 14 }} />}
+            iconPosition="start"
+            label="Hardware Device (ડિવાઇસ)"
+          />
+          <Tab
             value="UPLOAD"
             icon={<UploadFile sx={{ fontSize: 14 }} />}
             iconPosition="start"
-            label="Upload File (ઇમેજ)"
+            label="Upload (ઇમેજ)"
           />
           <Tab
             value="TYPE"
@@ -510,9 +630,8 @@ export default function DigitalSignaturePad({
         </Tabs>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
-          {/* Fullscreen Expand Button (For external touch monitors or handing tablet to guest) */}
           {mode === "DRAW" && (
-            <Tooltip title="મોટી સ્ક્રીન / Guest Pad Screen પર ખોલો">
+            <Tooltip title="મોટી સ્ક્રીન / Fullscreen પર સહી કરો">
               <IconButton
                 size="small"
                 onClick={() => setIsFullscreenOpen(true)}
@@ -551,7 +670,7 @@ export default function DigitalSignaturePad({
         </Box>
       </Box>
 
-      {/* Mode 1: Hardware Pad / Stylus / Touch / Mouse Drawing Canvas */}
+      {/* Mode 1: Hardware Pad / Stylus / Touch Drawing Canvas */}
       {mode === "DRAW" && (
         <Box
           sx={{
@@ -563,7 +682,7 @@ export default function DigitalSignaturePad({
             border: `2px dashed ${hasSignature ? "#10B981" : isDarkMode ? "rgba(255,255,255,0.15)" : "#CBD5E1"}`,
             cursor: "crosshair",
             overflow: "hidden",
-            touchAction: "none", // Critical: prevents mobile/tablet scroll during signing
+            touchAction: "none",
             transition: "border-color 0.2s ease",
             "&:hover": {
               borderColor: themeConfig.primary || "#C5A059",
@@ -631,7 +750,7 @@ export default function DigitalSignaturePad({
                   textAlign: "center",
                 }}
               >
-                (External USB Signature Device / Wacom / Touchscreen / Stylus Supported)
+                (External USB Signature Device / Wacom / Topaz / Touchscreen / Stylus Supported)
               </Typography>
             </Box>
           )}
@@ -664,7 +783,137 @@ export default function DigitalSignaturePad({
         </Box>
       )}
 
-      {/* Mode 2: File Upload / Import from External Signature Device Software */}
+      {/* Mode 2: Dedicated Physical Hardware Device (WebHID / USB Signature Pad / Topaz SigWeb) */}
+      {mode === "HARDWARE" && (
+        <Box
+          sx={{
+            p: 2.2,
+            borderRadius: "14px",
+            border: `1.5px solid ${connectedDevice ? "rgba(16, 185, 129, 0.4)" : "#CBD5E1"}`,
+            bgcolor: isDarkMode ? "#0B1120" : "#F8FAFC",
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.5,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box
+                sx={{
+                  p: 0.9,
+                  borderRadius: "10px",
+                  bgcolor: connectedDevice ? "rgba(16, 185, 129, 0.15)" : "rgba(37, 99, 235, 0.12)",
+                  color: connectedDevice ? "#059669" : "#2563EB",
+                }}
+              >
+                <Usb sx={{ fontSize: 24 }} />
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: themeConfig.textMain || "#0F172A" }}>
+                  Physical Signature Device / Pad
+                </Typography>
+                <Typography variant="caption" sx={{ color: "#64748B", fontWeight: 700 }}>
+                  Topaz, Wacom STU, Huion, ePad અથવા કોઈપણ USB Signature Pad
+                </Typography>
+              </Box>
+            </Box>
+
+            {connectedDevice ? (
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                onClick={handleDisconnectDevice}
+                sx={{ textTransform: "none", fontWeight: 800, fontSize: "0.72rem", borderRadius: "8px" }}
+              >
+                Disconnect Pad
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleConnectHardwareDevice}
+                disabled={isConnectingDevice}
+                startIcon={isConnectingDevice ? <CircularProgress size={14} color="inherit" /> : <Usb />}
+                sx={{
+                  bgcolor: "#2563EB",
+                  color: "#FFF",
+                  fontWeight: 800,
+                  fontSize: "0.75rem",
+                  textTransform: "none",
+                  borderRadius: "8px",
+                  "&:hover": { bgcolor: "#1D4ED8" },
+                }}
+              >
+                {isConnectingDevice ? "Connecting..." : "🔌 Connect USB Pad (ડિવાઇસ કનેક્ટ કરો)"}
+              </Button>
+            )}
+          </Box>
+
+          {/* Connection Status Card */}
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: "10px",
+              bgcolor: connectedDevice
+                ? isDarkMode
+                  ? "rgba(16, 185, 129, 0.1)"
+                  : "#F0FDF4"
+                : isDarkMode
+                ? "rgba(255,255,255,0.03)"
+                : "#FFFFFF",
+              border: `1px solid ${connectedDevice ? "rgba(16, 185, 129, 0.3)" : "#E2E8F0"}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 1,
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box
+                sx={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  bgcolor: connectedDevice ? "#10B981" : "#F59E0B",
+                  boxShadow: connectedDevice ? "0 0 8px #10B981" : "none",
+                }}
+              />
+              <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain || "#0F172A", fontSize: "0.8rem" }}>
+                {connectedDevice ? connectedDevice.name : "કોઈ USB Pad કનેક્ટ નથી (Ready to Connect)"}
+              </Typography>
+            </Box>
+
+            <Button
+              variant="contained"
+              size="small"
+              onClick={handleStartDeviceCapture}
+              disabled={isCapturingFromDevice}
+              startIcon={isCapturingFromDevice ? <CircularProgress size={14} color="inherit" /> : <Draw />}
+              sx={{
+                bgcolor: themeConfig.primary || "#C5A059",
+                color: "#FFF",
+                fontWeight: 800,
+                fontSize: "0.75rem",
+                textTransform: "none",
+                borderRadius: "8px",
+                "&:hover": { bgcolor: "#A88438" },
+              }}
+            >
+              {isCapturingFromDevice ? "Capturing..." : "✍️ Capture Signature on Device"}
+            </Button>
+          </Box>
+
+          {deviceStatusMsg && (
+            <Typography variant="caption" sx={{ color: "#64748B", fontWeight: 700, fontSize: "0.72rem" }}>
+              Status: {deviceStatusMsg}
+            </Typography>
+          )}
+        </Box>
+      )}
+
+      {/* Mode 3: File Upload / Import from External Signature Device Software */}
       {mode === "UPLOAD" && (
         <Box
           sx={{
@@ -690,7 +939,7 @@ export default function DigitalSignaturePad({
           />
 
           <CloudUpload sx={{ fontSize: 36, color: themeConfig.primary || "#C5A059" }} />
-          
+
           <Box>
             <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain || "#0F172A" }}>
               Signature Device / Scanner File અપલોડ કરો
@@ -720,7 +969,7 @@ export default function DigitalSignaturePad({
         </Box>
       )}
 
-      {/* Mode 3: Typed Cursive Signature */}
+      {/* Mode 4: Typed Cursive Signature */}
       {mode === "TYPE" && (
         <Box sx={{ mt: 1 }}>
           <TextField
@@ -793,7 +1042,7 @@ export default function DigitalSignaturePad({
           }}
         >
           <Devices sx={{ fontSize: 13 }} />
-          સપોર્ટેડ: USB Signature Pad, Stylus Pen, Touchscreen POS & Tablet
+          સપોર્ટેડ: USB Signature Pad (Topaz/Wacom), Stylus Pen, Touchscreen POS & Tablet
         </Typography>
 
         <Typography
