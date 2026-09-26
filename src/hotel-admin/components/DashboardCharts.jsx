@@ -612,23 +612,38 @@ export function DailyTargetGauge({ currentRevenue = 18500, targetRevenue = 25000
 }
 
 /**
- * 4. HOURLY RECEPTION ACTIVITY & RUSH HOUR HEAT BARS
+ * 4. WEEKLY & HOURLY RECEPTION ACTIVITY TRAFFIC HEAT BARS
  */
-export function HourlyActivityBarChart() {
+export function HourlyActivityBarChart({ bookings = [], guests = [] }) {
   const { themeConfig, isDarkMode } = useAppTheme();
+  const [viewType, setViewType] = useState("WEEKLY"); // "WEEKLY" or "HOURLY"
 
-  const hourlyData = [
-    { hour: "8 AM", checkins: 2, checkouts: 4, label: "Morning Checkout" },
-    { hour: "10 AM", checkins: 5, checkouts: 9, label: "Peak Checkout", isPeak: true },
-    { hour: "12 PM", checkins: 8, checkouts: 6, label: "Turnaround Rush", isPeak: true },
-    { hour: "2 PM", checkins: 11, checkouts: 2, label: "Peak Check-in", isPeak: true },
-    { hour: "4 PM", checkins: 7, checkouts: 1, label: "Afternoon Check-in" },
-    { hour: "6 PM", checkins: 9, checkouts: 2, label: "Evening Arrivals", isPeak: true },
-    { hour: "8 PM", checkins: 4, checkouts: 0, label: "Night Check-in" },
-    { hour: "10 PM", checkins: 2, checkouts: 0, label: "Late Night" },
+  const weeklyData = [
+    { label: "Mon", dayFull: "Monday", checkins: 8, checkouts: 6, total: 14 },
+    { label: "Tue", dayFull: "Tuesday", checkins: 6, checkouts: 5, total: 11 },
+    { label: "Wed", dayFull: "Wednesday", checkins: 9, checkouts: 7, total: 16 },
+    { label: "Thu", dayFull: "Thursday", checkins: 11, checkouts: 8, total: 19 },
+    { label: "Fri", dayFull: "Friday", checkins: 18, checkouts: 9, total: 27, isPeak: true },
+    { label: "Sat", dayFull: "Saturday", checkins: 24, checkouts: 14, total: 38, isPeak: true },
+    { label: "Sun", dayFull: "Sunday", checkins: 15, checkouts: 22, total: 37, isPeak: true },
   ];
 
-  const maxVal = 14;
+  const hourlyData = [
+    { label: "8 AM", checkins: 2, checkouts: 4, isPeak: false },
+    { label: "10 AM", checkins: 5, checkouts: 9, isPeak: true },
+    { label: "12 PM", checkins: 8, checkouts: 6, isPeak: true },
+    { label: "2 PM", checkins: 11, checkouts: 2, isPeak: true },
+    { label: "4 PM", checkins: 7, checkouts: 1, isPeak: false },
+    { label: "6 PM", checkins: 9, checkouts: 2, isPeak: true },
+    { label: "8 PM", checkins: 4, checkouts: 0, isPeak: false },
+    { label: "10 PM", checkins: 2, checkouts: 0, isPeak: false },
+  ];
+
+  const currentData = viewType === "WEEKLY" ? weeklyData : hourlyData;
+  const maxVal = Math.max(...currentData.map((d) => Math.max(d.checkins, d.checkouts)), 1);
+
+  const totalWeeklyIn = weeklyData.reduce((sum, d) => sum + d.checkins, 0);
+  const totalWeeklyOut = weeklyData.reduce((sum, d) => sum + d.checkouts, 0);
 
   return (
     <Card
@@ -647,37 +662,82 @@ export function HourlyActivityBarChart() {
       }}
     >
       <CardContent sx={{ p: 3, flex: 1, display: "flex", flexDirection: "column" }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        {/* Header Ribbon with Mode Toggle */}
+        <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", mb: 2, gap: 1 }}>
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, display: "flex", alignItems: "center", gap: 1 }}>
-              <Schedule sx={{ color: "#6366F1", fontSize: 22 }} />
-              Hourly Reception Traffic
+            <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, display: "flex", alignItems: "center", gap: 1, fontSize: "1rem" }}>
+              <Schedule sx={{ color: "#6366F1", fontSize: 20 }} />
+              {viewType === "WEEKLY" ? "Weekly Reception Traffic" : "Hourly Reception Traffic"}
             </Typography>
             <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
-              Guest Check-in vs Check-out flow
+              {viewType === "WEEKLY"
+                ? "7-Day guest check-in vs check-out volume"
+                : "Guest check-in vs check-out rush by hour"}
             </Typography>
           </Box>
-          <Box sx={{ display: "flex", gap: 1 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-              <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#3B82F6" }} />
-              <Typography variant="caption" sx={{ fontSize: "0.68rem", color: themeConfig.textMuted }}>In</Typography>
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            {/* View Switcher Toggle Button */}
+            <Box sx={{ display: "flex", bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : themeConfig.champagne, p: 0.3, borderRadius: "10px", border: `1px solid ${themeConfig.border}` }}>
+              <Button
+                size="small"
+                onClick={() => setViewType("WEEKLY")}
+                sx={{
+                  py: 0.3,
+                  px: 1.2,
+                  fontSize: "0.7rem",
+                  fontWeight: 800,
+                  borderRadius: "8px",
+                  bgcolor: viewType === "WEEKLY" ? (isDarkMode ? "rgba(255,255,255,0.15)" : "#FFFFFF") : "transparent",
+                  color: viewType === "WEEKLY" ? (themeConfig.primaryDark || "#0C273B") : themeConfig.textMuted,
+                  boxShadow: viewType === "WEEKLY" ? "0 2px 6px rgba(0,0,0,0.08)" : "none",
+                  minWidth: "auto",
+                }}
+              >
+                Weekly
+              </Button>
+              <Button
+                size="small"
+                onClick={() => setViewType("HOURLY")}
+                sx={{
+                  py: 0.3,
+                  px: 1.2,
+                  fontSize: "0.7rem",
+                  fontWeight: 800,
+                  borderRadius: "8px",
+                  bgcolor: viewType === "HOURLY" ? (isDarkMode ? "rgba(255,255,255,0.15)" : "#FFFFFF") : "transparent",
+                  color: viewType === "HOURLY" ? (themeConfig.primaryDark || "#0C273B") : themeConfig.textMuted,
+                  boxShadow: viewType === "HOURLY" ? "0 2px 6px rgba(0,0,0,0.08)" : "none",
+                  minWidth: "auto",
+                }}
+              >
+                Hourly
+              </Button>
             </Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-              <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#EC4899" }} />
-              <Typography variant="caption" sx={{ fontSize: "0.68rem", color: themeConfig.textMuted }}>Out</Typography>
+
+            {/* In / Out Legend */}
+            <Box sx={{ display: "flex", gap: 1, ml: 0.5 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
+                <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#3B82F6" }} />
+                <Typography variant="caption" sx={{ fontSize: "0.68rem", fontWeight: 700, color: themeConfig.textMuted }}>In</Typography>
+              </Box>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
+                <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#EC4899" }} />
+                <Typography variant="caption" sx={{ fontSize: "0.68rem", fontWeight: 700, color: themeConfig.textMuted }}>Out</Typography>
+              </Box>
             </Box>
           </Box>
         </Box>
 
         {/* Bars Container */}
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", height: 160, pt: 2, pb: 1, my: "auto" }}>
-          {hourlyData.map((d, i) => {
-            const inHeight = (d.checkins / maxVal) * 110;
-            const outHeight = (d.checkouts / maxVal) * 110;
+          {currentData.map((d, i) => {
+            const inHeight = Math.max(8, (d.checkins / maxVal) * 110);
+            const outHeight = Math.max(8, (d.checkouts / maxVal) * 110);
             return (
               <Tooltip
                 key={i}
-                title={`${d.hour}: ${d.checkins} Check-ins, ${d.checkouts} Check-outs (${d.label})`}
+                title={`${d.dayFull || d.label}: ${d.checkins} Check-ins (In) | ${d.checkouts} Check-outs (Out) ${d.total ? `(Total: ${d.total})` : ""}`}
                 arrow
               >
                 <Box
@@ -691,42 +751,47 @@ export function HourlyActivityBarChart() {
                     "&:hover .bar-out": { transform: "scaleY(1.08)" },
                   }}
                 >
-                  {d.isPeak && (
-                    <Typography sx={{ fontSize: "0.58rem", fontWeight: 800, color: "#EF4444", mb: 0.5, lineHeight: 1 }}>
+                  {d.isPeak ? (
+                    <Typography sx={{ fontSize: "0.65rem", fontWeight: 800, color: "#EF4444", mb: 0.5, lineHeight: 1 }}>
                       🔥
                     </Typography>
+                  ) : (
+                    <Box sx={{ height: "13px" }} />
                   )}
+
                   {/* Paired Bars */}
-                  <Box sx={{ display: "flex", alignItems: "flex-end", gap: "3px", height: 110 }}>
+                  <Box sx={{ display: "flex", alignItems: "flex-end", gap: "4px", height: 110 }}>
                     {/* In Bar */}
                     <Box
                       className="bar-in"
                       sx={{
-                        width: 8,
+                        width: viewType === "WEEKLY" ? 12 : 8,
                         height: `${inHeight}px`,
                         borderRadius: "4px 4px 0 0",
                         bgcolor: "#3B82F6",
                         background: "linear-gradient(180deg, #60A5FA 0%, #2563EB 100%)",
                         transition: "transform 0.2s ease",
                         transformOrigin: "bottom",
+                        position: "relative",
                       }}
                     />
                     {/* Out Bar */}
                     <Box
                       className="bar-out"
                       sx={{
-                        width: 8,
+                        width: viewType === "WEEKLY" ? 12 : 8,
                         height: `${outHeight}px`,
                         borderRadius: "4px 4px 0 0",
                         bgcolor: "#EC4899",
                         background: "linear-gradient(180deg, #F472B6 0%, #DB2777 100%)",
                         transition: "transform 0.2s ease",
                         transformOrigin: "bottom",
+                        position: "relative",
                       }}
                     />
                   </Box>
-                  <Typography variant="caption" sx={{ fontSize: "0.62rem", fontWeight: 700, color: themeConfig.textMuted, mt: 1 }}>
-                    {d.hour}
+                  <Typography variant="caption" sx={{ fontSize: "0.7rem", fontWeight: 800, color: themeConfig.textMain, mt: 1 }}>
+                    {d.label}
                   </Typography>
                 </Box>
               </Tooltip>
@@ -734,12 +799,15 @@ export function HourlyActivityBarChart() {
           })}
         </Box>
 
-        <Box sx={{ p: 1, borderRadius: "10px", bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", display: "flex", justifyContent: "space-between", alignItems: "center", mt: 1 }}>
-          <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.72rem" }}>
-            Peak Turnaround Window:
+        {/* Footer Summary Strip */}
+        <Box sx={{ p: 1.2, borderRadius: "12px", bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : themeConfig.champagne, display: "flex", justifyContent: "space-between", alignItems: "center", mt: 1, border: `1px solid ${themeConfig.border}` }}>
+          <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.75rem", fontWeight: 700 }}>
+            {viewType === "WEEKLY" ? "Weekly Total Flow:" : "Peak Turnaround Window:"}
           </Typography>
-          <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.primary, fontSize: "0.72rem" }}>
-            11:00 AM – 2:30 PM
+          <Typography variant="caption" sx={{ fontWeight: 900, color: themeConfig.primaryDark, fontSize: "0.75rem" }}>
+            {viewType === "WEEKLY"
+              ? `${totalWeeklyIn} Check-Ins • ${totalWeeklyOut} Check-Outs (${totalWeeklyIn + totalWeeklyOut} Total)`
+              : "11:00 AM – 2:30 PM (Turnaround Rush)"}
           </Typography>
         </Box>
       </CardContent>
