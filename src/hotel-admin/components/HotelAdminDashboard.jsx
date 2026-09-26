@@ -569,14 +569,9 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
           setGuestSearch={setGuestSearch}
           guestFilter={guestFilter}
           setGuestFilter={setGuestFilter}
-          guestModal={guestModal}
-          setGuestModal={setGuestModal}
           viewGuestModal={viewGuestModal}
           setViewGuestModal={setViewGuestModal}
           hotelSettings={hotelSettings}
-          onSaveGuest={handleSaveGuest}
-          onDeleteGuest={handleDeleteGuest}
-          getInitialGuestForm={getInitialGuestForm}
         />
       )}
 
