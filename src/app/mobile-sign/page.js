@@ -15,6 +15,7 @@ import {
   Refresh,
   Hotel,
   TouchApp,
+  Draw,
 } from "@/shared/icons";
 import { AppThemeProvider } from "@/shared/context/ThemeContext";
 
@@ -32,24 +33,20 @@ function MobileSignContent() {
   const isDrawingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
 
-  // Initialize Canvas properly with resize listener
+  // Initialize Canvas with crisp background and fixed buffer
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const width = rect.width > 0 ? rect.width : (canvas.parentElement?.clientWidth || 340);
-    const height = rect.height > 0 ? rect.height : 260;
-    const dpr = window.devicePixelRatio || 1;
-
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
+    // Fixed high-resolution canvas buffer: 800 x 400
+    canvas.width = 800;
+    canvas.height = 400;
 
     const ctx = canvas.getContext("2d");
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
-    ctx.scale(dpr, dpr);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, 800, 400);
 
-    ctx.lineWidth = 3.5;
+    ctx.lineWidth = 4.5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.strokeStyle = "#090D16";
@@ -57,98 +54,105 @@ function MobileSignContent() {
 
   useEffect(() => {
     initCanvas();
-    const timer = setTimeout(initCanvas, 200);
-    window.addEventListener("resize", initCanvas);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("resize", initCanvas);
-    };
   }, [initCanvas]);
 
-  // Direct Touch and Pointer Event Listeners
+  // Accurate coordinate calculation that scales screen touch pixels to 800x400 canvas buffer
+  const getCanvasCoords = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+
+    let clientX = e.clientX;
+    let clientY = e.clientY;
+
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else if (e.changedTouches && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
+    }
+
+    const scaleX = canvas.width / (rect.width || 1);
+    const scaleY = canvas.height / (rect.height || 1);
+
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    };
+  };
+
+  // Start Drawing
+  const handleStart = (e) => {
+    if (e.cancelable) e.preventDefault();
+    isDrawingRef.current = true;
+    const pos = getCanvasCoords(e);
+    lastPosRef.current = pos;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#090D16";
+
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 2.2, 0, Math.PI * 2);
+    ctx.fillStyle = "#090D16";
+    ctx.fill();
+
+    setHasDrawn(true);
+  };
+
+  // Move / Draw Line
+  const handleMove = (e) => {
+    if (!isDrawingRef.current) return;
+    if (e.cancelable) e.preventDefault();
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    const currentPos = getCanvasCoords(e);
+    const lastPos = lastPosRef.current;
+
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#090D16";
+
+    ctx.beginPath();
+    ctx.moveTo(lastPos.x, lastPos.y);
+    ctx.lineTo(currentPos.x, currentPos.y);
+    ctx.stroke();
+
+    lastPosRef.current = currentPos;
+    setHasDrawn(true);
+  };
+
+  // End Drawing
+  const handleEnd = (e) => {
+    if (!isDrawingRef.current) return;
+    if (e.cancelable) e.preventDefault();
+    isDrawingRef.current = false;
+  };
+
+  // Native touch event listeners with passive: false for 100% Android/iOS compatibility
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const getCoords = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      let cx = 0;
-      let cy = 0;
-
-      if (e.touches && e.touches.length > 0) {
-        cx = e.touches[0].clientX;
-        cy = e.touches[0].clientY;
-      } else if (e.changedTouches && e.changedTouches.length > 0) {
-        cx = e.changedTouches[0].clientX;
-        cy = e.changedTouches[0].clientY;
-      } else {
-        cx = e.clientX;
-        cy = e.clientY;
-      }
-
-      return {
-        x: cx - rect.left,
-        y: cy - rect.top,
-      };
-    };
-
-    const startDraw = (e) => {
-      e.preventDefault();
-      isDrawingRef.current = true;
-      const pos = getCoords(e);
-      lastPosRef.current = pos;
-
-      const ctx = canvas.getContext("2d");
-      ctx.beginPath();
-      ctx.moveTo(pos.x, pos.y);
-      ctx.lineTo(pos.x + 0.1, pos.y + 0.1);
-      ctx.stroke();
-      setHasDrawn(true);
-    };
-
-    const moveDraw = (e) => {
-      if (!isDrawingRef.current) return;
-      e.preventDefault();
-
-      const ctx = canvas.getContext("2d");
-      const currentPos = getCoords(e);
-      const lastPos = lastPosRef.current;
-
-      ctx.beginPath();
-      ctx.moveTo(lastPos.x, lastPos.y);
-      ctx.lineTo(currentPos.x, currentPos.y);
-      ctx.stroke();
-
-      lastPosRef.current = currentPos;
-      setHasDrawn(true);
-    };
-
-    const endDraw = (e) => {
-      if (!isDrawingRef.current) return;
-      isDrawingRef.current = false;
-    };
-
-    // Attach touch with passive: false so screen does not scroll
-    canvas.addEventListener("touchstart", startDraw, { passive: false });
-    canvas.addEventListener("touchmove", moveDraw, { passive: false });
-    canvas.addEventListener("touchend", endDraw, { passive: false });
-    canvas.addEventListener("touchcancel", endDraw, { passive: false });
-
-    canvas.addEventListener("mousedown", startDraw);
-    canvas.addEventListener("mousemove", moveDraw);
-    canvas.addEventListener("mouseup", endDraw);
-    canvas.addEventListener("mouseleave", endDraw);
+    canvas.addEventListener("touchstart", handleStart, { passive: false });
+    canvas.addEventListener("touchmove", handleMove, { passive: false });
+    canvas.addEventListener("touchend", handleEnd, { passive: false });
+    canvas.addEventListener("touchcancel", handleEnd, { passive: false });
 
     return () => {
-      canvas.removeEventListener("touchstart", startDraw);
-      canvas.removeEventListener("touchmove", moveDraw);
-      canvas.removeEventListener("touchend", endDraw);
-      canvas.removeEventListener("touchcancel", endDraw);
-
-      canvas.removeEventListener("mousedown", startDraw);
-      canvas.removeEventListener("mousemove", moveDraw);
-      canvas.removeEventListener("mouseup", endDraw);
-      canvas.removeEventListener("mouseleave", endDraw);
+      canvas.removeEventListener("touchstart", handleStart);
+      canvas.removeEventListener("touchmove", handleMove);
+      canvas.removeEventListener("touchend", handleEnd);
+      canvas.removeEventListener("touchcancel", handleEnd);
     };
   }, []);
 
@@ -156,8 +160,8 @@ function MobileSignContent() {
     const canvas = canvasRef.current;
     if (canvas) {
       const ctx = canvas.getContext("2d");
-      const dpr = window.devicePixelRatio || 1;
-      ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     setHasDrawn(false);
   };
@@ -255,19 +259,18 @@ function MobileSignContent() {
         </Box>
 
         <Typography variant="body2" sx={{ color: "#475569", fontWeight: 700, mb: 1.5, fontSize: "0.85rem" }}>
-          કૃપા કરીને નીચે આપેલા બોક્સમાં તમારી આંગળીથી સહી કરો:
+          કૃપા કરીને નીચે આપેલા સફેદ બોક્સમાં તમારી આંગળીથી સહી કરો:
         </Typography>
 
-        {/* Touch Drawing Box */}
+        {/* Touch Drawing Canvas Box */}
         <Box
           sx={{
             position: "relative",
             width: "100%",
-            height: { xs: 270, sm: 310 },
-            bgcolor: "#F8FAFC",
+            height: { xs: 260, sm: 300 },
             borderRadius: "16px",
-            border: `2px dashed ${hasDrawn ? "#10B981" : "#CBD5E1"}`,
-            cursor: "crosshair",
+            border: `2px dashed ${hasDrawn ? "#10B981" : "#94A3B8"}`,
+            bgcolor: "#FFFFFF",
             overflow: "hidden",
             touchAction: "none",
             userSelect: "none",
@@ -277,11 +280,17 @@ function MobileSignContent() {
         >
           <canvas
             ref={canvasRef}
+            onMouseDown={handleStart}
+            onMouseMove={handleMove}
+            onMouseUp={handleEnd}
+            onMouseLeave={handleEnd}
             style={{
               width: "100%",
               height: "100%",
               display: "block",
               touchAction: "none",
+              cursor: "crosshair",
+              backgroundColor: "#FFFFFF",
             }}
           />
 
@@ -298,12 +307,12 @@ function MobileSignContent() {
                 alignItems: "center",
                 justifyContent: "center",
                 pointerEvents: "none",
-                opacity: 0.5,
+                opacity: 0.45,
               }}
             >
-              <TouchApp sx={{ fontSize: 36, color: "#94A3B8", mb: 0.5 }} />
-              <Typography variant="body2" sx={{ color: "#64748B", fontWeight: 800 }}>
-                Sign with Finger Here (આંગળીથી સહી કરો)
+              <TouchApp sx={{ fontSize: 40, color: "#64748B", mb: 0.5 }} />
+              <Typography variant="body2" sx={{ color: "#334155", fontWeight: 800 }}>
+                અહીં આંગળીથી સહી કરો (Sign Here)
               </Typography>
             </Box>
           )}
