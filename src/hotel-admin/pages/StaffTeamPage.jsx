@@ -463,25 +463,22 @@ export default function StaffTeamPage({
                   <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 1 }}>
                       <Tooltip title="View Staff Dossier">
-                        <Button
+                        <IconButton
                           size="small"
-                          variant="outlined"
-                          startIcon={<Visibility fontSize="small" />}
                           onClick={() => setViewStaffModal({ open: true, staff })}
                           sx={{
-                            borderRadius: "10px",
-                            fontWeight: 700,
-                            fontSize: "0.75rem",
-                            borderColor: themeConfig.border,
                             color: themeConfig.primaryDark,
+                            bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : themeConfig.champagne,
+                            borderRadius: "10px",
+                            border: `1px solid ${themeConfig.border}`,
                             "&:hover": {
                               borderColor: themeConfig.primary,
-                              bgcolor: themeConfig.champagne,
+                              bgcolor: isDarkMode ? "rgba(255,255,255,0.12)" : "rgba(11, 142, 224, 0.12)",
                             },
                           }}
                         >
-                          Dossier
-                        </Button>
+                          <Visibility sx={{ fontSize: 16, color: themeConfig.primaryDark }} />
+                        </IconButton>
                       </Tooltip>
 
                       <Tooltip title="Edit Staff Member">

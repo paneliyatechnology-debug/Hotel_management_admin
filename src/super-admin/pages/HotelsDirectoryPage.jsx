@@ -433,29 +433,26 @@ export default function HotelsDirectoryPage({
                   <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>
                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1.5 }}>
                       <Tooltip title="Inspect Hotel Dossier">
-                        <Button
+                        <IconButton
                           size="small"
-                          variant="outlined"
-                          startIcon={<Visibility fontSize="small" />}
                           onClick={() => {
                             setSelectedHotel(hotel);
                             setDrawerTab(0);
                             setDrawerOpen(true);
                           }}
                           sx={{
-                            borderRadius: "10px",
-                            fontWeight: 700,
-                            fontSize: "0.75rem",
-                            borderColor: themeConfig.border,
                             color: themeConfig.primaryDark,
+                            bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : themeConfig.champagne,
+                            borderRadius: "10px",
+                            border: `1px solid ${themeConfig.border}`,
                             "&:hover": {
                               borderColor: themeConfig.primary,
-                              bgcolor: themeConfig.champagne,
+                              bgcolor: isDarkMode ? "rgba(255,255,255,0.12)" : "rgba(11, 142, 224, 0.12)",
                             },
                           }}
                         >
-                          Dossier
-                        </Button>
+                          <Visibility sx={{ fontSize: 16, color: themeConfig.primaryDark }} />
+                        </IconButton>
                       </Tooltip>
 
                       {hotel.status === "ACTIVE" ? (

@@ -592,25 +592,24 @@ export default function GovtIdCompliancePage({
                               Verify & Stamp
                             </Button>
                           ) : (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              startIcon={<Visibility sx={{ fontSize: 16 }} />}
-                              onClick={() => setDossierModal({ open: true, guest: g })}
-                              sx={{
-                                borderRadius: "10px",
-                                fontSize: "0.75rem",
-                                fontWeight: 700,
-                                textTransform: "none",
-                                borderColor: themeConfig.border,
-                                color: themeConfig.primaryDark,
-                                bgcolor: themeConfig.champagne,
-                                whiteSpace: "nowrap",
-                                "&:hover": { bgcolor: "#FFFFFF", borderColor: themeConfig.primary },
-                              }}
-                            >
-                              View Dossier
-                            </Button>
+                            <Tooltip title="View Guest Dossier">
+                              <IconButton
+                                size="small"
+                                onClick={() => setDossierModal({ open: true, guest: g })}
+                                sx={{
+                                  color: themeConfig.primaryDark,
+                                  bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : themeConfig.champagne,
+                                  borderRadius: "10px",
+                                  border: `1px solid ${themeConfig.border}`,
+                                  "&:hover": {
+                                    borderColor: themeConfig.primary,
+                                    bgcolor: isDarkMode ? "rgba(255,255,255,0.12)" : "rgba(11, 142, 224, 0.12)",
+                                  },
+                                }}
+                              >
+                                <Visibility sx={{ fontSize: 16, color: themeConfig.primaryDark }} />
+                              </IconButton>
+                            </Tooltip>
                           )}
                         </Box>
                       </TableCell>
