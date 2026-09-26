@@ -153,4 +153,11 @@ export {
   Brightness7,
   WbSunny,
   NightlightRound,
+  TabletMac,
+  Devices,
+  UploadFile,
+  TouchApp,
+  Usb,
+  Fullscreen,
+  FullscreenExit,
 } from "@mui/icons-material";

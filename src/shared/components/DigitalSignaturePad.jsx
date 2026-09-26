@@ -12,6 +12,10 @@ import {
   Tabs,
   Tab,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import {
   Edit,
@@ -22,12 +26,27 @@ import {
   Delete,
   Fingerprint,
   Draw,
+  TabletMac,
+  Devices,
+  UploadFile,
+  TouchApp,
+  Usb,
+  Fullscreen,
+  FullscreenExit,
+  CloudUpload,
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 
 /**
- * Modern Interactive HTML5 Digital E-Signature Pad
- * Supports Touch & Mouse Drawing + Typed Cursive Signature
+ * Modern High-Performance Digital Signature Pad
+ * Supports:
+ * - External USB Signature Pads & Tablets (Wacom, Huion, Topaz, XP-Pen, etc.)
+ * - Digital Stylus Pens (Apple Pencil, Surface Pen, S-Pen) with Pressure Sensitivity
+ * - Touchscreens, POS Customer Displays & Tablets
+ * - Signature File / Device Image Upload & Drag-and-Drop
+ * - Clipboard (Ctrl+V) Image Paste
+ * - Type-to-Sign Cursive Generation
+ * - Fullscreen Guest Signing Modal
  */
 export default function DigitalSignaturePad({
   title = "Guest Signature",
@@ -42,24 +61,51 @@ export default function DigitalSignaturePad({
   const themeConfig = propThemeConfig || appThemeConfig;
 
   const canvasRef = useRef(null);
+  const modalCanvasRef = useRef(null);
+  const fileInputRef = useRef(null);
+
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(Boolean(value));
-  const [mode, setMode] = useState("DRAW"); // 'DRAW' | 'TYPE'
+  const [mode, setMode] = useState("DRAW"); // 'DRAW' | 'UPLOAD' | 'TYPE'
   const [typedName, setTypedName] = useState(signerName || "");
+  const [detectedInputType, setDetectedInputType] = useState(null); // 'pen' | 'touch' | 'mouse'
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
 
-  // Initialize canvas resolution & crisp drawing
-  const initCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  // Points buffer for smooth quadratic bezier curve interpolation
+  const lastPointRef = useRef(null);
+
+  // Synchronize internal canvas with existing value
+  const loadSignatureIntoCanvas = useCallback((canvas, dataUrl) => {
+    if (!canvas || !dataUrl) return;
     const ctx = canvas.getContext("2d");
     const rect = canvas.getBoundingClientRect();
-
     const dpr = window.devicePixelRatio || 1;
+
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
 
-    ctx.lineWidth = 2.5;
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.drawImage(img, 0, 0, rect.width, rect.height);
+      setHasSignature(true);
+    };
+    img.src = dataUrl;
+  }, []);
+
+  // Initialize canvas resolution & stroke settings
+  const initCanvas = useCallback((canvas) => {
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    ctx.lineWidth = 2.6;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.strokeStyle = isDarkMode ? "#38BDF8" : (themeConfig.textMain || "#0F172A");
@@ -73,119 +119,230 @@ export default function DigitalSignaturePad({
       };
       img.src = value;
     }
-  }, [value]);
+  }, [value, isDarkMode, themeConfig]);
 
   useEffect(() => {
-    initCanvas();
+    initCanvas(canvasRef.current);
   }, [initCanvas]);
 
-  // Get mouse/touch coordinate relative to canvas
-  const getCoordinates = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
+  useEffect(() => {
+    if (isFullscreenOpen) {
+      setTimeout(() => {
+        initCanvas(modalCanvasRef.current);
+        if (value) loadSignatureIntoCanvas(modalCanvasRef.current, value);
+      }, 100);
+    }
+  }, [isFullscreenOpen, initCanvas, loadSignatureIntoCanvas, value]);
+
+  // Extract pointer coordinates relative to canvas
+  const getCoordinates = (e, canvas) => {
+    if (!canvas) return { x: 0, y: 0, pressure: 0.5 };
     const rect = canvas.getBoundingClientRect();
+    
+    // PointerEvent supports pressure (0.0 to 1.0) on stylus / signature pads
+    let pressure = 0.5;
+    if (typeof e.pressure === "number" && e.pressure > 0) {
+      pressure = e.pressure;
+    }
+
+    let clientX = e.clientX;
+    let clientY = e.clientY;
 
     if (e.touches && e.touches.length > 0) {
-      return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top,
-      };
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
     }
+
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+      pressure,
     };
   };
 
-  const startDrawing = (e) => {
+  // Start Drawing (Pointer / Touch / Pen / Mouse)
+  const handlePointerDown = (e, isModal = false) => {
     e.preventDefault();
-    setIsDrawing(true);
-    const canvas = canvasRef.current;
+    const canvas = isModal ? modalCanvasRef.current : canvasRef.current;
     if (!canvas) return;
+
+    if (e.pointerType) {
+      setDetectedInputType(e.pointerType);
+    }
+
+    // Capture pointer to ensure strokes outside bounds don't get lost
+    if (e.target.setPointerCapture && e.pointerId) {
+      try {
+        e.target.setPointerCapture(e.pointerId);
+      } catch (_) {}
+    }
+
+    setIsDrawing(true);
     const ctx = canvas.getContext("2d");
-    const { x, y } = getCoordinates(e);
+    const { x, y, pressure } = getCoordinates(e, canvas);
 
     ctx.beginPath();
+    ctx.lineWidth = 1.8 + pressure * 2.4; // Dynamic ink flow based on pad pressure
     ctx.moveTo(x, y);
+    lastPointRef.current = { x, y };
   };
 
-  const draw = (e) => {
+  // Draw Stroke with Smooth Bézier curves
+  const handlePointerMove = (e, isModal = false) => {
     if (!isDrawing) return;
     e.preventDefault();
-    const canvas = canvasRef.current;
+    const canvas = isModal ? modalCanvasRef.current : canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const { x, y } = getCoordinates(e);
 
-    ctx.lineTo(x, y);
+    const ctx = canvas.getContext("2d");
+    const { x, y, pressure } = getCoordinates(e, canvas);
+    const lastPoint = lastPointRef.current || { x, y };
+
+    // Calculate midpoint for smooth curved strokes
+    const midX = (lastPoint.x + x) / 2;
+    const midY = (lastPoint.y + y) / 2;
+
+    ctx.lineWidth = 1.8 + pressure * 2.4;
+    ctx.quadraticCurveTo(lastPoint.x, lastPoint.y, midX, midY);
     ctx.stroke();
+
+    lastPointRef.current = { x, y };
     setHasSignature(true);
   };
 
-  const stopDrawing = () => {
+  // Finish Drawing & Emit signature
+  const handlePointerUp = (e, isModal = false) => {
     if (!isDrawing) return;
     setIsDrawing(false);
-    const canvas = canvasRef.current;
+    lastPointRef.current = null;
+
+    const canvas = isModal ? modalCanvasRef.current : canvasRef.current;
     if (!canvas) return;
+
+    if (e && e.target && e.target.releasePointerCapture && e.pointerId) {
+      try {
+        e.target.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+    }
 
     const dataUrl = canvas.toDataURL("image/png");
     if (onChange) {
       onChange(dataUrl);
     }
+
+    // If finished in modal, also sync the main canvas
+    if (isModal && canvasRef.current) {
+      loadSignatureIntoCanvas(canvasRef.current, dataUrl);
+    }
   };
 
+  // Clear Signature
   const handleClear = () => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      const rect = canvas.getBoundingClientRect();
-      ctx.clearRect(0, 0, rect.width, rect.height);
-    }
+    [canvasRef.current, modalCanvasRef.current].forEach((canvas) => {
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        const rect = canvas.getBoundingClientRect();
+        ctx.clearRect(0, 0, rect.width, rect.height);
+      }
+    });
+
     setHasSignature(false);
     setTypedName("");
+    setDetectedInputType(null);
     if (onChange) {
       onChange(null);
     }
   };
 
+  // Handle Typed Signature Cursive Generation
   const handleTypedChange = (e) => {
     const text = e.target.value;
     setTypedName(text);
     if (text.trim()) {
       setHasSignature(true);
-      // Generate signature image from cursive text
-      const canvas = document.createElement("canvas");
-      canvas.width = 400;
-      canvas.height = 140;
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(0, 0, 400, 140);
-      ctx.font = "italic 36px 'Brush Script MT', 'Caveat', 'Dancing Script', cursive, sans-serif";
-      ctx.fillStyle = "#0F172A";
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = 500;
+      tempCanvas.height = 160;
+      const ctx = tempCanvas.getContext("2d");
+      
+      // Transparent background with crisp dark ink
+      ctx.clearRect(0, 0, 500, 160);
+      ctx.font = "italic 38px 'Brush Script MT', 'Caveat', 'Dancing Script', cursive, sans-serif";
+      ctx.fillStyle = isDarkMode ? "#38BDF8" : "#0F172A";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(text, 200, 70);
+      ctx.fillText(text, 250, 80);
 
-      const dataUrl = canvas.toDataURL("image/png");
+      const dataUrl = tempCanvas.toDataURL("image/png");
       if (onChange) onChange(dataUrl);
+      if (canvasRef.current) loadSignatureIntoCanvas(canvasRef.current, dataUrl);
     } else {
       setHasSignature(false);
       if (onChange) onChange(null);
     }
   };
 
+  // Handle Signature Image File Upload (From Hardware Signature Software / Scanner)
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result;
+      if (dataUrl && typeof dataUrl === "string") {
+        setHasSignature(true);
+        if (canvasRef.current) loadSignatureIntoCanvas(canvasRef.current, dataUrl);
+        if (onChange) onChange(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  // Support Clipboard Paste (Ctrl+V) from External Signature Pad Applications
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const blob = items[i].getAsFile();
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const dataUrl = event.target?.result;
+          if (dataUrl && typeof dataUrl === "string") {
+            setHasSignature(true);
+            if (canvasRef.current) loadSignatureIntoCanvas(canvasRef.current, dataUrl);
+            if (onChange) onChange(dataUrl);
+          }
+        };
+        reader.readAsDataURL(blob);
+        e.preventDefault();
+        break;
+      }
+    }
+  };
+
   return (
     <Paper
       elevation={0}
+      onPaste={handlePaste}
+      tabIndex={0}
       sx={{
         p: { xs: 1.5, sm: 2.2 },
         borderRadius: "16px",
         border: `1.5px solid ${hasSignature ? "#10B981" : themeConfig.border || "#E2E8F0"}`,
         bgcolor: themeConfig.bgCard || (isDarkMode ? "#162032" : "#FFFFFF"),
         boxShadow: hasSignature
-          ? "0 4px 14px rgba(16, 185, 129, 0.12)"
+          ? "0 4px 16px rgba(16, 185, 129, 0.12)"
           : (isDarkMode ? "0 4px 14px rgba(0,0,0,0.3)" : "0 2px 8px rgba(0,0,0,0.03)"),
         transition: "all 0.2s ease",
+        outline: "none",
+        "&:focus-visible": {
+          borderColor: themeConfig.primary || "#C5A059",
+        },
       }}
     >
       {/* Header */}
@@ -241,23 +398,71 @@ export default function DigitalSignaturePad({
           </Box>
         </Box>
 
-        <Chip
-          icon={hasSignature ? <CheckCircle style={{ fontSize: 13, color: "#059669" }} /> : <Create style={{ fontSize: 13, color: "#D97706" }} />}
-          label={hasSignature ? "Signed" : "Pending"}
-          size="small"
-          sx={{
-            fontWeight: 800,
-            fontSize: "0.68rem",
-            height: 24,
-            flexShrink: 0,
-            bgcolor: hasSignature ? "rgba(16, 185, 129, 0.12)" : "rgba(245, 158, 11, 0.12)",
-            color: hasSignature ? "#059669" : "#B45309",
-            border: `1px solid ${hasSignature ? "rgba(16, 185, 129, 0.3)" : "rgba(245, 158, 11, 0.3)"}`,
-          }}
-        />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+          {/* Active Input Device Chip */}
+          {detectedInputType && (
+            <Chip
+              size="small"
+              icon={
+                detectedInputType === "pen" ? (
+                  <Usb sx={{ fontSize: 13, color: "#2563EB" }} />
+                ) : detectedInputType === "touch" ? (
+                  <TouchApp sx={{ fontSize: 13, color: "#7C3AED" }} />
+                ) : (
+                  <Draw sx={{ fontSize: 13, color: "#64748B" }} />
+                )
+              }
+              label={
+                detectedInputType === "pen"
+                  ? "Pad/Pen Active"
+                  : detectedInputType === "touch"
+                  ? "Touch Active"
+                  : "Mouse"
+              }
+              sx={{
+                fontSize: "0.65rem",
+                fontWeight: 800,
+                height: 22,
+                bgcolor:
+                  detectedInputType === "pen"
+                    ? "rgba(37, 99, 235, 0.1)"
+                    : detectedInputType === "touch"
+                    ? "rgba(124, 58, 237, 0.1)"
+                    : "rgba(100, 116, 139, 0.1)",
+                color:
+                  detectedInputType === "pen"
+                    ? "#2563EB"
+                    : detectedInputType === "touch"
+                    ? "#7C3AED"
+                    : "#64748B",
+              }}
+            />
+          )}
+
+          <Chip
+            icon={
+              hasSignature ? (
+                <CheckCircle style={{ fontSize: 13, color: "#059669" }} />
+              ) : (
+                <Create style={{ fontSize: 13, color: "#D97706" }} />
+              )
+            }
+            label={hasSignature ? "Signed" : "Pending"}
+            size="small"
+            sx={{
+              fontWeight: 800,
+              fontSize: "0.68rem",
+              height: 24,
+              flexShrink: 0,
+              bgcolor: hasSignature ? "rgba(16, 185, 129, 0.12)" : "rgba(245, 158, 11, 0.12)",
+              color: hasSignature ? "#059669" : "#B45309",
+              border: `1px solid ${hasSignature ? "rgba(16, 185, 129, 0.3)" : "rgba(245, 158, 11, 0.3)"}`,
+            }}
+          />
+        </Box>
       </Box>
 
-      {/* Mode Switch: Draw vs Type */}
+      {/* Mode Switch Tabs & Controls */}
       <Box
         sx={{
           display: "flex",
@@ -276,7 +481,7 @@ export default function DigitalSignaturePad({
             "& .MuiTab-root": {
               minHeight: 30,
               py: 0.2,
-              px: { xs: 1.2, sm: 1.8 },
+              px: { xs: 1, sm: 1.5 },
               fontSize: { xs: "0.72rem", sm: "0.75rem" },
               fontWeight: 800,
               textTransform: "none",
@@ -284,45 +489,81 @@ export default function DigitalSignaturePad({
             },
           }}
         >
-          <Tab value="DRAW" icon={<Create sx={{ fontSize: 14 }} />} iconPosition="start" label="Draw (સહી કરો)" />
-          <Tab value="TYPE" icon={<TextFields sx={{ fontSize: 14 }} />} iconPosition="start" label="Type (ટાઇપ કરો)" />
+          <Tab
+            value="DRAW"
+            icon={<Create sx={{ fontSize: 14 }} />}
+            iconPosition="start"
+            label="Pad / Stylus (પેન/પેડ)"
+          />
+          <Tab
+            value="UPLOAD"
+            icon={<UploadFile sx={{ fontSize: 14 }} />}
+            iconPosition="start"
+            label="Upload File (ઇમેજ)"
+          />
+          <Tab
+            value="TYPE"
+            icon={<TextFields sx={{ fontSize: 14 }} />}
+            iconPosition="start"
+            label="Type (ટાઇપ)"
+          />
         </Tabs>
 
-        {hasSignature && (
-          <Button
-            size="small"
-            startIcon={<Refresh sx={{ fontSize: 13 }} />}
-            onClick={handleClear}
-            sx={{
-              fontSize: "0.72rem",
-              fontWeight: 800,
-              color: "#EF4444",
-              textTransform: "none",
-              px: 1,
-              py: 0.3,
-              borderRadius: "6px",
-              bgcolor: "rgba(239, 68, 68, 0.06)",
-              "&:hover": { bgcolor: "rgba(239, 68, 68, 0.15)" },
-            }}
-          >
-            Clear
-          </Button>
-        )}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+          {/* Fullscreen Expand Button (For external touch monitors or handing tablet to guest) */}
+          {mode === "DRAW" && (
+            <Tooltip title="મોટી સ્ક્રીન / Guest Pad Screen પર ખોલો">
+              <IconButton
+                size="small"
+                onClick={() => setIsFullscreenOpen(true)}
+                sx={{
+                  color: themeConfig.primary || "#C5A059",
+                  bgcolor: "rgba(197, 160, 89, 0.08)",
+                  "&:hover": { bgcolor: "rgba(197, 160, 89, 0.18)" },
+                  p: 0.5,
+                }}
+              >
+                <Fullscreen sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+          )}
+
+          {hasSignature && (
+            <Button
+              size="small"
+              startIcon={<Refresh sx={{ fontSize: 13 }} />}
+              onClick={handleClear}
+              sx={{
+                fontSize: "0.72rem",
+                fontWeight: 800,
+                color: "#EF4444",
+                textTransform: "none",
+                px: 1,
+                py: 0.3,
+                borderRadius: "6px",
+                bgcolor: "rgba(239, 68, 68, 0.06)",
+                "&:hover": { bgcolor: "rgba(239, 68, 68, 0.15)" },
+              }}
+            >
+              Clear
+            </Button>
+          )}
+        </Box>
       </Box>
 
-      {/* Drawing Canvas Area */}
-      {mode === "DRAW" ? (
+      {/* Mode 1: Hardware Pad / Stylus / Touch / Mouse Drawing Canvas */}
+      {mode === "DRAW" && (
         <Box
           sx={{
             position: "relative",
             width: "100%",
-            height: { xs: 150, sm: 190 },
+            height: { xs: 155, sm: 195 },
             bgcolor: isDarkMode ? "#0B1120" : "#F8FAFC",
             borderRadius: "14px",
-            border: `2px dashed ${isDarkMode ? "rgba(255,255,255,0.15)" : "#CBD5E1"}`,
+            border: `2px dashed ${hasSignature ? "#10B981" : isDarkMode ? "rgba(255,255,255,0.15)" : "#CBD5E1"}`,
             cursor: "crosshair",
             overflow: "hidden",
-            touchAction: "none", // Prevent page scrolling during touch signature
+            touchAction: "none", // Critical: prevents mobile/tablet scroll during signing
             transition: "border-color 0.2s ease",
             "&:hover": {
               borderColor: themeConfig.primary || "#C5A059",
@@ -331,21 +572,22 @@ export default function DigitalSignaturePad({
         >
           <canvas
             ref={canvasRef}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
+            onPointerDown={(e) => handlePointerDown(e, false)}
+            onPointerMove={(e) => handlePointerMove(e, false)}
+            onPointerUp={(e) => handlePointerUp(e, false)}
+            onPointerCancel={(e) => handlePointerUp(e, false)}
+            onTouchStart={(e) => handlePointerDown(e, false)}
+            onTouchMove={(e) => handlePointerMove(e, false)}
+            onTouchEnd={(e) => handlePointerUp(e, false)}
             style={{
               width: "100%",
               height: "100%",
               display: "block",
+              touchAction: "none",
             }}
           />
 
-          {/* Guide Line & Placeholder */}
+          {/* Guide Line & Device Helper Placeholder */}
           {!hasSignature && (
             <Box
               sx={{
@@ -359,25 +601,46 @@ export default function DigitalSignaturePad({
                 alignItems: "center",
                 justifyContent: "center",
                 pointerEvents: "none",
-                opacity: 0.55,
+                opacity: 0.65,
                 px: 1.5,
               }}
             >
-              <Draw sx={{ fontSize: 26, color: "#64748B", mb: 0.8 }} />
-              <Typography variant="body2" sx={{ color: "#475569", fontWeight: 800, fontSize: { xs: "0.75rem", sm: "0.85rem" }, textAlign: "center" }}>
-                Touchscreen અથવા Mouse થી અહીં સહી કરો
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.8 }}>
+                <Usb sx={{ fontSize: 20, color: "#2563EB" }} />
+                <TabletMac sx={{ fontSize: 20, color: "#7C3AED" }} />
+                <Draw sx={{ fontSize: 22, color: themeConfig.primary || "#C5A059" }} />
+              </Box>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: isDarkMode ? "#E2E8F0" : "#334155",
+                  fontWeight: 800,
+                  fontSize: { xs: "0.75rem", sm: "0.85rem" },
+                  textAlign: "center",
+                }}
+              >
+                Signature Pad, Stylus Pen, Touchscreen અથવા Mouse થી સહી કરો
               </Typography>
-              <Typography variant="caption" sx={{ color: "#94A3B8", fontWeight: 700, mt: 0.2, fontSize: "0.68rem" }}>
-                (Sign inside this box)
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "#94A3B8",
+                  fontWeight: 700,
+                  mt: 0.3,
+                  fontSize: "0.68rem",
+                  textAlign: "center",
+                }}
+              >
+                (External USB Signature Device / Wacom / Touchscreen / Stylus Supported)
               </Typography>
             </Box>
           )}
 
-          {/* Bottom baseline watermark */}
+          {/* Baseline watermark */}
           <Box
             sx={{
               position: "absolute",
-              bottom: 28,
+              bottom: 26,
               left: 16,
               right: 16,
               borderBottom: "1.5px dashed #CBD5E1",
@@ -396,16 +659,74 @@ export default function DigitalSignaturePad({
               pointerEvents: "none",
             }}
           >
-            Sign-off (X)
+            Sign Here ✍️
           </Typography>
         </Box>
-      ) : (
-        /* Typed Name in Cursive Style */
+      )}
+
+      {/* Mode 2: File Upload / Import from External Signature Device Software */}
+      {mode === "UPLOAD" && (
+        <Box
+          sx={{
+            p: 2.5,
+            borderRadius: "14px",
+            border: "2px dashed #CBD5E1",
+            bgcolor: isDarkMode ? "#0B1120" : "#F8FAFC",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 1.2,
+          }}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            onChange={handleFileUpload}
+            style={{ display: "none" }}
+            id="signature-file-upload-input"
+          />
+
+          <CloudUpload sx={{ fontSize: 36, color: themeConfig.primary || "#C5A059" }} />
+          
+          <Box>
+            <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain || "#0F172A" }}>
+              Signature Device / Scanner File અપલોડ કરો
+            </Typography>
+            <Typography variant="caption" sx={{ color: "#64748B", fontWeight: 700, display: "block" }}>
+              PNG, JPG અથવા Digital Signature Pad સોફ્ટવેરમાંથી સેવ થયેલ ફાઇલ પસંદ કરો (અથવા Ctrl+V થી Paste કરો)
+            </Typography>
+          </Box>
+
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => fileInputRef.current?.click()}
+            startIcon={<UploadFile />}
+            sx={{
+              bgcolor: themeConfig.primary || "#C5A059",
+              color: "#FFF",
+              fontWeight: 800,
+              fontSize: "0.78rem",
+              textTransform: "none",
+              borderRadius: "8px",
+              px: 2,
+            }}
+          >
+            Choose Signature Image
+          </Button>
+        </Box>
+      )}
+
+      {/* Mode 3: Typed Cursive Signature */}
+      {mode === "TYPE" && (
         <Box sx={{ mt: 1 }}>
           <TextField
             fullWidth
             size="small"
-            placeholder="Type your full name"
+            placeholder="Type guest's full name (નામ લખો)"
             value={typedName}
             onChange={handleTypedChange}
             sx={{
@@ -421,7 +742,7 @@ export default function DigitalSignaturePad({
               sx={{
                 p: 2,
                 borderRadius: "12px",
-                bgcolor: "#F8FAFC",
+                bgcolor: isDarkMode ? "#0B1120" : "#F8FAFC",
                 border: "1.5px dashed #CBD5E1",
                 textAlign: "center",
               }}
@@ -430,13 +751,16 @@ export default function DigitalSignaturePad({
                 sx={{
                   fontFamily: "'Brush Script MT', 'Caveat', 'Dancing Script', cursive, sans-serif",
                   fontSize: { xs: "1.5rem", sm: "1.8rem" },
-                  color: "#0F172A",
+                  color: isDarkMode ? "#38BDF8" : "#0F172A",
                   lineHeight: 1.2,
                 }}
               >
                 {typedName}
               </Typography>
-              <Typography variant="caption" sx={{ color: "#64748B", fontSize: "0.65rem", fontWeight: 700, mt: 0.5, display: "block" }}>
+              <Typography
+                variant="caption"
+                sx={{ color: "#64748B", fontSize: "0.65rem", fontWeight: 700, mt: 0.5, display: "block" }}
+              >
                 Generated Electronic E-Signature
               </Typography>
             </Box>
@@ -444,12 +768,165 @@ export default function DigitalSignaturePad({
         </Box>
       )}
 
-      {/* Footer info */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 1 }}>
-        <Typography variant="caption" sx={{ color: themeConfig.textMuted || "#94A3B8", fontSize: "0.65rem", fontWeight: 700 }}>
-          🔒 Legally binding digital acknowledgement
+      {/* Footer Info & Device Compatibility Badges */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 0.8,
+          mt: 1.2,
+          pt: 1,
+          borderTop: `1px solid ${isDarkMode ? "rgba(255,255,255,0.06)" : "#F1F5F9"}`,
+        }}
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            color: themeConfig.textMuted || "#94A3B8",
+            fontSize: "0.65rem",
+            fontWeight: 700,
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+          }}
+        >
+          <Devices sx={{ fontSize: 13 }} />
+          સપોર્ટેડ: USB Signature Pad, Stylus Pen, Touchscreen POS & Tablet
+        </Typography>
+
+        <Typography
+          variant="caption"
+          sx={{ color: "#10B981", fontSize: "0.65rem", fontWeight: 800 }}
+        >
+          🔒 Legally Binding Digital E-Sign
         </Typography>
       </Box>
+
+      {/* Fullscreen Signature Modal (For external customer screens or tablet mode) */}
+      <Dialog
+        open={isFullscreenOpen}
+        onClose={() => setIsFullscreenOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "20px",
+            p: 1,
+            bgcolor: isDarkMode ? "#0F172A" : "#FFFFFF",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontWeight: 900,
+            fontSize: "1.1rem",
+            pb: 1,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Draw sx={{ color: themeConfig.primary || "#C5A059" }} />
+            <span>{title} (Guest Full Screen Signature)</span>
+          </Box>
+          <IconButton onClick={() => setIsFullscreenOpen(false)} size="small">
+            <FullscreenExit />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent sx={{ p: 2 }}>
+          <Typography variant="body2" sx={{ color: "#64748B", fontWeight: 700, mb: 1.5 }}>
+            કૃપા કરીને નીચે આપેલા બોક્સમાં Stylus Pen, Signature Pad અથવા આંગળીથી સહી કરો:
+          </Typography>
+
+          <Box
+            sx={{
+              position: "relative",
+              width: "100%",
+              height: { xs: 260, sm: 340 },
+              bgcolor: isDarkMode ? "#0B1120" : "#F8FAFC",
+              borderRadius: "16px",
+              border: "2px dashed #CBD5E1",
+              cursor: "crosshair",
+              overflow: "hidden",
+              touchAction: "none",
+            }}
+          >
+            <canvas
+              ref={modalCanvasRef}
+              onPointerDown={(e) => handlePointerDown(e, true)}
+              onPointerMove={(e) => handlePointerMove(e, true)}
+              onPointerUp={(e) => handlePointerUp(e, true)}
+              onPointerCancel={(e) => handlePointerUp(e, true)}
+              onTouchStart={(e) => handlePointerDown(e, true)}
+              onTouchMove={(e) => handlePointerMove(e, true)}
+              onTouchEnd={(e) => handlePointerUp(e, true)}
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "block",
+                touchAction: "none",
+              }}
+            />
+
+            {/* Baseline watermark */}
+            <Box
+              sx={{
+                position: "absolute",
+                bottom: 40,
+                left: 24,
+                right: 24,
+                borderBottom: "2px dashed #CBD5E1",
+                pointerEvents: "none",
+              }}
+            />
+            <Typography
+              variant="caption"
+              sx={{
+                position: "absolute",
+                bottom: 12,
+                right: 24,
+                fontSize: "0.8rem",
+                color: "#94A3B8",
+                fontWeight: 900,
+                pointerEvents: "none",
+              }}
+            >
+              Sign Here ✍️
+            </Typography>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 2, pb: 2, justifyContent: "space-between" }}>
+          <Button
+            startIcon={<Refresh />}
+            onClick={handleClear}
+            color="error"
+            sx={{ fontWeight: 800, textTransform: "none" }}
+          >
+            Clear (ફરીથી સહી કરો)
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => setIsFullscreenOpen(false)}
+            startIcon={<CheckCircle />}
+            sx={{
+              bgcolor: "#10B981",
+              color: "#FFF",
+              fontWeight: 800,
+              textTransform: "none",
+              borderRadius: "10px",
+              px: 3,
+              "&:hover": { bgcolor: "#059669" },
+            }}
+          >
+            Done (સહી કન્ફર્મ કરો)
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 }
