@@ -416,8 +416,8 @@ export default function DashboardLayout({
                 </IconButton>
               </Tooltip>
 
-              {/* Theme Palette Switcher Dropdown */}
-              <Tooltip title="Quick Theme Switcher">
+              {/* Theme Palette Switcher Dropdown (Commented Out as single unified Luxury Theme is active) */}
+              {/* <Tooltip title="Quick Theme Switcher">
                 <IconButton
                   size="small"
                   onClick={(e) => setPaletteMenuAnchor(e.currentTarget)}
@@ -488,7 +488,7 @@ export default function DashboardLayout({
                     </MenuItem>
                   );
                 })}
-              </Menu>
+              </Menu> */}
             </Box>
           </Toolbar>
         </AppBar>
