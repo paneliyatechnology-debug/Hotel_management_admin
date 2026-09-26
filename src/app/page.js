@@ -22,11 +22,6 @@ function AdminAppContent() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const [user, setUser] = useState(null);
-  const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
-  const [lockout, setLockout] = useState({ locked: false, type: "EXPIRED", reason: "" });
-
   const getNavListForUser = (currentUser) => {
     if (!currentUser) return [];
     if (currentUser.role === "HOTEL_ADMIN") {
@@ -39,52 +34,6 @@ function AdminAppContent() {
       return ["rooms", "folios", "check-in", "id-compliance", "pos-billing", "settings"];
     }
     return [];
-  };
-
-  const checkUserLockout = (userData) => {
-    if (!userData || userData.role === "SUPER_ADMIN") {
-      setLockout({ locked: false, type: "EXPIRED", reason: "" });
-      return false;
-    }
-
-    if (userData.status === "INACTIVE" || userData.status === "BLOCKED" || userData.status === "DELETED") {
-      setLockout({
-        locked: true,
-        type: "DISABLED",
-        reason: "Your staff account has been deactivated by Hotel Administration. All portal access is suspended.",
-      });
-      return true;
-    }
-
-    const hotel = userData.hotel;
-    if (!hotel) return false;
-
-    if (hotel.status === "DISABLED" || hotel.status === "SUSPENDED") {
-      setLockout({
-        locked: true,
-        type: hotel.status,
-        reason: hotel.statusReason || `Hotel account has been ${hotel.status.toLowerCase()} by Super Admin policy.`,
-      });
-      return true;
-    }
-
-    const sub = hotel.subscription;
-    if (sub) {
-      const now = new Date();
-      const trialEndDate = sub.trialEndDate ? new Date(sub.trialEndDate) : null;
-      const isTrialExpired = sub.isExpired || (sub.status === "TRIAL" && trialEndDate && trialEndDate < now) || sub.status === "EXPIRED";
-      if (isTrialExpired && sub.status !== "ACTIVE") {
-        setLockout({
-          locked: true,
-          type: "EXPIRED",
-          reason: "Your 30-day free trial or hotel subscription plan has ended.",
-        });
-        return true;
-      }
-    }
-
-    setLockout({ locked: false, type: "EXPIRED", reason: "" });
-    return false;
   };
 
   const getActiveTabFromPath = (currentUser, currentPath) => {
@@ -115,6 +64,89 @@ function AdminAppContent() {
     return 0;
   };
 
+  const computeLockout = (userData) => {
+    if (!userData || userData.role === "SUPER_ADMIN") {
+      return { locked: false, type: "EXPIRED", reason: "" };
+    }
+
+    if (userData.status === "INACTIVE" || userData.status === "BLOCKED" || userData.status === "DELETED") {
+      return {
+        locked: true,
+        type: "DISABLED",
+        reason: "Your staff account has been deactivated by Hotel Administration. All portal access is suspended.",
+      };
+    }
+
+    const hotel = userData.hotel;
+    if (!hotel) return { locked: false, type: "EXPIRED", reason: "" };
+
+    if (hotel.status === "DISABLED" || hotel.status === "SUSPENDED") {
+      return {
+        locked: true,
+        type: hotel.status,
+        reason: hotel.statusReason || `Hotel account has been ${hotel.status.toLowerCase()} by Super Admin policy.`,
+      };
+    }
+
+    const sub = hotel.subscription;
+    if (sub) {
+      const now = new Date();
+      const trialEndDate = sub.trialEndDate ? new Date(sub.trialEndDate) : null;
+      const isTrialExpired = sub.isExpired || (sub.status === "TRIAL" && trialEndDate && trialEndDate < now) || sub.status === "EXPIRED";
+      if (isTrialExpired && sub.status !== "ACTIVE") {
+        return {
+          locked: true,
+          type: "EXPIRED",
+          reason: "Your 30-day free trial or hotel subscription plan has ended.",
+        };
+      }
+    }
+
+    return { locked: false, type: "EXPIRED", reason: "" };
+  };
+
+  // Instant synchronous state initialization from LocalStorage (Zero delay, Zero loader flash)
+  const [user, setUser] = useState(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const stored = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
+      return stored && token ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === "undefined") return 0;
+    try {
+      const stored = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
+      const u = stored && token ? JSON.parse(stored) : null;
+      return getActiveTabFromPath(u, pathname);
+    } catch {
+      return 0;
+    }
+  });
+
+  const [lockout, setLockout] = useState(() => {
+    if (typeof window === "undefined") return { locked: false, type: "EXPIRED", reason: "" };
+    try {
+      const stored = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
+      const u = stored && token ? JSON.parse(stored) : null;
+      return computeLockout(u);
+    } catch {
+      return { locked: false, type: "EXPIRED", reason: "" };
+    }
+  });
+
+  const checkUserLockout = (userData) => {
+    const res = computeLockout(userData);
+    setLockout(res);
+    return res.locked;
+  };
+
   const handleLogout = () => {
     try {
       localStorage.removeItem("token");
@@ -128,35 +160,19 @@ function AdminAppContent() {
   };
 
   useEffect(() => {
-    // Check local storage for session on initial mount
-    const storedUser = localStorage.getItem("user");
+    // Background silent profile verification without blocking UI
     const token = localStorage.getItem("token");
-
-    if (storedUser && token) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        setUser(parsed);
-        checkUserLockout(parsed);
-        const tabIdx = getActiveTabFromPath(parsed, pathname);
-        setActiveTab(tabIdx);
-
-        // Fetch fresh profile with live computed subscription metrics from backend
-        apiRequest(API_ENDPOINTS.AUTH.ME)
-          .then((res) => {
-            if (res?.data) {
-              setUser(res.data);
-              localStorage.setItem("user", JSON.stringify(res.data));
-              checkUserLockout(res.data);
-            }
-          })
-          .catch(() => {});
-      } catch {
-        setUser(null);
-      }
-    } else {
-      setUser(null);
+    if (token) {
+      apiRequest(API_ENDPOINTS.AUTH.ME)
+        .then((res) => {
+          if (res?.data) {
+            setUser(res.data);
+            localStorage.setItem("user", JSON.stringify(res.data));
+            checkUserLockout(res.data);
+          }
+        })
+        .catch(() => {});
     }
-    setMounted(true);
 
     // 1. Global listener for immediate lockout events triggered by apiRequest
     const handleLockoutEvent = (e) => {
@@ -239,33 +255,6 @@ function AdminAppContent() {
       }
     }
   };
-
-  if (!mounted) {
-    return (
-      <div
-        suppressHydrationWarning
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: themeConfig.bgMain,
-        }}
-      >
-        <div
-          style={{
-            width: "36px",
-            height: "36px",
-            border: `3px solid ${themeConfig.primary}33`,
-            borderTopColor: themeConfig.primary,
-            borderRadius: "50%",
-            animation: "spinLoader 0.8s linear infinite",
-          }}
-        />
-        <style>{`@keyframes spinLoader { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
 
   return (
     <>
