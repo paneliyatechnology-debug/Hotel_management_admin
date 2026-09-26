@@ -445,26 +445,22 @@ export default function GuestDirectoryPage({
                       <TableCell align="right" sx={{ py: 2 }}>
                         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 1 }}>
                           <Tooltip title="Inspect Full Guest Dossier & Folio">
-                            <Button
+                            <IconButton
                               size="small"
-                              variant="outlined"
-                              startIcon={<Visibility sx={{ fontSize: 16 }} />}
                               onClick={() => setViewGuestModal?.({ open: true, guest })}
                               sx={{
-                                borderRadius: "10px",
-                                fontWeight: 800,
-                                fontSize: "0.75rem",
-                                textTransform: "none",
-                                borderColor: themeConfig.border,
                                 color: themeConfig.primaryDark,
+                                bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : themeConfig.champagne,
+                                borderRadius: "10px",
+                                border: `1px solid ${themeConfig.border}`,
                                 "&:hover": {
                                   borderColor: themeConfig.primary,
-                                  bgcolor: themeConfig.champagne,
+                                  bgcolor: isDarkMode ? "rgba(255,255,255,0.12)" : "rgba(11, 142, 224, 0.12)",
                                 },
                               }}
                             >
-                              Folio Dossier
-                            </Button>
+                              <Visibility sx={{ fontSize: 16, color: themeConfig.primaryDark }} />
+                            </IconButton>
                           </Tooltip>
 
                           <Tooltip title="Send Folio Summary via WhatsApp">
