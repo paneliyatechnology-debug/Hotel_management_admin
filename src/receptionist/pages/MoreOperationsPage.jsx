@@ -434,7 +434,7 @@ export default function MoreOperationsPage({ user, hotelSettings, onLogout }) {
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 900, color: themeConfig.textMain, pb: 1 }}>
+        <DialogTitle component="div" sx={{ fontWeight: 900, color: themeConfig.textMain, pb: 1 }}>
           Confirm Sign Out
         </DialogTitle>
         <DialogContent>

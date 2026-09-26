@@ -1307,9 +1307,9 @@ export default function HotelOverviewPage({
         onClose={() => setQuickChargeModal({ open: false, room: null, booking: null })}
         maxWidth="xs"
         fullWidth
-        PaperProps={{ sx: { borderRadius: "20px" } }}
+        slotProps={{ paper: { sx: { borderRadius: "20px" } } }}
       >
-        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pb: 1 }}>
+        <DialogTitle component="div" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pb: 1 }}>
           <Typography variant="h6" sx={{ fontWeight: 900 }}>
             🍽️ Post Room Charge
           </Typography>
@@ -1378,9 +1378,9 @@ export default function HotelOverviewPage({
         onClose={() => setQuickCheckoutModal({ open: false, room: null, booking: null })}
         maxWidth="xs"
         fullWidth
-        PaperProps={{ sx: { borderRadius: "20px" } }}
+        slotProps={{ paper: { sx: { borderRadius: "20px" } } }}
       >
-        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pb: 1 }}>
+        <DialogTitle component="div" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pb: 1 }}>
           <Typography variant="h6" sx={{ fontWeight: 900 }}>
             🚪 Fast Check-Out
           </Typography>
