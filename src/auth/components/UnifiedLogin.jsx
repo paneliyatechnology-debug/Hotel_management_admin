@@ -81,8 +81,8 @@ export default function UnifiedLogin({ onLoginSuccess }) {
       });
 
       if (res.success && res.data) {
-        const token = res.token || res.data.token;
-        const user = res.data.user || (res.data.role ? res.data : null);
+        const token = res.accessToken || res.token || res.data?.token;
+        const user = res.data?.user || (res.data?.role ? res.data : null);
 
         if (token) {
           localStorage.setItem("token", token);
