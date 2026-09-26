@@ -337,7 +337,7 @@ export default function RoomTypesPage({
                 color: themeConfig.primaryDark,
                 fontWeight: 900,
                 borderRadius: "14px",
-                px: 2.8,
+                px: 2.6,
                 py: 1.2,
                 fontSize: "0.88rem",
                 boxShadow: "0 8px 20px rgba(0,0,0,0.18), inset 0 1px 0 #FFFFFF",
@@ -349,12 +349,12 @@ export default function RoomTypesPage({
                 },
               }}
             >
-              + Add New Room
+              Add New Room
             </Button>
 
             <Button
-              variant="outlined"
-              startIcon={<AutoAwesome />}
+              variant="contained"
+              startIcon={<Add />}
               onClick={() =>
                 setTypeModal({
                   open: true,
@@ -372,24 +372,25 @@ export default function RoomTypesPage({
                   },
                 })
               }
+              className="btn-3d"
               sx={{
+                background: "linear-gradient(135deg, #FFFFFF 0%, #E6EFF8 100%)",
+                color: themeConfig.primaryDark,
+                fontWeight: 900,
                 borderRadius: "14px",
-                fontWeight: 800,
-                color: "#FFFFFF",
-                borderColor: "rgba(255,255,255,0.4)",
-                bgcolor: "rgba(255,255,255,0.1)",
-                backdropFilter: "blur(6px)",
-                px: 2.2,
-                py: 1.1,
-                fontSize: "0.85rem",
+                px: 2.6,
+                py: 1.2,
+                fontSize: "0.88rem",
+                boxShadow: "0 8px 20px rgba(0,0,0,0.18), inset 0 1px 0 #FFFFFF",
+                border: "1px solid rgba(255,255,255,0.8)",
                 "&:hover": {
-                  borderColor: "#FFFFFF",
-                  bgcolor: "rgba(255,255,255,0.2)",
+                  background: "#FFFFFF",
                   transform: "translateY(-2px)",
+                  boxShadow: "0 12px 26px rgba(0,0,0,0.24)",
                 },
               }}
             >
-              + Create Room Category
+              Create Room Category
             </Button>
           </Box>
         </Box>
@@ -678,7 +679,7 @@ export default function RoomTypesPage({
                             boxShadow: `0 4px 12px ${themeConfig.primaryGlow}`,
                           }}
                         >
-                          + Add Room to {cat.name}
+                          Add Room to {cat.name}
                         </Button>
 
                         <Tooltip title="Edit Category Details & Default Amenities">
