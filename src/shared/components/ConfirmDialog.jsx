@@ -10,7 +10,7 @@ import {
   TextField,
   Box,
 } from "@mui/material";
-import { WarningAmber } from "@mui/icons-material";
+import { WarningAmber } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 
 export default function ConfirmDialog({

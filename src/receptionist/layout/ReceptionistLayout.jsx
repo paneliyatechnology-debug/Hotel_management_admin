@@ -2,21 +2,17 @@
 
 import DashboardLayout from "@/shared/layout/DashboardLayout";
 import {
+  DashboardOutlined,
   Bed,
   HowToReg,
-  Add,
-  AssignmentTurnedIn,
-  Receipt,
-  Settings,
-} from "@mui/icons-material";
+  MoreHoriz,
+} from "@/shared/icons";
 
 export const RECEPTIONIST_NAV = [
-  { label: "Available Rooms", shortLabel: "Rooms", path: "rooms", icon: <Bed fontSize="small" /> },
+  { label: "Dashboard", shortLabel: "Overview", path: "dashboard", icon: <DashboardOutlined fontSize="small" /> },
+  { label: "Rooms", shortLabel: "Rooms", path: "rooms", icon: <Bed fontSize="small" /> },
   { label: "In-House Folios", shortLabel: "Folios", path: "folios", icon: <HowToReg fontSize="small" /> },
-  { label: "5-Step Check-In", shortLabel: "Check-In", path: "check-in", icon: <Add fontSize="small" /> },
-  { label: "Govt ID Compliance", shortLabel: "ID Check", path: "id-compliance", icon: <AssignmentTurnedIn fontSize="small" /> },
-  { label: "POS Settlement Desk", shortLabel: "POS", path: "pos-billing", icon: <Receipt fontSize="small" /> },
-  { label: "Profile & Settings", shortLabel: "Settings", path: "settings", icon: <Settings fontSize="small" /> },
+  { label: "More", shortLabel: "More", path: "more", icon: <MoreHoriz fontSize="small" /> },
 ];
 
 export default function ReceptionistLayout({ user, activeTab, onTabChange, onLogout, children }) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -8,7 +8,6 @@ import {
   Button,
   Chip,
   Dialog,
-  DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
@@ -17,7 +16,6 @@ import {
   IconButton,
   Tooltip,
   MenuItem,
-  Grid,
   Table,
   TableBody,
   TableCell,
@@ -31,719 +29,493 @@ import {
 } from "@mui/material";
 import {
   Search,
-  Add,
-  Edit,
-  Delete,
   Visibility,
   Phone,
-  Description,
   Close,
   Person,
-  AutoAwesome,
-  Security,
   MeetingRoom,
   EventNote,
-  AttachMoney,
-  CheckCircle,
-  HourglassEmpty,
-  BadgeOutlined,
   Email,
   CalendarMonth,
   Hotel,
-} from "@mui/icons-material";
+  Receipt,
+  Payments,
+  BadgeOutlined,
+  People,
+  CheckCircle,
+} from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import StatusChip from "@/shared/components/StatusChip";
 import EmptyState from "@/shared/components/EmptyState";
-import { formatTime12Hour } from "@/shared/utils/timeUtils";
 
 export default function GuestDirectoryPage({
   guests = [],
+  rooms = [],
   guestSearch = "",
   setGuestSearch,
   guestFilter = "ALL",
   setGuestFilter,
-  guestModal,
-  setGuestModal,
-  viewGuestModal,
+  viewGuestModal = { open: false, guest: null },
   setViewGuestModal,
   hotelSettings = { checkInTime: "14:00", checkOutTime: "12:00", timezone: "Asia/Kolkata" },
-  onSaveGuest,
-  onDeleteGuest,
-  getInitialGuestForm,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [dateFilterType, setDateFilterType] = useState("ALL");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
-  const totalInHouse = guests.filter((g) => g.status === "IN-HOUSE").length;
-  const totalReserved = guests.filter((g) => g.status === "RESERVED").length;
-  const totalCheckedOut = guests.filter((g) => g.status === "CHECKED_OUT" || g.status === "CHECKED-OUT").length;
+  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
 
-  const filteredGuests = guests.filter((g) => {
-    const q = (guestSearch || "").toLowerCase();
-    const matchSearch =
-      (g.name || "").toLowerCase().includes(q) ||
-      (g.phone || "").includes(q) ||
-      (g.email || "").toLowerCase().includes(q) ||
-      (g.roomAssigned || "").toString().includes(q) ||
-      (g.idNumber || "").toLowerCase().includes(q);
+  function normalizeDate(val) {
+    if (!val) return "";
+    if (typeof val === "string") {
+      if (val.includes("/")) {
+        const parts = val.split("/");
+        if (parts.length === 3) {
+          const day = parts[0].padStart(2, "0");
+          const month = parts[1].padStart(2, "0");
+          const year = parts[2];
+          return `${year}-${month}-${day}`;
+        }
+      }
+      return val.split("T")[0];
+    }
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return "";
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    } catch {
+      return "";
+    }
+  }
 
-    if (guestFilter === "ALL") return matchSearch;
-    return matchSearch && (g.status === guestFilter || (guestFilter === "CHECKED_OUT" && g.status === "CHECKED-OUT"));
-  });
+  // Filtered & Searched Guests
+  const filteredGuests = useMemo(() => {
+    return guests.filter((g) => {
+      // 1. Status Filter
+      if (guestFilter !== "ALL") {
+        const gStatus = (g.status || "REGISTERED").toUpperCase();
+        if (guestFilter === "IN-HOUSE" && gStatus !== "IN-HOUSE" && gStatus !== "CHECKED_IN") return false;
+        if (guestFilter === "DEPARTED" && gStatus !== "DEPARTED" && gStatus !== "CHECKED_OUT") return false;
+        if (guestFilter === "RESERVED" && gStatus !== "RESERVED" && gStatus !== "BOOKED") return false;
+        if (guestFilter === "REGISTERED" && gStatus !== "REGISTERED") return false;
+      }
+
+      // 2. Date Range Filter
+      if (dateFilterType === "TODAY") {
+        const cIn = normalizeDate(g.checkInDate || g.checkInDateRaw);
+        const cOut = normalizeDate(g.checkOutDate || g.checkOutDateRaw);
+        if (cIn !== todayStr && cOut !== todayStr) return false;
+      } else if (dateFilterType === "CUSTOM" && startDate && endDate) {
+        const cIn = normalizeDate(g.checkInDate || g.checkInDateRaw);
+        if (cIn && (cIn < startDate || cIn > endDate)) return false;
+      }
+
+      // 3. Search Query
+      if (guestSearch && guestSearch.trim()) {
+        const q = guestSearch.toLowerCase().trim();
+        const matchName = (g.name || g.fullName || "").toLowerCase().includes(q);
+        const matchPhone = (g.phone || g.mobileNumber || "").toLowerCase().includes(q);
+        const matchEmail = (g.email || "").toLowerCase().includes(q);
+        const matchRoom = String(g.roomAssigned || g.roomNumber || g.room?.roomNumber || "").toLowerCase().includes(q);
+        const matchId = String(g.idNumber || g.govtIdNumber || "").toLowerCase().includes(q);
+        return matchName || matchPhone || matchEmail || matchRoom || matchId;
+      }
+
+      return true;
+    });
+  }, [guests, guestFilter, dateFilterType, startDate, endDate, guestSearch, todayStr]);
+
+  const inHouseCount = guests.filter(
+    (g) => (g.status || "").toUpperCase() === "IN-HOUSE" || (g.status || "").toUpperCase() === "CHECKED_IN"
+  ).length;
+  const departedCount = guests.filter(
+    (g) => (g.status || "").toUpperCase() === "DEPARTED" || (g.status || "").toUpperCase() === "CHECKED_OUT"
+  ).length;
+
+  const handleSendWhatsApp = (guest) => {
+    const phoneClean = (guest.phone || guest.mobileNumber || "").replace(/[^0-9]/g, "");
+    const targetPhone = phoneClean.length === 10 ? `91${phoneClean}` : phoneClean;
+    const msgText = encodeURIComponent(
+      `🏨 *Grand Royale Luxury Resort* - Guest Folio Summary\n\n` +
+      `Namaste *${guest.name || guest.fullName || "Guest"}*,\n` +
+      `Thank you for staying with us in *Room #${guest.roomAssigned || guest.roomNumber || "101"}*.\n` +
+      `• Check-In: ${guest.checkInDate || "Today"}\n` +
+      `• Total Amount: ₹${(guest.totalAmount || 0).toLocaleString("en-IN")}\n` +
+      `• Status: ${(guest.status || "IN-HOUSE").toUpperCase()}\n\n` +
+      `For any assistance, please contact Front Desk.\nWish you a pleasant stay!`
+    );
+    window.open(`https://wa.me/${targetPhone}?text=${msgText}`, "_blank");
+  };
 
   return (
     <Box sx={{ px: { xs: 1.5, sm: 3 }, py: { xs: 2, sm: 3 } }}>
       {/* ========================================================================= */}
-      {/* 3D MASTER COMMAND RIBBON (Hero 3D Aesthetics with Glow & Stats)          */}
+      {/* 1. EXECUTIVE HERO COMMAND RIBBON                                          */}
       {/* ========================================================================= */}
       <Box
         sx={{
-          mb: 4,
-          p: { xs: 2.5, md: 3 },
+          mb: 3.5,
+          p: { xs: 2.5, sm: 3 },
           borderRadius: "24px",
           background: `linear-gradient(135deg, ${themeConfig.primaryDark || "#0C273B"} 0%, ${themeConfig.primary || "#0B8EE0"} 100%)`,
           color: "#FFFFFF",
-          boxShadow: `0 16px 36px -10px ${themeConfig.primaryGlow || "rgba(11, 142, 224, 0.4)"}, inset 0 1px 1px rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.2)`,
+          boxShadow: `0 16px 36px -10px ${themeConfig.primaryGlow || "rgba(11, 142, 224, 0.4)"}, inset 0 1px 1px rgba(255,255,255,0.4)`,
           position: "relative",
           overflow: "hidden",
         }}
       >
-        {/* 3D Radial Background Glow */}
-        <Box
-          sx={{
-            position: "absolute",
-            top: "-50%",
-            right: "-15%",
-            width: "450px",
-            height: "450px",
-            background: "radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%)",
-            pointerEvents: "none",
-          }}
-        />
-
-        <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 2, position: "relative", zIndex: 1 }}>
+        <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
           <Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.8 }}>
-              <Avatar
-                sx={{
-                  bgcolor: "rgba(255,255,255,0.2)",
-                  color: "#FFFFFF",
-                  width: 36,
-                  height: 36,
-                  borderRadius: "10px",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-                }}
-              >
-                <Person fontSize="small" />
-              </Avatar>
-              <Typography
-                variant="caption"
-                sx={{
-                  fontWeight: 800,
-                  letterSpacing: 1.2,
-                  textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.9)",
-                  fontSize: "0.72rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.6,
-                }}
-              >
-                <AutoAwesome sx={{ fontSize: 14 }} />
-                Guest Ledger &bull; Govt ID Compliance Archive
+            <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1, px: 1.4, py: 0.5, borderRadius: "20px", bgcolor: "rgba(255,255,255,0.15)", mb: 1 }}>
+              <Person sx={{ fontSize: 16 }} />
+              <Typography variant="caption" sx={{ fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase" }}>
+                Executive Guest Registry &bull; Read-Only Audit
               </Typography>
             </Box>
-
             <Typography variant="h4" sx={{ fontWeight: 900, color: "#FFFFFF", letterSpacing: -0.5, fontSize: { xs: "1.4rem", sm: "1.8rem" } }}>
               Guest Master Directory
             </Typography>
-            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", mt: 0.5, fontSize: "0.85rem" }}>
-              Registered guest profiles, contact numbers, Govt ID compliance documents, and stay history.
+            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.85)", mt: 0.5, fontSize: "0.85rem" }}>
+              Registered guest profiles, contact numbers, stay history, billing folios, and Govt ID compliance.
             </Typography>
           </Box>
 
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => setGuestModal({ open: true, mode: "ADD", data: getInitialGuestForm ? getInitialGuestForm() : { name: "", phone: "", email: "", roomAssigned: "", idType: "AADHAAR", idNumber: "", status: "IN-HOUSE", totalAmount: 0 } })}
-            className="btn-3d"
-            sx={{
-              borderRadius: "14px",
-              bgcolor: "#FFFFFF",
-              color: themeConfig.primaryDark || "#0C273B",
-              fontWeight: 800,
-              fontSize: "0.82rem",
-              px: 2.5,
-              py: 1.1,
-              boxShadow: "0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 #FFFFFF",
-              "&:hover": {
-                bgcolor: "#F8FAFC",
-                transform: "translateY(-2px)",
-              },
-            }}
-          >
-            Register New Guest
-          </Button>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, alignItems: "center" }}>
+            <Chip
+              icon={<People sx={{ fontSize: "16px !important", color: "#FFFFFF !important" }} />}
+              label={`Total Guests: ${guests.length}`}
+              sx={{ bgcolor: "rgba(255,255,255,0.15)", color: "#FFFFFF", fontWeight: 800, borderRadius: "12px", px: 1 }}
+            />
+            <Chip
+              icon={<MeetingRoom sx={{ fontSize: "16px !important", color: "#10B981 !important" }} />}
+              label={`In-House: ${inHouseCount}`}
+              sx={{ bgcolor: "rgba(16, 185, 129, 0.2)", color: "#FFFFFF", fontWeight: 800, borderRadius: "12px", border: "1px solid rgba(16, 185, 129, 0.4)", px: 1 }}
+            />
+            <Chip
+              icon={<CheckCircle sx={{ fontSize: "16px !important", color: "#F59E0B !important" }} />}
+              label={`Departed: ${departedCount}`}
+              sx={{ bgcolor: "rgba(245, 158, 11, 0.2)", color: "#FFFFFF", fontWeight: 800, borderRadius: "12px", border: "1px solid rgba(245, 158, 11, 0.4)", px: 1 }}
+            />
+          </Box>
         </Box>
       </Box>
 
       {/* ========================================================================= */}
-      {/* 3D SEARCH & SEGMENTED FILTER TOOLBAR                                     */}
+      {/* 2. SEARCH & FILTER CONTROLS                                               */}
       {/* ========================================================================= */}
       <Paper
+        elevation={0}
         className="card-3d"
         sx={{
-          p: 2,
-          mb: 3.5,
-          borderRadius: "18px",
-          bgcolor: "#FFFFFF",
-          border: `1.5px solid ${themeConfig.border}`,
-          boxShadow: "0 8px 24px -4px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 2,
+          p: { xs: 2, sm: 2.5 },
+          mb: 3,
+          borderRadius: "20px",
+          border: `1px solid ${themeConfig.border}`,
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
         }}
       >
-        <TextField
-          size="small"
-          placeholder="Search by Guest Name, Phone, Email, Room #, or Govt ID..."
-          value={guestSearch}
-          onChange={(e) => setGuestSearch(e.target.value)}
-          sx={{
-            flex: 1,
-            minWidth: 260,
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "12px",
-              bgcolor: themeConfig.bgMain,
-              boxShadow: "inset 0 1px 2px rgba(0,0,0,0.05)",
-            },
-          }}
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search fontSize="small" sx={{ color: themeConfig.textMuted }} />
-                </InputAdornment>
-              ),
-            },
-          }}
-        />
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center", justifyContent: "space-between" }}>
+          {/* Search Box */}
+          <TextField
+            size="small"
+            placeholder="Search by name, phone, room #, Govt ID..."
+            value={guestSearch}
+            onChange={(e) => {
+              setGuestSearch?.(e.target.value);
+              setPage(0);
+            }}
+            sx={{
+              flex: { xs: "1 1 100%", md: "1 1 360px" },
+              "& .MuiOutlinedInput-root": { borderRadius: "14px" },
+            }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search sx={{ color: themeConfig.primary, fontSize: 20 }} />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
 
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-          {[
-            { id: "ALL", label: `All Guests (${guests.length})` },
-            { id: "IN-HOUSE", label: `In-House (${totalInHouse})` },
-            { id: "RESERVED", label: `Reserved (${totalReserved})` },
-            { id: "CHECKED_OUT", label: `Checked Out (${totalCheckedOut})` },
-          ].map((st) => {
-            const isSelected = guestFilter === st.id;
-            return (
-              <Chip
-                key={st.id}
-                label={st.label}
-                clickable
-                onClick={() => setGuestFilter(st.id)}
-                sx={{
-                  fontWeight: 800,
-                  borderRadius: "10px",
-                  fontSize: "0.75rem",
-                  px: 1,
-                  bgcolor: isSelected ? themeConfig.primary : themeConfig.champagne,
-                  color: isSelected ? "#FFFFFF" : themeConfig.primaryDark,
-                  border: `1px solid ${isSelected ? themeConfig.primary : themeConfig.border}`,
-                  boxShadow: isSelected ? `0 4px 10px ${themeConfig.primaryGlow}` : "none",
-                  transition: "all 0.2s ease",
-                  "&:hover": {
-                    bgcolor: themeConfig.primary,
-                    color: "#FFFFFF",
-                    transform: "translateY(-1px)",
-                  },
-                }}
-              />
-            );
-          })}
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, alignItems: "center" }}>
+            {/* Status Filter Dropdown */}
+            <TextField
+              select
+              size="small"
+              value={guestFilter}
+              onChange={(e) => {
+                setGuestFilter?.(e.target.value);
+                setPage(0);
+              }}
+              sx={{ minWidth: 150, "& .MuiOutlinedInput-root": { borderRadius: "14px" } }}
+            >
+              <MenuItem value="ALL">All Statuses</MenuItem>
+              <MenuItem value="IN-HOUSE">In-House Guests</MenuItem>
+              <MenuItem value="DEPARTED">Departed / Checked-Out</MenuItem>
+              <MenuItem value="RESERVED">Reserved / Upcoming</MenuItem>
+              <MenuItem value="REGISTERED">Registered Profiles</MenuItem>
+            </TextField>
+
+            {/* Date Filter Dropdown */}
+            <TextField
+              select
+              size="small"
+              value={dateFilterType}
+              onChange={(e) => {
+                setDateFilterType(e.target.value);
+                setPage(0);
+              }}
+              sx={{ minWidth: 140, "& .MuiOutlinedInput-root": { borderRadius: "14px" } }}
+            >
+              <MenuItem value="ALL">All Dates</MenuItem>
+              <MenuItem value="TODAY">Today's Guests</MenuItem>
+              <MenuItem value="CUSTOM">Custom Range</MenuItem>
+            </TextField>
+
+            {dateFilterType === "CUSTOM" && (
+              <>
+                <TextField
+                  type="date"
+                  size="small"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  sx={{ width: 145, "& .MuiOutlinedInput-root": { borderRadius: "14px" } }}
+                />
+                <TextField
+                  type="date"
+                  size="small"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  sx={{ width: 145, "& .MuiOutlinedInput-root": { borderRadius: "14px" } }}
+                />
+              </>
+            )}
+          </Box>
         </Box>
       </Paper>
 
       {/* ========================================================================= */}
-      {/* 3D GUEST DIRECTORY MASTER TABLE                                          */}
+      {/* 3. GUEST DIRECTORY TABLE                                                  */}
       {/* ========================================================================= */}
       <TableContainer
         component={Paper}
+        elevation={0}
         className="card-3d"
         sx={{
           borderRadius: "20px",
           border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 10px 30px -5px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
-          overflowX: "auto",
-          overflowY: "auto",
-          maxHeight: { xs: "520px", md: "calc(100vh - 280px)" },
-          mb: 4,
-          "&::-webkit-scrollbar": { height: "8px", width: "8px" },
-          "&::-webkit-scrollbar-track": { background: "rgba(0,0,0,0.02)", borderRadius: "8px" },
-          "&::-webkit-scrollbar-thumb": { background: themeConfig.border, borderRadius: "8px" },
-          "&::-webkit-scrollbar-thumb:hover": { background: themeConfig.primary },
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+          overflow: "hidden",
         }}
       >
-        <Table stickyHeader sx={{ minWidth: 920 }}>
-          <TableHead>
-            <TableRow sx={{ bgcolor: themeConfig.champagne }}>
-              <TableCell sx={{ fontWeight: 800, color: themeConfig.textMain, py: 1.6 }}>Guest Profile</TableCell>
-              <TableCell sx={{ fontWeight: 800, color: themeConfig.textMain }}>Contact Phone</TableCell>
-              <TableCell sx={{ fontWeight: 800, color: themeConfig.textMain }}>Govt ID Proof</TableCell>
-              <TableCell sx={{ fontWeight: 800, color: themeConfig.textMain }}>Room &amp; Stay</TableCell>
-              <TableCell sx={{ fontWeight: 800, color: themeConfig.textMain }}>Status</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 800, color: themeConfig.textMain }}>Actions</TableCell>
+        <Table sx={{ minWidth: 750 }}>
+          <TableHead sx={{ bgcolor: isDarkMode ? "rgba(255,255,255,0.04)" : themeConfig.champagne }}>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 800, color: themeConfig.textMain, py: 1.8 }}>GUEST PROFILE</TableCell>
+              <TableCell sx={{ fontWeight: 800, color: themeConfig.textMain, py: 1.8 }}>CONTACT DETAILS</TableCell>
+              <TableCell sx={{ fontWeight: 800, color: themeConfig.textMain, py: 1.8 }}>ASSIGNED ROOM</TableCell>
+              <TableCell sx={{ fontWeight: 800, color: themeConfig.textMain, py: 1.8 }}>CHECK-IN &bull; OUT</TableCell>
+              <TableCell sx={{ fontWeight: 800, color: themeConfig.textMain, py: 1.8 }}>FOLIO TOTAL</TableCell>
+              <TableCell sx={{ fontWeight: 800, color: themeConfig.textMain, py: 1.8 }}>STATUS</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 800, color: themeConfig.textMain, py: 1.8 }}>ACTION</TableCell>
             </TableRow>
           </TableHead>
+
           <TableBody>
             {filteredGuests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} sx={{ py: 6, textAlign: "center" }}>
+                <TableCell colSpan={7} sx={{ py: 6, textAlign: "center" }}>
                   <EmptyState
-                    title="No Guests Found"
-                    description={guests.length === 0 ? "No guest records created yet. Click '+ Register New Guest' to add your first guest." : "No guest records match your search criteria."}
+                    title="No Guest Records Found"
+                    description="No matching guests found. Check your search query or filters."
                   />
                 </TableCell>
               </TableRow>
             ) : (
               filteredGuests
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((guest) => (
-                <TableRow
-                  key={guest._id || guest.name}
-                  sx={{
-                    transition: "all 0.2s ease",
-                    "&:hover": {
-                      bgcolor: `${themeConfig.primaryGlow} !important`,
-                      transform: "scale(1.001)",
-                    },
-                  }}
-                >
-                  {/* Profile Photo & Name */}
-                  <TableCell sx={{ whiteSpace: "nowrap" }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.8 }}>
-                      <Avatar
-                        sx={{
-                          background: `linear-gradient(135deg, ${themeConfig.primary} 0%, ${themeConfig.primaryDark} 100%)`,
-                          color: "#FFFFFF",
-                          fontWeight: 800,
-                          width: 42,
-                          height: 42,
-                          boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-                        }}
-                      >
-                        {guest.name?.charAt(0).toUpperCase()}
-                      </Avatar>
-                      <Box>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                            {guest.name || guest.fullName}
-                          </Typography>
-                          {guest.totalVisits && guest.totalVisits > 1 && (
-                            <Chip
-                              label={`VIP • ${guest.totalVisits} Stays`}
-                              size="small"
-                              sx={{
-                                bgcolor: "#FEF3C7",
-                                color: "#B45309",
-                                fontWeight: 800,
-                                height: 20,
-                                fontSize: "0.62rem",
-                                borderRadius: "6px",
-                                border: "1px solid #FCD34D",
-                              }}
-                            />
-                          )}
+                .map((guest) => {
+                  const gName = guest.name || guest.fullName || "Resident Guest";
+                  const gPhone = guest.phone || guest.mobileNumber || "Not Provided";
+                  const gEmail = guest.email || "N/A";
+                  const gRoom =
+                    guest.roomAssigned && guest.roomAssigned !== "Not Assigned"
+                      ? guest.roomAssigned
+                      : guest.room?.roomNumber || "101";
+                  const gTotal = guest.totalAmount || 0;
+                  const gStatus = guest.status || "IN-HOUSE";
+
+                  return (
+                    <TableRow
+                      key={guest._id || guest.id || Math.random()}
+                      hover
+                      sx={{
+                        "&:hover": { bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(11, 142, 224, 0.04)" },
+                        transition: "background 0.15s ease",
+                      }}
+                    >
+                      {/* Profile Column */}
+                      <TableCell sx={{ py: 2 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                          <Avatar
+                            sx={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: "12px",
+                              bgcolor: isDarkMode ? "rgba(255,255,255,0.1)" : themeConfig.champagne,
+                              color: themeConfig.primary,
+                              fontWeight: 800,
+                              fontSize: "1rem",
+                              border: `1px solid ${themeConfig.border}`,
+                            }}
+                          >
+                            {gName.charAt(0).toUpperCase()}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
+                              {gName}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "flex", alignItems: "center", gap: 0.5 }}>
+                              <BadgeOutlined sx={{ fontSize: 13 }} />
+                              {guest.idType || guest.govtIdType || "Govt ID"}: {guest.idNumber || guest.govtIdNumber || "N/A"}
+                            </Typography>
+                          </Box>
                         </Box>
-                        <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "flex", alignItems: "center", gap: 0.5 }}>
-                          <Email sx={{ fontSize: 12, color: themeConfig.primary }} />
-                          {guest.email || "No Email Provided"}
+                      </TableCell>
+
+                      {/* Contact Column */}
+                      <TableCell sx={{ py: 2 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: themeConfig.textMain, display: "flex", alignItems: "center", gap: 0.6 }}>
+                          <Phone sx={{ fontSize: 14, color: themeConfig.primary }} />
+                          {gPhone}
                         </Typography>
-                      </Box>
-                    </Box>
-                  </TableCell>
-
-                  {/* Contact Phone */}
-                  <TableCell sx={{ whiteSpace: "nowrap" }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <Phone fontSize="small" sx={{ color: themeConfig.primaryDark, fontSize: 16 }} />
-                      <Typography variant="body2" sx={{ fontWeight: 700, color: themeConfig.textMain }}>
-                        {guest.phone || guest.mobileNumber || "N/A"}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-
-                  {/* Govt ID Proof with Document Icon */}
-                  <TableCell sx={{ whiteSpace: "nowrap" }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <Security fontSize="small" sx={{ color: themeConfig.primary }} />
-                      <Box>
-                        <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMain, display: "block" }}>
-                          {guest.idType || guest.govtIdType || "Govt ID"}
+                        <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "flex", alignItems: "center", gap: 0.6 }}>
+                          <Email sx={{ fontSize: 13 }} />
+                          {gEmail}
                         </Typography>
-                        <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.72rem" }}>
-                          {guest.idNumber || guest.govtIdNumber || "Not Provided"}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </TableCell>
+                      </TableCell>
 
-                  {/* Room & Stay */}
-                  <TableCell sx={{ whiteSpace: "nowrap" }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.3 }}>
-                      <Chip
-                        label={
-                          guest.roomAssigned && guest.roomAssigned !== "Not Assigned"
-                            ? `Room #${guest.roomAssigned}`
-                            : guest.room?.roomNumber
-                              ? `Room #${guest.room.roomNumber}`
-                              : "No Active Stay"
-                        }
-                        size="small"
-                        sx={{
-                          fontWeight: 800,
-                          borderRadius: "8px",
-                          bgcolor: (guest.roomAssigned && guest.roomAssigned !== "Not Assigned") || guest.room?.roomNumber ? themeConfig.champagne : "#F1F5F9",
-                          color: (guest.roomAssigned && guest.roomAssigned !== "Not Assigned") || guest.room?.roomNumber ? themeConfig.primaryDark : themeConfig.textMuted,
-                          border: `1px solid ${themeConfig.border}`,
-                          boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
-                        }}
-                      />
-                    </Box>
-                    <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.72rem" }}>
-                      {guest.checkInDate && guest.checkInDate !== "N/A"
-                        ? `${guest.checkInDate} ➔ ${guest.checkOutDate || "N/A"}`
-                        : "No active stay schedule"}
-                    </Typography>
-                  </TableCell>
-
-                  {/* Status */}
-                  <TableCell sx={{ whiteSpace: "nowrap" }}>
-                    <StatusChip status={guest.status || "REGISTERED"} size="small" />
-                  </TableCell>
-
-                  {/* Action Icons: View, Edit, Delete */}
-                  <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
-                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 1 }}>
-                      <Tooltip title="Inspect Guest Dossier">
-                        <Button
+                      {/* Assigned Room Column */}
+                      <TableCell sx={{ py: 2 }}>
+                        <Chip
+                          icon={<MeetingRoom sx={{ fontSize: "14px !important" }} />}
+                          label={`Room #${gRoom}`}
                           size="small"
-                          variant="outlined"
-                          startIcon={<Visibility fontSize="small" />}
-                          onClick={() => setViewGuestModal({ open: true, guest })}
                           sx={{
-                            borderRadius: "10px",
-                            fontWeight: 700,
-                            fontSize: "0.75rem",
-                            borderColor: themeConfig.border,
+                            fontWeight: 800,
+                            borderRadius: "8px",
+                            bgcolor: isDarkMode ? "rgba(11, 142, 224, 0.15)" : themeConfig.champagne,
                             color: themeConfig.primaryDark,
-                            "&:hover": {
-                              borderColor: themeConfig.primary,
-                              bgcolor: themeConfig.champagne,
-                            },
+                            border: `1px solid ${themeConfig.border}`,
                           }}
-                        >
-                          Dossier
-                        </Button>
-                      </Tooltip>
+                        />
+                      </TableCell>
 
-                      <Tooltip title="Edit Guest Details">
-                        <IconButton
-                          size="small"
-                          onClick={() => setGuestModal({ open: true, mode: "EDIT", data: { ...guest } })}
-                          sx={{
-                            color: themeConfig.info,
-                            bgcolor: themeConfig.infoBg,
-                            borderRadius: "10px",
-                            border: `1px solid ${themeConfig.info}30`,
-                            "&:hover": { bgcolor: "rgba(51, 104, 160, 0.2)" },
-                          }}
-                        >
-                          <Edit fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                      {/* Stay Dates */}
+                      <TableCell sx={{ py: 2 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 700, display: "block", color: themeConfig.textMain }}>
+                          In: {guest.checkInDate || "Today"}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block" }}>
+                          Out: {guest.checkOutDate || "Tomorrow"}
+                        </Typography>
+                      </TableCell>
 
-                      <Tooltip title="Delete Guest Record">
-                        <IconButton
-                          size="small"
-                          onClick={() => onDeleteGuest(guest)}
-                          sx={{
-                            color: themeConfig.danger,
-                            bgcolor: themeConfig.dangerBg,
-                            borderRadius: "10px",
-                            border: `1px solid ${themeConfig.danger}30`,
-                            "&:hover": { bgcolor: "rgba(220, 38, 38, 0.2)" },
-                          }}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))
+                      {/* Folio Total */}
+                      <TableCell sx={{ py: 2 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.primary }}>
+                          ₹{Number(gTotal).toLocaleString("en-IN")}
+                        </Typography>
+                      </TableCell>
+
+                      {/* Status */}
+                      <TableCell sx={{ py: 2 }}>
+                        <StatusChip status={gStatus} size="small" />
+                      </TableCell>
+
+                      {/* Actions */}
+                      <TableCell align="right" sx={{ py: 2 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 1 }}>
+                          <Tooltip title="Inspect Full Guest Dossier & Folio">
+                            <IconButton
+                              size="small"
+                              onClick={() => setViewGuestModal?.({ open: true, guest })}
+                              sx={{
+                                width: 32,
+                                height: 32,
+                                color: themeConfig.primaryDark,
+                                bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : themeConfig.champagne,
+                                borderRadius: "10px",
+                                border: `1px solid ${themeConfig.border}`,
+                                "&:hover": {
+                                  borderColor: themeConfig.primary,
+                                  bgcolor: isDarkMode ? "rgba(255,255,255,0.12)" : "rgba(11, 142, 224, 0.12)",
+                                },
+                              }}
+                            >
+                              <Visibility fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+
+                          <Tooltip title="Send Folio Summary via WhatsApp">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleSendWhatsApp(guest)}
+                              sx={{
+                                width: 32,
+                                height: 32,
+                                color: "#10B981",
+                                bgcolor: "rgba(16, 185, 129, 0.12)",
+                                borderRadius: "10px",
+                                border: "1px solid rgba(16, 185, 129, 0.3)",
+                                "&:hover": { bgcolor: "rgba(16, 185, 129, 0.25)" },
+                              }}
+                            >
+                              <Phone fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
             )}
           </TableBody>
         </Table>
+
+        {filteredGuests.length > 0 && (
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            component="div"
+            count={filteredGuests.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={(e, newPage) => setPage(newPage)}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+            sx={{
+              borderTop: `1px solid ${themeConfig.border}`,
+            }}
+          />
+        )}
       </TableContainer>
 
-      {/* Table Pagination */}
-      {filteredGuests.length > 0 && (
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25, 50]}
-          component="div"
-          count={filteredGuests.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={(e, newPage) => setPage(newPage)}
-          onRowsPerPageChange={(e) => {
-            setRowsPerPage(parseInt(e.target.value, 10));
-            setPage(0);
-          }}
-          sx={{
-            borderTop: `1px solid ${themeConfig.border}`,
-            bgcolor: "#FFFFFF",
-            borderRadius: "0 0 20px 20px",
-            mb: 4,
-          }}
-        />
-      )}
-
       {/* ========================================================================= */}
-      {/* 3D MODAL: ADD / EDIT GUEST RECORD                                        */}
+      {/* 4. MODAL: VIEW GUEST DOSSIER & FOLIO DETAILS                              */}
       {/* ========================================================================= */}
       <Dialog
-        open={guestModal.open}
-        onClose={() => setGuestModal({ ...guestModal, open: false })}
-        maxWidth="md"
-        fullWidth
-        slotProps={{
-          paper: {
-            sx: {
-              borderRadius: "24px",
-              p: 1.5,
-              border: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.18)",
-            },
-          },
-        }}
-      >
-        <form onSubmit={onSaveGuest}>
-          <DialogTitle component="div" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Typography component="div" variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-              {guestModal.mode === "ADD" ? "Register New Hotel Guest" : `Edit Guest: ${guestModal.data?.name}`}
-            </Typography>
-            <IconButton onClick={() => setGuestModal({ ...guestModal, open: false })} sx={{ borderRadius: "10px" }}>
-              <Close />
-            </IconButton>
-          </DialogTitle>
-
-          <DialogContent dividers sx={{ borderColor: themeConfig.border }}>
-            <Grid container spacing={2.5}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Full Name *
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  required
-                  value={guestModal.data?.name || ""}
-                  onChange={(e) => setGuestModal({ ...guestModal, data: { ...guestModal.data, name: e.target.value } })}
-                  placeholder="e.g. Vikram Malhotra"
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Contact Phone Number *
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  required
-                  value={guestModal.data?.phone || ""}
-                  onChange={(e) => setGuestModal({ ...guestModal, data: { ...guestModal.data, phone: e.target.value } })}
-                  placeholder="+91 98201 44556"
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Email Address
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="email"
-                  value={guestModal.data?.email || ""}
-                  onChange={(e) => setGuestModal({ ...guestModal, data: { ...guestModal.data, email: e.target.value } })}
-                  placeholder="guest@example.com"
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Assigned Room #
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={guestModal.data?.roomAssigned || ""}
-                  onChange={(e) => setGuestModal({ ...guestModal, data: { ...guestModal.data, roomAssigned: e.target.value } })}
-                  placeholder="e.g. 102"
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Govt ID Document Type
-                </Typography>
-                <TextField
-                  select
-                  fullWidth
-                  size="small"
-                  value={
-                    guestModal.data?.idType === "Aadhaar Card" || !guestModal.data?.idType
-                      ? "AADHAAR"
-                      : guestModal.data?.idType === "Passport"
-                        ? "PASSPORT"
-                        : guestModal.data?.idType === "Driving License"
-                          ? "DRIVING_LICENSE"
-                          : guestModal.data?.idType === "Voter ID"
-                            ? "VOTER_ID"
-                            : guestModal.data?.idType === "PAN Card"
-                              ? "PAN"
-                              : guestModal.data?.idType
-                  }
-                  onChange={(e) => setGuestModal({ ...guestModal, data: { ...guestModal.data, idType: e.target.value } })}
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                >
-                  <MenuItem value="AADHAAR">Aadhaar Card (UIDAI)</MenuItem>
-                  <MenuItem value="PASSPORT">Passport</MenuItem>
-                  <MenuItem value="DRIVING_LICENSE">Driving License</MenuItem>
-                  <MenuItem value="VOTER_ID">Voter ID</MenuItem>
-                  <MenuItem value="PAN">PAN Card</MenuItem>
-                  <MenuItem value="OTHER">Other Govt ID</MenuItem>
-                </TextField>
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Govt ID Document Number
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={guestModal.data?.idNumber || ""}
-                  onChange={(e) => setGuestModal({ ...guestModal, data: { ...guestModal.data, idNumber: e.target.value } })}
-                  placeholder="e.g. XXXX-XXXX-8921"
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Check-in Date
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="date"
-                  value={guestModal.data?.checkInDate || ""}
-                  onChange={(e) => setGuestModal({ ...guestModal, data: { ...guestModal.data, checkInDate: e.target.value } })}
-                  helperText={`Standard Policy: In at ${formatTime12Hour(hotelSettings.checkInTime)}`}
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Check-out Date
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="date"
-                  value={guestModal.data?.checkOutDate || ""}
-                  onChange={(e) => setGuestModal({ ...guestModal, data: { ...guestModal.data, checkOutDate: e.target.value } })}
-                  helperText={`Standard Policy: Out by ${formatTime12Hour(hotelSettings.checkOutTime)}`}
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Guest Status
-                </Typography>
-                <TextField
-                  select
-                  fullWidth
-                  size="small"
-                  value={guestModal.data?.status || "IN-HOUSE"}
-                  onChange={(e) => setGuestModal({ ...guestModal, data: { ...guestModal.data, status: e.target.value } })}
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                >
-                  <MenuItem value="IN-HOUSE">In-House Active</MenuItem>
-                  <MenuItem value="RESERVED">Advance Reserved</MenuItem>
-                  <MenuItem value="CHECKED_OUT">Checked Out</MenuItem>
-                </TextField>
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Total Bill Amount (₹)
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="number"
-                  value={guestModal.data?.totalAmount ?? 0}
-                  onChange={(e) => setGuestModal({ ...guestModal, data: { ...guestModal.data, totalAmount: Number(e.target.value) } })}
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-
-          <DialogActions sx={{ p: 2.5 }}>
-            <Button onClick={() => setGuestModal({ ...guestModal, open: false })} sx={{ borderRadius: "10px", fontWeight: 700 }}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              className="btn-3d"
-              sx={{
-                background: `linear-gradient(135deg, ${themeConfig.primary} 0%, ${themeConfig.primaryDark} 100%)`,
-                color: "#FFFFFF",
-                fontWeight: 800,
-                borderRadius: "12px",
-                px: 3,
-                boxShadow: `0 4px 14px ${themeConfig.primaryGlow}`,
-              }}
-            >
-              {guestModal.mode === "ADD" ? "Save Guest Record" : "Save Changes"}
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
-
-      {/* ========================================================================= */}
-      {/* 3D MODAL: VIEW GUEST DOSSIER & COMPLIANCE VERIFICATION                  */}
-      {/* ========================================================================= */}
-      <Dialog
-        open={viewGuestModal.open}
-        onClose={() => setViewGuestModal({ open: false, guest: null })}
+        open={Boolean(viewGuestModal?.open)}
+        onClose={() => setViewGuestModal?.({ open: false, guest: null })}
         maxWidth="md"
         fullWidth
         slotProps={{
@@ -752,16 +524,16 @@ export default function GuestDirectoryPage({
               borderRadius: "24px",
               p: 0,
               border: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.18)",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+              boxShadow: isDarkMode ? "0 20px 50px rgba(0,0,0,0.6)" : "0 20px 50px rgba(0,0,0,0.18)",
               overflow: "hidden",
             },
           },
         }}
       >
-        {viewGuestModal.guest && (
+        {viewGuestModal?.guest && (
           <Box>
-            {/* Dossier Header */}
+            {/* Header Ribbon */}
             <Box
               sx={{
                 p: 3,
@@ -778,112 +550,135 @@ export default function GuestDirectoryPage({
                     width: 52,
                     height: 52,
                     borderRadius: "14px",
-                    bgcolor: "#FFFFFF",
-                    color: themeConfig.primaryDark,
+                    bgcolor: isDarkMode ? "rgba(255,255,255,0.15)" : "#FFFFFF",
+                    color: isDarkMode ? "#FFFFFF" : themeConfig.primaryDark,
                     fontWeight: 900,
                     fontSize: "1.3rem",
                     boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
                   }}
                 >
-                  {(viewGuestModal.guest.name || "G").charAt(0).toUpperCase()}
+                  {(viewGuestModal.guest.name || viewGuestModal.guest.fullName || "G").charAt(0).toUpperCase()}
                 </Avatar>
                 <Box>
                   <Typography variant="h6" sx={{ fontWeight: 800, color: "#FFFFFF", lineHeight: 1.2 }}>
-                    {viewGuestModal.guest.name}
+                    {viewGuestModal.guest.name || viewGuestModal.guest.fullName || "Resident Guest"}
                   </Typography>
                   <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.85)" }}>
                     Registered Guest Dossier &bull; Folio #{viewGuestModal.guest._id?.slice(-6) || "PMS-001"}
                   </Typography>
                 </Box>
               </Box>
-              <IconButton onClick={() => setViewGuestModal({ open: false, guest: null })} sx={{ color: "#FFFFFF", bgcolor: "rgba(255,255,255,0.15)", "&:hover": { bgcolor: "rgba(255,255,255,0.3)" } }}>
+              <IconButton
+                onClick={() => setViewGuestModal?.({ open: false, guest: null })}
+                sx={{ color: "#FFFFFF", bgcolor: "rgba(255,255,255,0.15)", "&:hover": { bgcolor: "rgba(255,255,255,0.3)" } }}
+              >
                 <Close fontSize="small" />
               </IconButton>
             </Box>
 
+            {/* Dossier Content Cards */}
             <Box sx={{ p: 3 }}>
-              <Grid container spacing={2.5}>
-                {/* Contact Card */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <Card className="card-3d" sx={{ p: 2.2, borderRadius: "16px", border: `1px solid ${themeConfig.border}`, height: "100%" }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 1.5, display: "flex", alignItems: "center", gap: 0.8 }}>
-                      <Phone fontSize="small" sx={{ color: themeConfig.primary }} /> Guest Contact &amp; Identity
-                    </Typography>
-                    <Grid container spacing={1.5} sx={{ fontSize: "0.85rem" }}>
-                      <Grid size={{ xs: 6 }}>
-                        <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Phone Number:</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{viewGuestModal.guest.phone}</Typography>
-                      </Grid>
-                      <Grid size={{ xs: 6 }}>
-                        <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Email Address:</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{viewGuestModal.guest.email || "N/A"}</Typography>
-                      </Grid>
-                      <Grid size={{ xs: 6 }}>
-                        <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Govt ID Type:</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.primary }}>{viewGuestModal.guest.idType || viewGuestModal.guest.govtIdType || "Govt ID"}</Typography>
-                      </Grid>
-                      <Grid size={{ xs: 6 }}>
-                        <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Govt ID Number:</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{viewGuestModal.guest.idNumber || viewGuestModal.guest.govtIdNumber || "Not Provided"}</Typography>
-                      </Grid>
-                    </Grid>
-                  </Card>
-                </Grid>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2.5 }}>
+                {/* Contact & ID Card */}
+                <Card className="card-3d" sx={{ p: 2.5, borderRadius: "18px", border: `1px solid ${themeConfig.border}` }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 2, display: "flex", alignItems: "center", gap: 0.8 }}>
+                    <Phone fontSize="small" sx={{ color: themeConfig.primary }} /> Guest Contact &amp; Identity
+                  </Typography>
+                  <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, fontSize: "0.85rem" }}>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block" }}>Phone Number:</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 800 }}>{viewGuestModal.guest.phone || viewGuestModal.guest.mobileNumber || "N/A"}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block" }}>Email Address:</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{viewGuestModal.guest.email || "N/A"}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block" }}>Govt ID Type:</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.primary }}>{viewGuestModal.guest.idType || viewGuestModal.guest.govtIdType || "Govt ID"}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block" }}>Govt ID Number:</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{viewGuestModal.guest.idNumber || viewGuestModal.guest.govtIdNumber || "Not Provided"}</Typography>
+                    </Box>
+                    <Box sx={{ gridColumn: "span 2" }}>
+                      <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block" }}>Permanent Address / City:</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{viewGuestModal.guest.address || "Not Provided"}</Typography>
+                    </Box>
+                  </Box>
+                </Card>
 
                 {/* Stay & Room Card */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <Card className="card-3d" sx={{ p: 2.2, borderRadius: "16px", border: `1px solid ${themeConfig.border}`, height: "100%" }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 1.5, display: "flex", alignItems: "center", gap: 0.8 }}>
-                      <MeetingRoom fontSize="small" sx={{ color: themeConfig.primary }} /> Room Allocation &amp; Folio
-                    </Typography>
-                    <Grid container spacing={1.5} sx={{ fontSize: "0.85rem" }}>
-                      <Grid size={{ xs: 6 }}>
-                        <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Assigned Room:</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.primaryDark }}>
-                          {viewGuestModal.guest.roomAssigned && viewGuestModal.guest.roomAssigned !== "Not Assigned"
-                            ? `Room #${viewGuestModal.guest.roomAssigned}`
-                            : viewGuestModal.guest.room?.roomNumber
-                              ? `Room #${viewGuestModal.guest.room.roomNumber}`
-                              : "No Active Stay"}
+                <Card className="card-3d" sx={{ p: 2.5, borderRadius: "18px", border: `1px solid ${themeConfig.border}` }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 2, display: "flex", alignItems: "center", gap: 0.8 }}>
+                    <MeetingRoom fontSize="small" sx={{ color: themeConfig.primary }} /> Room Allocation &amp; Stay
+                  </Typography>
+                  <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, fontSize: "0.85rem" }}>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block" }}>Assigned Room:</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.primaryDark }}>
+                        {viewGuestModal.guest.roomAssigned && viewGuestModal.guest.roomAssigned !== "Not Assigned"
+                          ? `Room #${viewGuestModal.guest.roomAssigned}`
+                          : viewGuestModal.guest.room?.roomNumber
+                          ? `Room #${viewGuestModal.guest.room.roomNumber}`
+                          : "Room #101"}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block" }}>Current Stay Status:</Typography>
+                      <Box sx={{ mt: 0.3 }}>
+                        <StatusChip status={viewGuestModal.guest.status || "IN-HOUSE"} size="small" />
+                      </Box>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block" }}>Check-In Timeline:</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{viewGuestModal.guest.checkInDate || "Today"}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block" }}>Expected Check-Out:</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{viewGuestModal.guest.checkOutDate || "Tomorrow"}</Typography>
+                    </Box>
+                    <Box sx={{ gridColumn: "span 2", pt: 1 }}>
+                      <Divider sx={{ mb: 1.5 }} />
+                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMuted }}>Folio Total Amount:</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 900, color: themeConfig.primary }}>
+                          ₹{(viewGuestModal.guest.totalAmount || 0).toLocaleString("en-IN")}
                         </Typography>
-                      </Grid>
-                      <Grid size={{ xs: 6 }}>
-                        <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Current Status:</Typography>
-                        <Box sx={{ mt: 0.3 }}>
-                          <StatusChip status={viewGuestModal.guest.status || "REGISTERED"} size="small" />
-                        </Box>
-                      </Grid>
-                      <Grid size={{ xs: 6 }}>
-                        <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Check-In Timeline:</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          {viewGuestModal.guest.checkInDate && viewGuestModal.guest.checkInDate !== "N/A"
-                            ? viewGuestModal.guest.checkInDate
-                            : "N/A"}
-                        </Typography>
-                      </Grid>
-                      <Grid size={{ xs: 6 }}>
-                        <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Expected Check-Out:</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          {viewGuestModal.guest.checkOutDate && viewGuestModal.guest.checkOutDate !== "N/A"
-                            ? viewGuestModal.guest.checkOutDate
-                            : "N/A"}
-                        </Typography>
-                      </Grid>
-                      <Grid size={{ xs: 12 }}>
-                        <Divider sx={{ my: 0.5 }} />
-                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 0.5 }}>
-                          <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMuted }}>Settled Folio Total:</Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 900, color: themeConfig.primary }}>₹{(viewGuestModal.guest.totalAmount || 0).toLocaleString("en-IN")}</Typography>
-                        </Box>
-                      </Grid>
-                    </Grid>
-                  </Card>
-                </Grid>
-              </Grid>
+                      </Box>
+                    </Box>
+                  </Box>
+                </Card>
+              </Box>
             </Box>
 
-            <DialogActions sx={{ p: 2.5, bgcolor: themeConfig.bgMain }}>
-              <Button onClick={() => setViewGuestModal({ open: false, guest: null })} variant="contained" className="btn-3d" sx={{ borderRadius: "10px", fontWeight: 700 }}>
+            {/* Modal Actions */}
+            <DialogActions sx={{ p: 2.5, bgcolor: isDarkMode ? "rgba(255,255,255,0.02)" : themeConfig.champagne, display: "flex", justifyContent: "space-between" }}>
+              <Button
+                variant="outlined"
+                startIcon={<Phone sx={{ color: "#10B981" }} />}
+                onClick={() => handleSendWhatsApp(viewGuestModal.guest)}
+                sx={{
+                  borderRadius: "12px",
+                  fontWeight: 800,
+                  color: "#10B981",
+                  borderColor: "rgba(16, 185, 129, 0.4)",
+                  "&:hover": { bgcolor: "rgba(16, 185, 129, 0.1)" },
+                }}
+              >
+                Send WhatsApp Folio
+              </Button>
+              <Button
+                onClick={() => setViewGuestModal?.({ open: false, guest: null })}
+                variant="contained"
+                className="btn-3d"
+                sx={{
+                  borderRadius: "12px",
+                  fontWeight: 800,
+                  bgcolor: themeConfig.primary,
+                  px: 3,
+                }}
+              >
                 Close Dossier
               </Button>
             </DialogActions>

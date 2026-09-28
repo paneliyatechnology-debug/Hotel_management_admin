@@ -125,3 +125,92 @@ export function validateHotelTimings(checkInTime, checkOutTime) {
 
   return { valid: true };
 }
+
+/**
+ * Automatically calculates late check-out / overstay billing tariff.
+ * If a guest stays past standard check-out time (e.g. 12:00 PM) + 30-min grace period (2-3+ hours late or next day),
+ * this automatically charges the extra day(s) room tariff to the guest folio ledger.
+ */
+export function calculateOverstayFee(booking, hotelSettings = {}) {
+  if (!booking || (booking.status && booking.status !== "CHECKED_IN")) {
+    return {
+      isOverstay: false,
+      overdueHours: 0,
+      extraDays: 0,
+      dailyRate: 0,
+      lateFee: 0,
+      description: "",
+    };
+  }
+
+  const outDateStr = booking.checkOutDate ? String(booking.checkOutDate).split("T")[0] : null;
+  if (!outDateStr) {
+    return {
+      isOverstay: false,
+      overdueHours: 0,
+      extraDays: 0,
+      dailyRate: 0,
+      lateFee: 0,
+      description: "",
+    };
+  }
+
+  const rawOutTime = booking.checkOutTime || hotelSettings?.checkOutTime || "12:00";
+  const outTime24 = formatTime24Hour(rawOutTime);
+  const [outH, outM] = outTime24.split(":").map(Number);
+
+  // Parse scheduled check-out date & time
+  const [year, month, day] = outDateStr.split("-").map(Number);
+  const scheduledOutDate = new Date(year, (month || 1) - 1, day || 1, isNaN(outH) ? 12 : outH, isNaN(outM) ? 0 : outM, 0);
+
+  const now = new Date();
+  const diffMs = now.getTime() - scheduledOutDate.getTime();
+  const overdueHours = diffMs / (1000 * 60 * 60);
+
+  // Grace period: 30 minutes (0.5 hours). Beyond 30 mins overstay (e.g., 2-3 hours late), charge extra day
+  if (overdueHours > 0.5) {
+    // Number of additional days: minimum 1 day for any overstay > 30 mins up to 24 hours, then ceil for subsequent days
+    const extraDays = Math.max(1, Math.ceil(overdueHours / 24));
+
+    // Calculate original daily room rate
+    let originalNights = 1;
+    if (booking.numberOfNights && booking.numberOfNights > 0) {
+      originalNights = Number(booking.numberOfNights);
+    } else if (booking.checkInDate && booking.checkOutDate) {
+      const inD = new Date(String(booking.checkInDate).split("T")[0]);
+      const outD = new Date(outDateStr);
+      const diffDays = Math.round((outD - inD) / (1000 * 60 * 60 * 24));
+      if (diffDays > 0) originalNights = diffDays;
+    }
+
+    const posChargesTotal = (booking.posCharges || []).reduce((s, c) => s + (c.amount || 0), 0);
+    const baseRoomTariff = (booking.totalAmount || 0) > posChargesTotal ? (booking.totalAmount - posChargesTotal) : (booking.totalAmount || 0);
+
+    const calculatedDailyRate = baseRoomTariff > 0
+      ? Math.round(baseRoomTariff / originalNights)
+      : (booking.room?.customPricePerNight || booking.roomType?.basePrice || 2500);
+
+    const lateFee = calculatedDailyRate * extraDays;
+
+    return {
+      isOverstay: true,
+      overdueHours: Number(overdueHours.toFixed(1)),
+      extraDays,
+      dailyRate: calculatedDailyRate,
+      lateFee,
+      scheduledCheckOutTime: outTime24,
+      scheduledCheckOutDate: outDateStr,
+      description: `Late Check-Out Overstay (+${overdueHours.toFixed(1)} hrs past ${formatTime12Hour(outTime24)}) &bull; ${extraDays} Extra Day Room Tariff`,
+    };
+  }
+
+  return {
+    isOverstay: false,
+    overdueHours: 0,
+    extraDays: 0,
+    dailyRate: 0,
+    lateFee: 0,
+    description: "",
+  };
+}
+

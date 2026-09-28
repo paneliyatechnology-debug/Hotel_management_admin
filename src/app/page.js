@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { Box, CircularProgress } from "@mui/material";
 import { AppThemeProvider, useAppTheme } from "@/shared/context/ThemeContext";
+import { SocketProvider } from "@/shared/context/SocketContext";
 import UnifiedLogin from "@/auth/components/UnifiedLogin";
 import SuperAdminLayout from "@/super-admin/layout/SuperAdminLayout";
 import HotelAdminLayout from "@/hotel-admin/layout/HotelAdminLayout";
@@ -21,11 +22,6 @@ function AdminAppContent() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(0);
-  const [lockout, setLockout] = useState({ locked: false, type: "EXPIRED", reason: "" });
-
   const getNavListForUser = (currentUser) => {
     if (!currentUser) return [];
     if (currentUser.role === "HOTEL_ADMIN") {
@@ -38,52 +34,6 @@ function AdminAppContent() {
       return ["rooms", "folios", "check-in", "id-compliance", "pos-billing", "settings"];
     }
     return [];
-  };
-
-  const checkUserLockout = (userData) => {
-    if (!userData || userData.role === "SUPER_ADMIN") {
-      setLockout({ locked: false, type: "EXPIRED", reason: "" });
-      return false;
-    }
-
-    if (userData.status === "INACTIVE" || userData.status === "BLOCKED" || userData.status === "DELETED") {
-      setLockout({
-        locked: true,
-        type: "DISABLED",
-        reason: "Your staff account has been deactivated by Hotel Administration. All portal access is suspended.",
-      });
-      return true;
-    }
-
-    const hotel = userData.hotel;
-    if (!hotel) return false;
-
-    if (hotel.status === "DISABLED" || hotel.status === "SUSPENDED") {
-      setLockout({
-        locked: true,
-        type: hotel.status,
-        reason: hotel.statusReason || `Hotel account has been ${hotel.status.toLowerCase()} by Super Admin policy.`,
-      });
-      return true;
-    }
-
-    const sub = hotel.subscription;
-    if (sub) {
-      const now = new Date();
-      const trialEndDate = sub.trialEndDate ? new Date(sub.trialEndDate) : null;
-      const isTrialExpired = sub.isExpired || (sub.status === "TRIAL" && trialEndDate && trialEndDate < now) || sub.status === "EXPIRED";
-      if (isTrialExpired && sub.status !== "ACTIVE") {
-        setLockout({
-          locked: true,
-          type: "EXPIRED",
-          reason: "Your 30-day free trial or hotel subscription plan has ended.",
-        });
-        return true;
-      }
-    }
-
-    setLockout({ locked: false, type: "EXPIRED", reason: "" });
-    return false;
   };
 
   const getActiveTabFromPath = (currentUser, currentPath) => {
@@ -114,36 +64,117 @@ function AdminAppContent() {
     return 0;
   };
 
-  useEffect(() => {
-    // Check local storage for session on initial mount
-    const storedUser = localStorage.getItem("user");
-    const token = localStorage.getItem("token");
+  const computeLockout = (userData) => {
+    if (!userData || userData.role === "SUPER_ADMIN") {
+      return { locked: false, type: "EXPIRED", reason: "" };
+    }
 
-    if (storedUser && token) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        setUser(parsed);
-        checkUserLockout(parsed);
-        const tabIdx = getActiveTabFromPath(parsed, pathname);
-        setActiveTab(tabIdx);
+    if (userData.status === "INACTIVE" || userData.status === "BLOCKED" || userData.status === "DELETED") {
+      return {
+        locked: true,
+        type: "DISABLED",
+        reason: "Your staff account has been deactivated by Hotel Administration. All portal access is suspended.",
+      };
+    }
 
-        // Fetch fresh profile with live computed subscription metrics from backend
-        apiRequest(API_ENDPOINTS.AUTH.ME)
-          .then((res) => {
-            if (res?.data) {
-              setUser(res.data);
-              localStorage.setItem("user", JSON.stringify(res.data));
-              checkUserLockout(res.data);
-            }
-          })
-          .catch(() => {});
-      } catch {
-        setUser(null);
+    const hotel = userData.hotel;
+    if (!hotel) return { locked: false, type: "EXPIRED", reason: "" };
+
+    if (hotel.status === "DISABLED" || hotel.status === "SUSPENDED") {
+      return {
+        locked: true,
+        type: hotel.status,
+        reason: hotel.statusReason || `Hotel account has been ${hotel.status.toLowerCase()} by Super Admin policy.`,
+      };
+    }
+
+    const sub = hotel.subscription;
+    if (sub) {
+      const now = new Date();
+      const trialEndDate = sub.trialEndDate ? new Date(sub.trialEndDate) : null;
+      const isTrialExpired = sub.isExpired || (sub.status === "TRIAL" && trialEndDate && trialEndDate < now) || sub.status === "EXPIRED";
+      if (isTrialExpired && sub.status !== "ACTIVE") {
+        return {
+          locked: true,
+          type: "EXPIRED",
+          reason: "Your 30-day free trial or hotel subscription plan has ended.",
+        };
       }
     }
-    setLoading(false);
 
-    // Global listener for immediate lockout events triggered by apiRequest
+    return { locked: false, type: "EXPIRED", reason: "" };
+  };
+
+  // Instant synchronous state initialization from LocalStorage (Zero delay, Zero loader flash)
+  const [user, setUser] = useState(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const stored = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
+      return stored && token ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === "undefined") return 0;
+    try {
+      const stored = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
+      const u = stored && token ? JSON.parse(stored) : null;
+      return getActiveTabFromPath(u, pathname);
+    } catch {
+      return 0;
+    }
+  });
+
+  const [lockout, setLockout] = useState(() => {
+    if (typeof window === "undefined") return { locked: false, type: "EXPIRED", reason: "" };
+    try {
+      const stored = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
+      const u = stored && token ? JSON.parse(stored) : null;
+      return computeLockout(u);
+    } catch {
+      return { locked: false, type: "EXPIRED", reason: "" };
+    }
+  });
+
+  const checkUserLockout = (userData) => {
+    const res = computeLockout(userData);
+    setLockout(res);
+    return res.locked;
+  };
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+    } catch {}
+    setUser(null);
+    setLockout({ locked: false, type: "EXPIRED", reason: "" });
+    setActiveTab(0);
+    router.push("/");
+  };
+
+  useEffect(() => {
+    // Background silent profile verification without blocking UI
+    const token = localStorage.getItem("token");
+    if (token) {
+      apiRequest(API_ENDPOINTS.AUTH.ME)
+        .then((res) => {
+          if (res?.data) {
+            setUser(res.data);
+            localStorage.setItem("user", JSON.stringify(res.data));
+            checkUserLockout(res.data);
+          }
+        })
+        .catch(() => {});
+    }
+
+    // 1. Global listener for immediate lockout events triggered by apiRequest
     const handleLockoutEvent = (e) => {
       const detail = e.detail || {};
       setLockout({
@@ -153,8 +184,55 @@ function AdminAppContent() {
       });
     };
 
+    // 2. Global listener for Unauthorized 401 events (Auto-Logout on Token Expiry)
+    const handleUnauthorizedEvent = () => {
+      console.warn("🔒 [Auth] Session expired or unauthorized. Auto-logging out...");
+      handleLogout();
+    };
+
+    // 3. Multi-Tab & Devtools Storage Listener (Auto-Logout if token is deleted)
+    const handleStorageEvent = (e) => {
+      if ((e.key === "token" || e.key === "user") && !e.newValue) {
+        console.warn("🔒 [Auth] Token removed from storage in another window. Auto-logging out...");
+        handleLogout();
+      }
+      if (e.key === null) {
+        handleLogout();
+      }
+    };
+
+    // 4. Tab Focus & Periodic Check for Deleted Token
+    const handleFocusCheck = () => {
+      const currentToken = localStorage.getItem("token");
+      if (!currentToken && localStorage.getItem("user")) {
+        console.warn("🔒 [Auth] Token missing upon tab focus. Auto-logging out...");
+        handleLogout();
+      }
+    };
+
+    const tokenHeartbeat = setInterval(() => {
+      const currentToken = localStorage.getItem("token");
+      const currentStoredUser = localStorage.getItem("user");
+      if (!currentToken && currentStoredUser) {
+        console.warn("🔒 [Auth] Token was deleted. Auto-logging out immediately...");
+        handleLogout();
+      }
+    }, 2000);
+
     window.addEventListener("hotel-status-lockout", handleLockoutEvent);
-    return () => window.removeEventListener("hotel-status-lockout", handleLockoutEvent);
+    window.addEventListener("auth-unauthorized", handleUnauthorizedEvent);
+    window.addEventListener("storage", handleStorageEvent);
+    window.addEventListener("focus", handleFocusCheck);
+    document.addEventListener("visibilitychange", handleFocusCheck);
+
+    return () => {
+      clearInterval(tokenHeartbeat);
+      window.removeEventListener("hotel-status-lockout", handleLockoutEvent);
+      window.removeEventListener("auth-unauthorized", handleUnauthorizedEvent);
+      window.removeEventListener("storage", handleStorageEvent);
+      window.removeEventListener("focus", handleFocusCheck);
+      document.removeEventListener("visibilitychange", handleFocusCheck);
+    };
   }, []);
 
   // Keep activeTab synchronized with the browser URL address at all times
@@ -171,27 +249,12 @@ function AdminAppContent() {
       const navList = getNavListForUser(user);
       if (navList[tabIndex] !== undefined) {
         const targetPath = tabIndex === 0 ? "/" : `/${navList[tabIndex]}`;
-        router.push(targetPath);
+        if (typeof window !== "undefined") {
+          window.history.pushState(null, "", targetPath);
+        }
       }
     }
   };
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setUser(null);
-    setLockout({ locked: false, type: "EXPIRED", reason: "" });
-    setActiveTab(0);
-    router.push("/");
-  };
-
-  if (loading) {
-    return (
-      <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: themeConfig.bgMain }}>
-        <CircularProgress sx={{ color: themeConfig.primary }} />
-      </Box>
-    );
-  }
 
   return (
     <>
@@ -252,6 +315,7 @@ function AdminAppContent() {
                 user={user}
                 activeNav={activeTab}
                 onTabChange={handleTabChange}
+                onLogout={handleLogout}
               />
             </ReceptionistLayout>
           )}
@@ -261,36 +325,22 @@ function AdminAppContent() {
   );
 }
 
-function AdminApp() {
+export default function Page() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
   return (
     <AppThemeProvider>
-      <AdminAppContent />
+      <SocketProvider>
+        <AdminAppContent />
+      </SocketProvider>
     </AppThemeProvider>
   );
 }
-
-export default dynamic(() => Promise.resolve(AdminApp), {
-  ssr: false,
-  loading: () => (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#FAF9F6",
-      }}
-    >
-      <div
-        style={{
-          width: 36,
-          height: 36,
-          border: "3.5px solid #E2E8F0",
-          borderTopColor: "#0B8EE0",
-          borderRadius: "50%",
-          animation: "spin 0.8s linear infinite",
-        }}
-      />
-    </div>
-  ),
-});

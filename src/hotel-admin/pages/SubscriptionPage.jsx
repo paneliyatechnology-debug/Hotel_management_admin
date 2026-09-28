@@ -36,12 +36,12 @@ import {
   Hotel,
   Apartment,
   CorporateFare,
-} from "@mui/icons-material";
+} from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
 
 export default function SubscriptionPage({ user, subscription: initialSub, onRefresh }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
   const [plans, setPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [billingCycle, setBillingCycle] = useState("MONTHLY");
@@ -150,8 +150,13 @@ export default function SubscriptionPage({ user, subscription: initialSub, onRef
         sx={{
           borderRadius: "24px",
           border: `1.5px solid ${themeConfig.border}`,
-          boxShadow: "0 16px 36px -8px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
-          background: "linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)",
+          boxShadow: isDarkMode
+            ? "0 16px 36px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05)"
+            : "0 16px 36px -8px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
+          background: isDarkMode
+            ? `linear-gradient(135deg, ${themeConfig.bgCard} 0%, rgba(255, 255, 255, 0.02) 100%)`
+            : "linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)",
+          bgcolor: themeConfig.bgCard,
           p: { xs: 2.5, sm: 3.5 },
           mb: 4,
         }}
@@ -280,9 +285,9 @@ export default function SubscriptionPage({ user, subscription: initialSub, onRef
                 fontSize: "0.78rem",
                 color: themeConfig.textMuted,
                 "&.Mui-selected": {
-                  bgcolor: "#FFFFFF",
-                  color: themeConfig.primaryDark,
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+                  color: isDarkMode ? "#5EEAD4" : themeConfig.primaryDark,
+                  boxShadow: isDarkMode ? "0 2px 8px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.08)",
                 },
               },
             }}
@@ -312,9 +317,13 @@ export default function SubscriptionPage({ user, subscription: initialSub, onRef
                       p: 3,
                       borderRadius: "22px",
                       border: isPopular ? `2px solid ${themeConfig.primary}` : `1px solid ${themeConfig.border}`,
-                      bgcolor: "#FFFFFF",
+                      bgcolor: themeConfig.bgCard,
                       position: "relative",
-                      boxShadow: isPopular ? `0 14px 32px -4px ${themeConfig.primaryGlow}` : "0 6px 20px rgba(0,0,0,0.04)",
+                      boxShadow: isPopular
+                        ? `0 14px 32px -4px ${themeConfig.primaryGlow}`
+                        : isDarkMode
+                          ? "0 8px 24px rgba(0,0,0,0.4)"
+                          : "0 6px 20px rgba(0,0,0,0.04)",
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "space-between",
@@ -373,7 +382,7 @@ export default function SubscriptionPage({ user, subscription: initialSub, onRef
                       )}
 
                       <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5, my: 1.5 }}>
-                        <Typography variant="h4" sx={{ fontWeight: 900, color: themeConfig.primaryDark }}>
+                        <Typography variant="h4" sx={{ fontWeight: 900, color: isDarkMode ? themeConfig.primary : themeConfig.primaryDark }}>
                           ₹{plan.price?.toLocaleString("en-IN")}
                         </Typography>
                         <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontWeight: 700 }}>
@@ -410,7 +419,7 @@ export default function SubscriptionPage({ user, subscription: initialSub, onRef
                             }
                           : {
                               borderColor: themeConfig.border,
-                              color: themeConfig.primaryDark,
+                              color: isDarkMode ? themeConfig.primary : themeConfig.primaryDark,
                             }),
                       }}
                     >
@@ -430,9 +439,9 @@ export default function SubscriptionPage({ user, subscription: initialSub, onRef
         sx={{
           borderRadius: "22px",
           border: `1px solid ${themeConfig.border}`,
-          bgcolor: "#FFFFFF",
+          bgcolor: themeConfig.bgCard,
           p: 3,
-          boxShadow: "0 8px 24px rgba(0,0,0,0.04)",
+          boxShadow: isDarkMode ? "0 8px 24px rgba(0,0,0,0.4)" : "0 8px 24px rgba(0,0,0,0.04)",
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.2, mb: 1 }}>

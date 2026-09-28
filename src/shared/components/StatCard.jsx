@@ -1,7 +1,7 @@
 "use client";
 
 import { Box, Card, CardContent, Typography } from "@mui/material";
-import { TrendingUp, TrendingDown } from "@mui/icons-material";
+import { TrendingUp, TrendingDown } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 
 export default function StatCard({
@@ -14,38 +14,43 @@ export default function StatCard({
   color,
   badgeText,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
   const cardColor = color || themeConfig.primary;
 
   return (
     <Card
       sx={{
-        borderRadius: "20px",
+        borderRadius: "22px",
         height: "100%",
-        minHeight: 175,
+        minHeight: 180,
         display: "flex",
         flexDirection: "column",
-        background: `linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)`,
-        border: `1px solid ${themeConfig.borderLight || "#E2E8F0"}`,
-        boxShadow: "0 10px 25px -5px rgba(12, 39, 59, 0.06), 0 8px 10px -6px rgba(12, 39, 59, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.95)",
+        background: isDarkMode
+          ? `linear-gradient(135deg, ${themeConfig.bgCard || "#162032"} 0%, #1A2638 100%)`
+          : `linear-gradient(145deg, #FFFFFF 0%, #F8FAFC 100%)`,
+        border: `1px solid ${isDarkMode ? "rgba(255, 255, 255, 0.08)" : themeConfig.border}`,
+        boxShadow: isDarkMode
+          ? "0 10px 30px -5px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07)"
+          : "0 10px 25px -5px rgba(12, 39, 59, 0.06), 0 4px 12px -2px rgba(12, 39, 59, 0.03), inset 0 1px 1px #FFFFFF",
         position: "relative",
         overflow: "hidden",
         boxSizing: "border-box",
         width: "100%",
-        transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+        backdropFilter: "blur(12px)",
+        transition: "all 0.28s cubic-bezier(0.16, 1, 0.3, 1)",
         "&::before": {
           content: '""',
           position: "absolute",
           top: 0,
           left: 0,
           right: 0,
-          height: "3.5px",
+          height: "4px",
           background: `linear-gradient(90deg, ${cardColor}, ${themeConfig.primaryLight || cardColor})`,
           opacity: 0.95,
         },
         "&:hover": {
           transform: "translateY(-4px)",
-          boxShadow: `0 18px 30px -8px rgba(12, 39, 59, 0.12), 0 0 0 1px ${cardColor}40`,
+          boxShadow: `0 18px 32px -8px rgba(12, 39, 59, 0.14), 0 0 0 1px ${cardColor}40`,
         },
       }}
     >
@@ -100,13 +105,17 @@ export default function StatCard({
                 height: 38,
                 minWidth: 38,
                 borderRadius: "12px",
-                background: `linear-gradient(135deg, #FFFFFF 0%, ${themeConfig.champagne} 100%)`,
+                background: isDarkMode
+                  ? `linear-gradient(135deg, rgba(255,255,255,0.06) 0%, ${themeConfig.champagne} 100%)`
+                  : `linear-gradient(135deg, #FFFFFF 0%, ${themeConfig.champagne} 100%)`,
                 color: cardColor,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 border: `1px solid ${themeConfig.border}`,
-                boxShadow: `0 4px 12px -2px ${cardColor}25, inset 0 1px 1px #FFFFFF`,
+                boxShadow: isDarkMode
+                  ? `0 4px 12px -2px ${cardColor}35`
+                  : `0 4px 12px -2px ${cardColor}25, inset 0 1px 1px #FFFFFF`,
                 flexShrink: 0,
                 "& svg": {
                   fontSize: 20,
@@ -206,8 +215,10 @@ export default function StatCard({
                   px: 0.9,
                   py: 0.25,
                   borderRadius: "6px",
-                  background: `linear-gradient(135deg, ${themeConfig.champagne} 0%, #FFFFFF 100%)`,
-                  color: themeConfig.primaryDark,
+                  background: isDarkMode
+                    ? `linear-gradient(135deg, ${themeConfig.champagne} 0%, rgba(255,255,255,0.08) 100%)`
+                    : `linear-gradient(135deg, ${themeConfig.champagne} 0%, #FFFFFF 100%)`,
+                  color: isDarkMode ? "#FFFFFF" : themeConfig.primaryDark,
                   border: `1px solid ${themeConfig.border}`,
                   boxShadow: "0 2px 4px rgba(0,0,0,0.04)",
                   whiteSpace: "nowrap",

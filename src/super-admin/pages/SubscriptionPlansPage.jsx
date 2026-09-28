@@ -34,14 +34,14 @@ import {
   WorkspacePremium,
   Layers,
   CheckCircle,
-} from "@mui/icons-material";
+} from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
 import EmptyState from "@/shared/components/EmptyState";
 import ConfirmDialog from "@/shared/components/ConfirmDialog";
 
 export default function SubscriptionPlansPage() {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
 
   const [plans, setPlans] = useState([]);
   const [meta, setMeta] = useState({
@@ -751,7 +751,7 @@ export default function SubscriptionPlansPage() {
               borderRadius: "24px",
               p: 1.5,
               border: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
               boxShadow: "0 20px 50px rgba(0,0,0,0.18)",
             },
           },
@@ -816,10 +816,10 @@ export default function SubscriptionPlansPage() {
                 <TextField
                   fullWidth
                   size="small"
-                  type="number"
                   required
-                  value={planModal.data?.price ?? 0}
-                  onChange={(e) => setPlanModal({ ...planModal, data: { ...planModal.data, price: Number(e.target.value) } })}
+                  placeholder="e.g. 2999"
+                  value={planModal.data?.price ?? ""}
+                  onChange={(e) => setPlanModal({ ...planModal, data: { ...planModal.data, price: e.target.value } })}
                   sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
                 />
               </Grid>
@@ -832,9 +832,9 @@ export default function SubscriptionPlansPage() {
                 <TextField
                   fullWidth
                   size="small"
-                  type="number"
-                  value={planModal.data?.maxRooms ?? 50}
-                  onChange={(e) => setPlanModal({ ...planModal, data: { ...planModal.data, maxRooms: Number(e.target.value) } })}
+                  placeholder="e.g. 50"
+                  value={planModal.data?.maxRooms ?? ""}
+                  onChange={(e) => setPlanModal({ ...planModal, data: { ...planModal.data, maxRooms: e.target.value } })}
                   sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
                 />
               </Grid>
@@ -847,9 +847,9 @@ export default function SubscriptionPlansPage() {
                 <TextField
                   fullWidth
                   size="small"
-                  type="number"
-                  value={planModal.data?.discountPercent ?? 0}
-                  onChange={(e) => setPlanModal({ ...planModal, data: { ...planModal.data, discountPercent: Number(e.target.value) } })}
+                  placeholder="e.g. 20"
+                  value={planModal.data?.discountPercent ?? ""}
+                  onChange={(e) => setPlanModal({ ...planModal, data: { ...planModal.data, discountPercent: e.target.value } })}
                   sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
                 />
               </Grid>

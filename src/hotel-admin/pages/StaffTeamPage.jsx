@@ -48,7 +48,7 @@ import {
   Email,
   Lock,
   AdminPanelSettings,
-} from "@mui/icons-material";
+} from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import StatusChip from "@/shared/components/StatusChip";
 import EmptyState from "@/shared/components/EmptyState";
@@ -89,7 +89,7 @@ export default function StaffTeamPage({
   onToggleStaffStatus,
   getInitialStaffForm,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
 
   const totalReceptionists = staffList.filter((s) => (s.role || "").toUpperCase().includes("RECEPTIONIST")).length;
   const totalManagers = staffList.filter((s) => (s.role || "").toUpperCase().includes("MANAGER")).length;
@@ -189,19 +189,22 @@ export default function StaffTeamPage({
           <Button
             variant="contained"
             startIcon={<Add />}
-            onClick={() => setStaffModal({ open: true, mode: "ADD", data: getInitialStaffForm ? getInitialStaffForm() : { name: "", email: "", phone: "", role: "Receptionist", shift: "Morning (07:00 - 15:00)", idType: "AADHAAR", idNumber: "", salary: 28000, status: "ACTIVE", password: "" } })}
+            onClick={() => setStaffModal({ open: true, mode: "ADD", data: getInitialStaffForm ? getInitialStaffForm() : { name: "", email: "", phone: "", role: "RECEPTIONIST", shift: "Morning (07:00 - 15:00)", status: "ACTIVE" } })}
             className="btn-3d"
             sx={{
               borderRadius: "14px",
-              bgcolor: "#FFFFFF",
-              color: themeConfig.primaryDark || "#0C273B",
+              bgcolor: isDarkMode ? "rgba(255,255,255,0.12)" : "#FFFFFF",
+              color: isDarkMode ? "#FFFFFF" : (themeConfig.primaryDark || "#0C273B"),
               fontWeight: 800,
               fontSize: "0.82rem",
               px: 2.5,
               py: 1.1,
-              boxShadow: "0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 #FFFFFF",
+              border: isDarkMode ? `1px solid ${themeConfig.border}` : "none",
+              boxShadow: isDarkMode
+                ? "0 6px 16px rgba(0,0,0,0.3)"
+                : "0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 #FFFFFF",
               "&:hover": {
-                bgcolor: "#F8FAFC",
+                bgcolor: isDarkMode ? "rgba(255,255,255,0.2)" : "#F8FAFC",
                 transform: "translateY(-2px)",
               },
             }}
@@ -220,9 +223,11 @@ export default function StaffTeamPage({
           p: 2,
           mb: 3.5,
           borderRadius: "18px",
-          bgcolor: "#FFFFFF",
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
           border: `1.5px solid ${themeConfig.border}`,
-          boxShadow: "0 8px 24px -4px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
+          boxShadow: isDarkMode
+            ? "0 8px 24px -4px rgba(0, 0, 0, 0.4)"
+            : "0 8px 24px -4px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
           display: "flex",
           flexWrap: "wrap",
           alignItems: "center",
@@ -458,25 +463,24 @@ export default function StaffTeamPage({
                   <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 1 }}>
                       <Tooltip title="View Staff Dossier">
-                        <Button
+                        <IconButton
                           size="small"
-                          variant="outlined"
-                          startIcon={<Visibility fontSize="small" />}
                           onClick={() => setViewStaffModal({ open: true, staff })}
                           sx={{
-                            borderRadius: "10px",
-                            fontWeight: 700,
-                            fontSize: "0.75rem",
-                            borderColor: themeConfig.border,
+                            width: 32,
+                            height: 32,
                             color: themeConfig.primaryDark,
+                            bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : themeConfig.champagne,
+                            borderRadius: "10px",
+                            border: `1px solid ${themeConfig.border}`,
                             "&:hover": {
                               borderColor: themeConfig.primary,
-                              bgcolor: themeConfig.champagne,
+                              bgcolor: isDarkMode ? "rgba(255,255,255,0.12)" : "rgba(11, 142, 224, 0.12)",
                             },
                           }}
                         >
-                          Dossier
-                        </Button>
+                          <Visibility fontSize="small" />
+                        </IconButton>
                       </Tooltip>
 
                       <Tooltip title="Edit Staff Member">
@@ -484,6 +488,8 @@ export default function StaffTeamPage({
                           size="small"
                           onClick={() => setStaffModal({ open: true, mode: "EDIT", data: { ...staff } })}
                           sx={{
+                            width: 32,
+                            height: 32,
                             color: themeConfig.info,
                             bgcolor: themeConfig.infoBg,
                             borderRadius: "10px",
@@ -500,6 +506,8 @@ export default function StaffTeamPage({
                           size="small"
                           onClick={() => onDeleteStaff(staff)}
                           sx={{
+                            width: 32,
+                            height: 32,
                             color: themeConfig.danger,
                             bgcolor: themeConfig.dangerBg,
                             borderRadius: "10px",
@@ -531,7 +539,7 @@ export default function StaffTeamPage({
             }}
             sx={{
               borderTop: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
               borderRadius: "0 0 20px 20px",
             }}
           />
@@ -552,8 +560,8 @@ export default function StaffTeamPage({
               borderRadius: "24px",
               p: 1.5,
               border: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.18)",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+              boxShadow: isDarkMode ? "0 20px 50px rgba(0,0,0,0.6)" : "0 20px 50px rgba(0,0,0,0.18)",
             },
           },
         }}
@@ -659,71 +667,6 @@ export default function StaffTeamPage({
                   <MenuItem value="General (09:00 - 18:00)">General Shift (09:00 AM - 06:00 PM)</MenuItem>
                 </TextField>
               </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Govt ID Document Type
-                </Typography>
-                <TextField
-                  select
-                  fullWidth
-                  size="small"
-                  value={staffModal.data?.idType || "AADHAAR"}
-                  onChange={(e) => setStaffModal({ ...staffModal, data: { ...staffModal.data, idType: e.target.value } })}
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                >
-                  <MenuItem value="AADHAAR">Aadhaar Card</MenuItem>
-                  <MenuItem value="PASSPORT">Passport</MenuItem>
-                  <MenuItem value="DRIVING_LICENSE">Driving License</MenuItem>
-                  <MenuItem value="PAN">PAN Card</MenuItem>
-                </TextField>
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Govt ID Document Number
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={staffModal.data?.idNumber || ""}
-                  onChange={(e) => setStaffModal({ ...staffModal, data: { ...staffModal.data, idNumber: e.target.value } })}
-                  placeholder="e.g. XXXX-XXXX-4512"
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                  Monthly Salary (₹)
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="number"
-                  value={staffModal.data?.salary ?? 28000}
-                  onChange={(e) => setStaffModal({ ...staffModal, data: { ...staffModal.data, salary: Number(e.target.value) } })}
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                />
-              </Grid>
-
-              {staffModal.mode === "ADD" && (
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                    Initial Portal Password *
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="password"
-                    required
-                    value={staffModal.data?.password || ""}
-                    onChange={(e) => setStaffModal({ ...staffModal, data: { ...staffModal.data, password: e.target.value } })}
-                    placeholder="Create secure password"
-                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                  />
-                </Grid>
-              )}
             </Grid>
           </DialogContent>
 
@@ -764,8 +707,8 @@ export default function StaffTeamPage({
               borderRadius: "24px",
               p: 0,
               border: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.18)",
+              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+              boxShadow: isDarkMode ? "0 20px 50px rgba(0,0,0,0.6)" : "0 20px 50px rgba(0,0,0,0.18)",
               overflow: "hidden",
             },
           },
@@ -790,8 +733,8 @@ export default function StaffTeamPage({
                     width: 52,
                     height: 52,
                     borderRadius: "14px",
-                    bgcolor: "#FFFFFF",
-                    color: themeConfig.primaryDark,
+                    bgcolor: isDarkMode ? "rgba(255,255,255,0.15)" : "#FFFFFF",
+                    color: isDarkMode ? "#FFFFFF" : themeConfig.primaryDark,
                     fontWeight: 900,
                     fontSize: "1.3rem",
                     boxShadow: "0 4px 14px rgba(0,0,0,0.2)",

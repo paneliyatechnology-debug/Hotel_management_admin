@@ -54,7 +54,7 @@ import {
   ShieldOutlined,
   Bolt,
   Download,
-} from "@mui/icons-material";
+} from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import StatusChip from "@/shared/components/StatusChip";
 import EmptyState from "@/shared/components/EmptyState";
@@ -90,7 +90,7 @@ export default function HotelsDirectoryPage({
   onExtendTrial,
   onRefresh,
 }) {
-  const { themeConfig } = useAppTheme();
+  const { themeConfig, isDarkMode } = useAppTheme();
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -168,15 +168,15 @@ export default function HotelsDirectoryPage({
               className="btn-3d"
               sx={{
                 borderRadius: "14px",
-                bgcolor: "#FFFFFF",
+                bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                 color: themeConfig.primaryDark || "#0C273B",
                 fontWeight: 800,
                 fontSize: "0.82rem",
                 px: 2.5,
                 py: 1.1,
-                boxShadow: "0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 #FFFFFF",
+                boxShadow: isDarkMode ? "none" : "0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 #FFFFFF",
                 "&:hover": {
-                  bgcolor: "#F8FAFC",
+                  bgcolor: isDarkMode ? "rgba(20, 184, 166, 0.15)" : "#F8FAFC",
                   transform: "translateY(-2px)",
                 },
               }}
@@ -219,9 +219,9 @@ export default function HotelsDirectoryPage({
           p: 2,
           mb: 3,
           borderRadius: "18px",
-          bgcolor: "#FFFFFF",
+          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
           border: `1.5px solid ${themeConfig.border}`,
-          boxShadow: "0 8px 24px -4px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
+          boxShadow: isDarkMode ? "none" : "0 8px 24px -4px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
           display: "flex",
           flexWrap: "wrap",
           alignItems: "center",
@@ -433,29 +433,28 @@ export default function HotelsDirectoryPage({
                   <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>
                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1.5 }}>
                       <Tooltip title="Inspect Hotel Dossier">
-                        <Button
+                        <IconButton
                           size="small"
-                          variant="outlined"
-                          startIcon={<Visibility fontSize="small" />}
                           onClick={() => {
                             setSelectedHotel(hotel);
                             setDrawerTab(0);
                             setDrawerOpen(true);
                           }}
                           sx={{
-                            borderRadius: "10px",
-                            fontWeight: 700,
-                            fontSize: "0.75rem",
-                            borderColor: themeConfig.border,
+                            width: 32,
+                            height: 32,
                             color: themeConfig.primaryDark,
+                            bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : themeConfig.champagne,
+                            borderRadius: "10px",
+                            border: `1px solid ${themeConfig.border}`,
                             "&:hover": {
                               borderColor: themeConfig.primary,
-                              bgcolor: themeConfig.champagne,
+                              bgcolor: isDarkMode ? "rgba(255,255,255,0.12)" : "rgba(11, 142, 224, 0.12)",
                             },
                           }}
                         >
-                          Dossier
-                        </Button>
+                          <Visibility fontSize="small" />
+                        </IconButton>
                       </Tooltip>
 
                       {hotel.status === "ACTIVE" ? (
@@ -525,7 +524,8 @@ export default function HotelsDirectoryPage({
             }}
             sx={{
               borderTop: `1px solid ${themeConfig.border}`,
-              bgcolor: "#FFFFFF",
+              bgcolor: themeConfig.bgCard,
+              color: themeConfig.textMain,
               borderRadius: "0 0 20px 20px",
             }}
           />
@@ -624,7 +624,7 @@ export default function HotelsDirectoryPage({
             </Box>
 
             {/* Dossier Tabs */}
-            <Box sx={{ borderBottom: `1px solid ${themeConfig.border}`, bgcolor: "#FFFFFF", px: 2 }}>
+            <Box sx={{ borderBottom: `1px solid ${themeConfig.border}`, bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"), px: 2 }}>
               <Tabs
                 value={drawerTab}
                 onChange={(e, v) => setDrawerTab(v)}
