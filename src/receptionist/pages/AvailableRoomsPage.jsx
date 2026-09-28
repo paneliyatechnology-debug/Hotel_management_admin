@@ -2161,8 +2161,6 @@ export default function AvailableRoomsPage({
           )}
         </Box>
       )}
-        </Box>
-      )}
 
       {/* ========================================================================= */}
       {/* DIALOG: QUICK ROOM STATUS CONTROL                                         */}
