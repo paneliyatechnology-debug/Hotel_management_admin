@@ -479,38 +479,41 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
 
       {/* ROUTE 1: ROOM CATEGORIES & ROOMS TABLE (Or Express Check-In Wizard) */}
       {activeNav === 1 && (
-        isCheckInOpen ? (
-          <CheckInWizardPage
-            activeStep={activeStep}
-            setActiveStep={setActiveStep}
-            checkInData={checkInData}
-            setCheckInData={setCheckInData}
-            hotelSettings={hotelSettings}
-            rooms={rooms}
-            roomTypes={roomTypes}
-            guests={guests}
-            bookings={bookings}
-            onFinalCheckIn={handleFinalCheckIn}
-            onBackToRooms={() => setIsCheckInOpen(false)}
-          />
-        ) : (
-          <AvailableRoomsPage
-            user={user}
-            initialSelectedCategory={initialSelectedCategory}
-            onClearInitialCategory={() => setInitialSelectedCategory(null)}
-            rooms={rooms}
-            roomTypes={roomTypes}
-            guests={guests}
-            bookings={bookings}
-            dashboardData={dashboardData}
-            hotelSettings={hotelSettings}
-            onRefresh={fetchFrontDeskData}
-            onNavigateTab={(tab) => onTabChange && onTabChange(tab)}
-            onRoomStatusChange={handleRoomStatusToggle}
-            onSelectRoomForCheckIn={handleSelectRoomForCheckIn}
-            onDeleteRoom={handleDeleteRoom}
-          />
-        )
+        <>
+          {isCheckInOpen && (
+            <CheckInWizardPage
+              activeStep={activeStep}
+              setActiveStep={setActiveStep}
+              checkInData={checkInData}
+              setCheckInData={setCheckInData}
+              hotelSettings={hotelSettings}
+              rooms={rooms}
+              roomTypes={roomTypes}
+              guests={guests}
+              bookings={bookings}
+              onFinalCheckIn={handleFinalCheckIn}
+              onBackToRooms={() => setIsCheckInOpen(false)}
+            />
+          )}
+          <Box sx={{ display: isCheckInOpen ? 'none' : 'block' }}>
+            <AvailableRoomsPage
+              user={user}
+              initialSelectedCategory={initialSelectedCategory}
+              onClearInitialCategory={() => setInitialSelectedCategory(null)}
+              rooms={rooms}
+              roomTypes={roomTypes}
+              guests={guests}
+              bookings={bookings}
+              dashboardData={dashboardData}
+              hotelSettings={hotelSettings}
+              onRefresh={fetchFrontDeskData}
+              onNavigateTab={(tab) => onTabChange && onTabChange(tab)}
+              onRoomStatusChange={handleRoomStatusToggle}
+              onSelectRoomForCheckIn={handleSelectRoomForCheckIn}
+              onDeleteRoom={handleDeleteRoom}
+            />
+          </Box>
+        </>
       )}
 
       {/* ROUTE 2: IN-HOUSE FOLIOS */}
