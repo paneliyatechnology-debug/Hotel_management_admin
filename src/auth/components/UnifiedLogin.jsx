@@ -165,16 +165,23 @@ export default function UnifiedLogin({ onLoginSuccess }) {
         },
       });
 
-      setForgotMsg(res.message || "OTP verified successfully! Now create your new password.");
+      setForgotMsg(res?.message || "OTP verified successfully! Now create your new password.");
       setForgotStep(3);
     } catch (err) {
-      // If live server hasn't finished deploying new /verify-otp route (Cannot POST 404),
-      // allow user to proceed to Step 3 where reset-password endpoint will verify OTP & reset password!
-      if (err.message && (err.message.includes("Cannot POST") || err.message.includes("404") || err.status === 404)) {
-        setForgotMsg("OTP code recorded. Please create your new password.");
+      const is404 =
+        err?.status === 404 ||
+        (err?.message &&
+          (err.message.includes("404") ||
+            err.message.includes("Cannot POST") ||
+            err.message.includes("Not Found") ||
+            err.message.includes("not found")));
+
+      if (is404) {
+        // Fallback: Proceed directly to Step 3 where reset-password validates OTP & sets password
+        setForgotMsg("OTP code received. Please set your new permanent password below:");
         setForgotStep(3);
       } else {
-        setForgotError(err.message || "Invalid or expired OTP code. Please check or request a new OTP.");
+        setForgotError(err?.message || "Invalid or expired OTP code. Please check or request a new OTP.");
       }
     } finally {
       setForgotLoading(false);
