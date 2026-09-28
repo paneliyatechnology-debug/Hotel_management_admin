@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Box,
   Card,
@@ -38,11 +38,13 @@ export default function UnifiedLogin({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Forgot Password Dialog State (2-Step Flow: Email -> OTP + New Password)
+  // Forgot Password Dialog State (3-Step Flow: Email -> 6-Box OTP -> New Password)
   const [forgotOpen, setForgotOpen] = useState(false);
-  const [forgotStep, setForgotStep] = useState(1); // 1: Email, 2: OTP & New Password
+  const [forgotStep, setForgotStep] = useState(1); // 1: Email, 2: OTP, 3: New Password
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotOtp, setForgotOtp] = useState("");
+  const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
+  const otpInputRefs = useRef([]);
   const [forgotNewPassword, setForgotNewPassword] = useState("");
   const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
   const [showForgotPass, setShowForgotPass] = useState(false);
@@ -50,6 +52,74 @@ export default function UnifiedLogin({ onLoginSuccess }) {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMsg, setForgotMsg] = useState("");
   const [forgotError, setForgotError] = useState("");
+
+  // OTP 6-box Handlers with Copy-Paste & Navigation
+  const handleOtpDigitChange = (index, value) => {
+    const cleanVal = value.replace(/\D/g, "");
+    const newDigits = [...otpDigits];
+
+    if (cleanVal.length > 1) {
+      const pasted = cleanVal.slice(0, 6).split("");
+      pasted.forEach((d, i) => {
+        if (i < 6) newDigits[i] = d;
+      });
+      setOtpDigits(newDigits);
+      setForgotOtp(newDigits.join(""));
+      const nextIdx = Math.min(pasted.length, 5);
+      otpInputRefs.current[nextIdx]?.focus();
+      return;
+    }
+
+    newDigits[index] = cleanVal;
+    setOtpDigits(newDigits);
+    setForgotOtp(newDigits.join(""));
+
+    if (cleanVal && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === "Backspace") {
+      if (!otpDigits[index] && index > 0) {
+        const newDigits = [...otpDigits];
+        newDigits[index - 1] = "";
+        setOtpDigits(newDigits);
+        setForgotOtp(newDigits.join(""));
+        otpInputRefs.current[index - 1]?.focus();
+      }
+    } else if (e.key === "ArrowLeft" && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    } else if (e.key === "ArrowRight" && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const clipboardText = (e.clipboardData || window.clipboardData)?.getData("text") || "";
+    const pastedData = clipboardText.replace(/\D/g, "").slice(0, 6);
+    if (!pastedData) return;
+
+    const newDigits = ["", "", "", "", "", ""];
+    pastedData.split("").forEach((digit, i) => {
+      if (i < 6) newDigits[i] = digit;
+    });
+    setOtpDigits(newDigits);
+    setForgotOtp(newDigits.join(""));
+
+    const nextFocus = Math.min(pastedData.length, 5);
+    otpInputRefs.current[nextFocus]?.focus();
+  };
+
+  // Auto-focus first OTP box when entering Step 2
+  useEffect(() => {
+    if (forgotStep === 2) {
+      setTimeout(() => {
+        otpInputRefs.current[0]?.focus();
+      }, 150);
+    }
+  }, [forgotStep]);
 
   // Force Change Password Dialog State (for mustChangePassword)
   const [changePassOpen, setChangePassOpen] = useState(false);
@@ -464,10 +534,13 @@ export default function UnifiedLogin({ onLoginSuccess }) {
           )}
 
           {forgotStep === 2 && (
-            /* STEP 2: Enter & Verify 6-digit OTP */
+            /* STEP 2: Enter & Verify 6-digit OTP in 6 individual boxes */
             <Box sx={{ mt: 0.5 }}>
-              <Typography variant="body2" sx={{ color: themeConfig.textMuted, mb: 2 }}>
+              <Typography variant="body2" sx={{ color: themeConfig.textMuted, mb: 1 }}>
                 <strong>{forgotEmail}</strong> પર મોકલેલો 6-આંકડાનો OTP કોડ દાખલ કરો:
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#64748B", fontWeight: 600, display: "block", mb: 2 }}>
+                (તમે આખો OTP સીધો અહીં Paste (Ctrl+V) પણ કરી શકો છો)
               </Typography>
 
               {forgotMsg && (
@@ -482,32 +555,49 @@ export default function UnifiedLogin({ onLoginSuccess }) {
                 </Alert>
               )}
 
-              <TextField
-                autoFocus
-                label="6-Digit Verification OTP"
-                fullWidth
-                required
-                value={forgotOtp}
-                onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="e.g. 583920"
+              {/* 6 Individual Square OTP Input Boxes */}
+              <Box
+                onPaste={handleOtpPaste}
                 sx={{
-                  mb: 1.5,
-                  "& input": {
-                    letterSpacing: "4px",
-                    fontWeight: 800,
-                    fontSize: "1.1rem",
-                  },
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  gap: { xs: 1, sm: 1.4 },
+                  my: 2.5,
                 }}
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <KeyIcon sx={{ color: themeConfig.primary, fontSize: 20 }} />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              />
+              >
+                {[0, 1, 2, 3, 4, 5].map((idx) => (
+                  <input
+                    key={idx}
+                    ref={(el) => (otpInputRefs.current[idx] = el)}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={1}
+                    value={otpDigits[idx]}
+                    onChange={(e) => handleOtpDigitChange(idx, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                    onPaste={handleOtpPaste}
+                    onFocus={(e) => e.target.select()}
+                    placeholder="•"
+                    style={{
+                      width: 44,
+                      height: 52,
+                      textAlign: "center",
+                      fontSize: "1.4rem",
+                      fontWeight: "900",
+                      borderRadius: "12px",
+                      border: `2px solid ${otpDigits[idx] ? (themeConfig.primary || "#C5A059") : "#CBD5E1"}`,
+                      backgroundColor: otpDigits[idx] ? "rgba(197, 160, 89, 0.08)" : "#F8FAFC",
+                      color: "#0F172A",
+                      outline: "none",
+                      transition: "all 0.15s ease",
+                      boxShadow: otpDigits[idx] ? "0 2px 8px rgba(197, 160, 89, 0.25)" : "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                ))}
+              </Box>
 
               <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1 }}>
                 <Button
@@ -516,6 +606,8 @@ export default function UnifiedLogin({ onLoginSuccess }) {
                     setForgotStep(1);
                     setForgotError("");
                     setForgotMsg("");
+                    setOtpDigits(["", "", "", "", "", ""]);
+                    setForgotOtp("");
                   }}
                   sx={{ color: themeConfig.textMuted, fontSize: "0.75rem", textTransform: "none", fontWeight: 700 }}
                 >
