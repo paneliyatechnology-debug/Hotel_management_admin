@@ -50,6 +50,7 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState({ show: false, message: "", severity: "success" });
   const [isCheckInOpen, setIsCheckInOpen] = useState(false);
+  const [initialSelectedCategory, setInitialSelectedCategory] = useState(null);
 
   // Helper for current local date in YYYY-MM-DD
   const getTodayLocalDate = () => {
@@ -468,7 +469,10 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
           dashboardData={dashboardData}
           hotelSettings={hotelSettings}
           onRefresh={fetchFrontDeskData}
-          onNavigateTab={(tab) => onTabChange && onTabChange(tab)}
+          onNavigateTab={(tab, categoryId) => {
+              if (categoryId) setInitialSelectedCategory(categoryId);
+              onTabChange && onTabChange(tab);
+            }}
           onSelectRoomForCheckIn={handleSelectRoomForCheckIn}
         />
       )}
@@ -492,6 +496,8 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
         ) : (
           <AvailableRoomsPage
             user={user}
+            initialSelectedCategory={initialSelectedCategory}
+            onClearInitialCategory={() => setInitialSelectedCategory(null)}
             rooms={rooms}
             roomTypes={roomTypes}
             guests={guests}

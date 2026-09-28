@@ -503,7 +503,7 @@ export default function ReceptionistOverviewPage({
                   <Card
                     key={cat._id}
                     className="card-3d"
-                    onClick={() => onNavigateTab && onNavigateTab(1)}
+                    onClick={() => onNavigateTab && onNavigateTab(1, cat._id)}
                     sx={{
                       p: 3,
                       borderRadius: "20px",
