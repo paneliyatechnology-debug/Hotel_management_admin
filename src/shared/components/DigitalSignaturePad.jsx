@@ -55,7 +55,7 @@ export default function DigitalSignaturePad({
 
   // Mobile QR Code Sync state
   const [sessionId, setSessionId] = useState("");
-  const [networkHost, setNetworkHost] = useState("http://192.168.1.101:3001");
+  const [networkHost, setNetworkHost] = useState("http://[IP_ADDRESS]");
   const [isPollingMobile, setIsPollingMobile] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -72,11 +72,11 @@ export default function DigitalSignaturePad({
 
     if (typeof window !== "undefined") {
       const host = window.location.hostname;
-      if (host !== "localhost" && host !== "127.0.0.1") {
+      if (host !== "localhost" && host !== "127.0.0.1" && host !== "") {
         setNetworkHost(window.location.origin);
       } else {
         // Default to local LAN IP directly
-        setNetworkHost("http://192.168.1.101:3001");
+        setNetworkHost("http://[IP_ADDRESS]");
       }
     }
   }, [generateNewSession]);
@@ -178,8 +178,8 @@ export default function DigitalSignaturePad({
         boxShadow: hasSignature
           ? "0 4px 14px rgba(16, 185, 129, 0.12)"
           : isDarkMode
-          ? "0 4px 14px rgba(0,0,0,0.3)"
-          : "0 2px 8px rgba(0,0,0,0.03)",
+            ? "0 4px 14px rgba(0,0,0,0.3)"
+            : "0 2px 8px rgba(0,0,0,0.03)",
         transition: "all 0.2s ease",
       }}
     >
