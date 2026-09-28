@@ -6,10 +6,13 @@
  * - "LIVE"  -> https://hotelmanagementbackend-dev.up.railway.app
  */
 
-export const ENVIRONMENT = "LOCAL"; // 👉 અહીં "LOCAL" અથવા "LIVE" બદલો
+export const ENVIRONMENT = "LIVE"; // 👉 અહીં "LOCAL" અથવા "LIVE" બદલો
 
 export const LOCAL_API_URL = "http://localhost:5000";
 export const LIVE_API_URL = "https://hotelmanagementbackend-dev.up.railway.app";
+
+export const LOCAL_ADMIN_URL = "http://localhost:3001";
+export const LIVE_ADMIN_URL = "https://hotel-management-admin-livid.vercel.app";
 
 // Active API Base URL (Case-insensitive check for LOCAL / LIVE)
 export const getApiBaseUrl = () => {

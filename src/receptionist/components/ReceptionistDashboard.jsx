@@ -68,69 +68,62 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
 
   // 4-Step Check-in Stepper State
   const [activeStep, setActiveStep] = useState(0);
-  const [checkInData, setCheckInData] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = sessionStorage.getItem("saved_checkInData");
-        if (saved) {
-          return JSON.parse(saved);
-        }
-      } catch (e) { }
-    }
-    return {
-      fullName: "",
-      mobile: "",
-      email: "",
-      gender: "Male",
-      dob: "",
-      nationality: "Indian",
-      address: "",
-      emergencyContact: "",
-      govtIdType: "AADHAAR",
-      govtIdNumber: "",
-      frontImage: "",
-      backImage: "",
-      idStatus: "Verified",
-      roomType: "",
-      roomNumber: "",
-      roomId: "",
-      roomIds: [],
-      selectedRooms: [],
-      selectedRoomNumbers: [],
-      checkInDate: getTodayLocalDate(),
-      checkInTime: getCurrentLocalTime(),
-      checkOutDate: (() => {
-        const d = new Date();
-        d.setDate(d.getDate() + 1);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-      })(),
-      checkOutTime: "12:00",
-      numberOfNights: 1,
-      adults: 1,
-      children: 0,
-      accompanyingGuests: [],
-      rate: 0,
-      discountAmount: 0,
-      collectSecurityDeposit: false,
-      securityDepositAmount: 1000,
-      total: 0,
-      paid: 0,
-      due: 0,
-      paymentMethod: "UPI",
-    };
+  const [checkInData, setCheckInData] = useState({
+    fullName: "",
+    mobile: "",
+    email: "",
+    gender: "Male",
+    dob: "",
+    nationality: "Indian",
+    address: "",
+    emergencyContact: "",
+    govtIdType: "AADHAAR",
+    govtIdNumber: "",
+    frontImage: "",
+    backImage: "",
+    idStatus: "Verified",
+    roomType: "",
+    roomNumber: "",
+    roomId: "",
+    roomIds: [],
+    selectedRooms: [],
+    selectedRoomNumbers: [],
+    checkInDate: getTodayLocalDate(),
+    checkInTime: getCurrentLocalTime(),
+    checkOutDate: (() => {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    })(),
+    checkOutTime: "12:00",
+    numberOfNights: 1,
+    adults: 1,
+    children: 0,
+    accompanyingGuests: [],
+    rate: 0,
+    discountAmount: 0,
+    collectSecurityDeposit: false,
+    securityDepositAmount: 1000,
+    total: 0,
+    paid: 0,
+    due: 0,
+    paymentMethod: "UPI",
+    guestSignature: null,
+    memberSignature: null,
+    memberSignatures: {},
   });
 
-  // Sync checkInData to sessionStorage on changes
+  // Clear any old stale session data on mount
   useEffect(() => {
-    if (typeof window !== "undefined" && checkInData) {
+    if (typeof window !== "undefined") {
       try {
-        sessionStorage.setItem("saved_checkInData", JSON.stringify(checkInData));
-      } catch (e) { }
+        sessionStorage.removeItem("saved_checkInData");
+      } catch (e) {}
     }
-  }, [checkInData]);
+  }, []);
 
   // Dialogs
   const [posChargeDialog, setPosChargeDialog] = useState({ open: false, booking: null, serviceType: "ROOM_SERVICE", amount: 650, description: "Breakfast & Sparkling Water" });

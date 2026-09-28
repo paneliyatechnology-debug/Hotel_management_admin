@@ -82,6 +82,7 @@ export function SocketProvider({ children }) {
       "DASHBOARD_SYNC",
       "HANDOVER_SETTLED",
       "HOTEL_STATUS_UPDATED",
+      "SIGNATURE_SUBMITTED",
     ];
 
     realTimeEvents.forEach((evtName) => {

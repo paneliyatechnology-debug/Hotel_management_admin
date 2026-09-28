@@ -10,6 +10,7 @@ import {
   TextField,
   Tabs,
   Tab,
+  CircularProgress,
 } from "@mui/material";
 import {
   Refresh,
@@ -17,12 +18,22 @@ import {
   Create,
   TextFields,
   Draw,
+  QrCode2,
+  Smartphone,
+  ContentCopy,
+  OpenInNew,
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
+import { useSocket } from "@/shared/context/SocketContext";
+import { QRCodeSVG } from "qrcode.react";
+import SignaturePad from "@/shared/components/SignaturePad";
 
 /**
- * Clean & Lightweight Modern Digital E-Signature Pad
- * Supports Touch & Mouse Drawing + Typed Cursive Signature
+ * Clean & Modern Digital E-Signature Pad
+ * Supports:
+ * 1. Real-time Mobile Phone Signature via Instant QR Code Scan (Default)
+ * 2. Screen / Mouse Drawing (Desktop / Tablet)
+ * 3. Typed Cursive Signature
  */
 export default function DigitalSignaturePad({
   title = "Guest Signature",
@@ -35,109 +46,89 @@ export default function DigitalSignaturePad({
 }) {
   const { themeConfig: appThemeConfig, isDarkMode } = useAppTheme();
   const themeConfig = propThemeConfig || appThemeConfig;
+  const { socket } = useSocket();
 
-  const canvasRef = useRef(null);
-  const [isDrawing, setIsDrawing] = useState(false);
+  const sigPadRef = useRef(null);
   const [hasSignature, setHasSignature] = useState(Boolean(value));
-  const [mode, setMode] = useState("DRAW"); // 'DRAW' | 'TYPE'
+  const [mode, setMode] = useState("QR_MOBILE"); // 'QR_MOBILE' | 'DRAW' | 'TYPE'
   const [typedName, setTypedName] = useState(signerName || "");
 
-  // Initialize canvas resolution & crisp drawing
-  const initCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const rect = canvas.getBoundingClientRect();
+  // Mobile QR Code Sync state
+  const [sessionId, setSessionId] = useState("");
+  const [networkHost, setNetworkHost] = useState("http://192.168.1.101:3001");
+  const [isPollingMobile, setIsPollingMobile] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
+  // Generate unique session ID for mobile signing
+  const generateNewSession = useCallback(() => {
+    const newId = `sig_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    setSessionId(newId);
+    return newId;
+  }, []);
 
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.strokeStyle = isDarkMode ? "#38BDF8" : themeConfig.textMain || "#0F172A";
-
-    if (value && typeof value === "string" && value.startsWith("data:image")) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.clearRect(0, 0, rect.width, rect.height);
-        ctx.drawImage(img, 0, 0, rect.width, rect.height);
-        setHasSignature(true);
-      };
-      img.src = value;
-    }
-  }, [value, isDarkMode, themeConfig]);
-
+  // Module-level cached network host to avoid redundant API calls
   useEffect(() => {
-    initCanvas();
-  }, [initCanvas]);
+    generateNewSession();
 
-  // Get mouse/touch coordinate relative to canvas
-  const getCoordinates = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-
-    if (e.touches && e.touches.length > 0) {
-      return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top,
-      };
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname;
+      if (host !== "localhost" && host !== "127.0.0.1") {
+        setNetworkHost(window.location.origin);
+      } else {
+        // Default to local LAN IP directly
+        setNetworkHost("http://192.168.1.101:3001");
+      }
     }
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+  }, [generateNewSession]);
+
+  // Join signature room on Socket.IO
+  useEffect(() => {
+    if (!socket || !sessionId) return;
+    socket.emit("join_signature_session", { sessionId });
+  }, [socket, sessionId]);
+
+  // Real-time pure Socket.IO listener (0 Polling, 100% Event Driven)
+  useEffect(() => {
+    if (!sessionId || hasSignature) return;
+
+    const handleSignatureSubmitted = (e) => {
+      const data = e.detail || e;
+      if (data && data.sessionId === sessionId && data.signature) {
+        setIsPollingMobile(false);
+        setHasSignature(true);
+        if (onChange) {
+          onChange(data.signature);
+        }
+      }
     };
-  };
 
-  const startDrawing = (e) => {
-    e.preventDefault();
-    setIsDrawing(true);
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const { x, y } = getCoordinates(e);
+    // Listen on window custom event dispatched by SocketContext
+    window.addEventListener("socket:SIGNATURE_SUBMITTED", handleSignatureSubmitted);
 
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  };
-
-  const draw = (e) => {
-    if (!isDrawing) return;
-    e.preventDefault();
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const { x, y } = getCoordinates(e);
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    setHasSignature(true);
-  };
-
-  const stopDrawing = () => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const dataUrl = canvas.toDataURL("image/png");
-    if (onChange) {
-      onChange(dataUrl);
+    // Also listen directly on socket instance if connected
+    if (socket) {
+      socket.on("SIGNATURE_SUBMITTED", handleSignatureSubmitted);
     }
-  };
+
+    return () => {
+      window.removeEventListener("socket:SIGNATURE_SUBMITTED", handleSignatureSubmitted);
+      if (socket) {
+        socket.off("SIGNATURE_SUBMITTED", handleSignatureSubmitted);
+      }
+    };
+  }, [socket, sessionId, hasSignature, onChange]);
+
+  const mobileSignUrl = `${networkHost}/mobile-sign?session=${sessionId}&name=${encodeURIComponent(
+    signerName || "Guest"
+  )}`;
 
   const handleClear = () => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      const rect = canvas.getBoundingClientRect();
-      ctx.clearRect(0, 0, rect.width, rect.height);
+    if (sigPadRef.current) {
+      sigPadRef.current.clear();
     }
     setHasSignature(false);
     setTypedName("");
+    generateNewSession();
     if (onChange) {
       onChange(null);
     }
@@ -165,6 +156,14 @@ export default function DigitalSignaturePad({
     } else {
       setHasSignature(false);
       if (onChange) onChange(null);
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(mobileSignUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
     }
   };
 
@@ -245,7 +244,7 @@ export default function DigitalSignaturePad({
               <Create style={{ fontSize: 13, color: "#D97706" }} />
             )
           }
-          label={hasSignature ? "Signed" : "Pending"}
+          label={hasSignature ? "Signed (સહી થયેલ છે)" : "Pending (બાકી છે)"}
           size="small"
           sx={{
             fontWeight: 800,
@@ -259,7 +258,7 @@ export default function DigitalSignaturePad({
         />
       </Box>
 
-      {/* Mode Switch: Draw vs Type */}
+      {/* Mode Switch: Mobile QR (Default) vs Draw vs Type */}
       <Box
         sx={{
           display: "flex",
@@ -274,20 +273,36 @@ export default function DigitalSignaturePad({
           value={mode}
           onChange={(_, val) => setMode(val)}
           sx={{
-            minHeight: 30,
+            minHeight: 32,
             "& .MuiTab-root": {
-              minHeight: 30,
-              py: 0.2,
-              px: { xs: 1.2, sm: 1.8 },
-              fontSize: { xs: "0.72rem", sm: "0.75rem" },
+              minHeight: 32,
+              py: 0.3,
+              px: { xs: 1, sm: 1.5 },
+              fontSize: { xs: "0.7rem", sm: "0.75rem" },
               fontWeight: 800,
               textTransform: "none",
               borderRadius: "8px",
             },
           }}
         >
-          <Tab value="DRAW" icon={<Create sx={{ fontSize: 14 }} />} iconPosition="start" label="Draw (સહી કરો)" />
-          <Tab value="TYPE" icon={<TextFields sx={{ fontSize: 14 }} />} iconPosition="start" label="Type (ટાઇપ કરો)" />
+          <Tab
+            value="QR_MOBILE"
+            icon={<Smartphone sx={{ fontSize: 14 }} />}
+            iconPosition="start"
+            label="📱 Phone QR (મોબાઇલથી)"
+          />
+          <Tab
+            value="DRAW"
+            icon={<Create sx={{ fontSize: 14 }} />}
+            iconPosition="start"
+            label="Screen Draw (હાથેથી)"
+          />
+          <Tab
+            value="TYPE"
+            icon={<TextFields sx={{ fontSize: 14 }} />}
+            iconPosition="start"
+            label="Type (ટાઇપ)"
+          />
         </Tabs>
 
         {hasSignature && (
@@ -307,110 +322,231 @@ export default function DigitalSignaturePad({
               "&:hover": { bgcolor: "rgba(239, 68, 68, 0.15)" },
             }}
           >
-            Clear
+            Clear (ફરીથી)
           </Button>
         )}
       </Box>
 
-      {/* Drawing Canvas Area */}
-      {mode === "DRAW" ? (
+      {/* MODE 1: QR CODE MOBILE SIGNATURE (DEFAULT) */}
+      {mode === "QR_MOBILE" && (
         <Box
           sx={{
-            position: "relative",
-            width: "100%",
-            height: { xs: 150, sm: 190 },
-            bgcolor: isDarkMode ? "#0B1120" : "#F8FAFC",
+            p: { xs: 1.5, sm: 2 },
             borderRadius: "14px",
-            border: `2px dashed ${hasSignature ? "#10B981" : isDarkMode ? "rgba(255,255,255,0.15)" : "#CBD5E1"}`,
-            cursor: "crosshair",
-            overflow: "hidden",
-            touchAction: "none",
-            transition: "border-color 0.2s ease",
-            "&:hover": {
-              borderColor: themeConfig.primary || "#C5A059",
-            },
+            bgcolor: isDarkMode ? "#0B1120" : "#F8FAFC",
+            border: `1.5px dashed ${hasSignature ? "#10B981" : "#CBD5E1"}`,
+            textAlign: "center",
           }}
         >
-          <canvas
-            ref={canvasRef}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "block",
-            }}
-          />
-
-          {/* Guide Line & Placeholder */}
-          {!hasSignature && (
-            <Box
-              sx={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                pointerEvents: "none",
-                opacity: 0.55,
-                px: 1.5,
-              }}
-            >
-              <Draw sx={{ fontSize: 26, color: "#64748B", mb: 0.8 }} />
-              <Typography
-                variant="body2"
+          {hasSignature ? (
+            <Box sx={{ py: 2 }}>
+              <CheckCircle sx={{ fontSize: 48, color: "#10B981", mb: 1 }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 900, color: "#065F46" }}>
+                ✅ Signature Received from Mobile!
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#059669", fontWeight: 700, display: "block", mt: 0.5 }}>
+                મોબાઇલ ફોનમાંથી સહી સફળતાપૂર્વક મેળવી લેવામાં આવી છે.
+              </Typography>
+              {value && (
+                <Box
+                  sx={{
+                    mt: 2,
+                    p: 1,
+                    bgcolor: "#FFF",
+                    borderRadius: "10px",
+                    border: "1px solid #E2E8F0",
+                    display: "inline-block",
+                    maxWidth: 280,
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={value} alt="Signature Preview" style={{ width: "100%", maxHeight: 100, objectFit: "contain" }} />
+                </Box>
+              )}
+            </Box>
+          ) : (
+            <Box>
+              {/* Instructions Banner */}
+              <Box
                 sx={{
-                  color: "#475569",
-                  fontWeight: 800,
-                  fontSize: { xs: "0.75rem", sm: "0.85rem" },
-                  textAlign: "center",
+                  p: 1.2,
+                  mb: 2,
+                  borderRadius: "10px",
+                  bgcolor: isDarkMode ? "rgba(56, 189, 248, 0.1)" : "rgba(197, 160, 89, 0.12)",
+                  border: "1px solid rgba(197, 160, 89, 0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 1,
                 }}
               >
-                Touchscreen અથવા Mouse થી અહીં સહી કરો
-              </Typography>
-              <Typography variant="caption" sx={{ color: "#94A3B8", fontWeight: 700, mt: 0.2, fontSize: "0.68rem" }}>
-                (Sign inside this box)
-              </Typography>
+                <Smartphone sx={{ fontSize: 20, color: themeConfig.primary || "#C5A059" }} />
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: { xs: "0.78rem", sm: "0.85rem" },
+                    color: themeConfig.textMain || "#0F172A",
+                  }}
+                >
+                  તમારા ફોનમાંથી QR કોડ સ્કેન કરો અને આંગળીથી સહી કરો ✍️
+                </Typography>
+              </Box>
+
+              {/* QR Code and Live Status Area */}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: { xs: "column", sm: "row" },
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 2.5,
+                  my: 1.5,
+                }}
+              >
+                {/* QR Box */}
+                <Box
+                  sx={{
+                    p: 1.5,
+                    bgcolor: "#FFFFFF",
+                    borderRadius: "14px",
+                    border: "2px solid #E2E8F0",
+                    boxShadow: "0 6px 16px rgba(0,0,0,0.06)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                  }}
+                >
+                  <QRCodeSVG
+                    value={mobileSignUrl}
+                    size={140}
+                    level="M"
+                    includeMargin={false}
+                    fgColor="#0F172A"
+                  />
+                  <Typography variant="caption" sx={{ mt: 1, fontWeight: 800, color: "#64748B", fontSize: "0.65rem" }}>
+                    Scan with Mobile Camera
+                  </Typography>
+                </Box>
+
+                {/* Steps and Live Sync Status */}
+                <Box sx={{ textAlign: "left", maxWidth: 300 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 900, color: themeConfig.textMain || "#0F172A", mb: 0.8 }}>
+                    3 સરળ સ્ટેપ્સ (Easy Steps):
+                  </Typography>
+                  <Typography variant="caption" sx={{ display: "block", color: "#475569", fontWeight: 700, mb: 0.5 }}>
+                    1️⃣ ફોનનો કેમેરો આ QR કોડ તરફ રાખો
+                  </Typography>
+                  <Typography variant="caption" sx={{ display: "block", color: "#475569", fontWeight: 700, mb: 0.5 }}>
+                    2️⃣ ફોનમાં સ્ક્રીન પર સહી કરીને Save કરો
+                  </Typography>
+                  <Typography variant="caption" sx={{ display: "block", color: "#475569", fontWeight: 700, mb: 1.5 }}>
+                    3️⃣ અહીં ઓટોમેટિક સહી આવી જશે!
+                  </Typography>
+
+                  {/* Live Status indicator */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      p: 1,
+                      borderRadius: "8px",
+                      bgcolor: isPollingMobile ? "rgba(59, 130, 246, 0.08)" : "rgba(100, 116, 139, 0.08)",
+                      border: "1px solid rgba(59, 130, 246, 0.2)",
+                    }}
+                  >
+                    {isPollingMobile ? (
+                      <CircularProgress size={14} sx={{ color: "#3B82F6" }} />
+                    ) : (
+                      <QrCode2 sx={{ fontSize: 16, color: "#64748B" }} />
+                    )}
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 800,
+                        color: isPollingMobile ? "#1D4ED8" : "#475569",
+                        fontSize: "0.7rem",
+                      }}
+                    >
+                      {isPollingMobile ? "Waiting for mobile signature..." : "Ready to scan"}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+
+              {/* Action Buttons: Copy Link & Refresh */}
+              <Box sx={{ display: "flex", justifyContent: "center", gap: 1, flexWrap: "wrap", mt: 1 }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<ContentCopy sx={{ fontSize: 13 }} />}
+                  onClick={handleCopyLink}
+                  sx={{
+                    fontSize: "0.72rem",
+                    fontWeight: 800,
+                    textTransform: "none",
+                    borderRadius: "8px",
+                  }}
+                >
+                  {copiedLink ? "Link Copied! ✅" : "Copy Mobile Link"}
+                </Button>
+
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<Refresh sx={{ fontSize: 13 }} />}
+                  onClick={generateNewSession}
+                  sx={{
+                    fontSize: "0.72rem",
+                    fontWeight: 800,
+                    textTransform: "none",
+                    color: "#64748B",
+                  }}
+                >
+                  New QR Code
+                </Button>
+
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<OpenInNew sx={{ fontSize: 13 }} />}
+                  onClick={() => window.open(mobileSignUrl, "_blank")}
+                  sx={{
+                    fontSize: "0.72rem",
+                    fontWeight: 800,
+                    textTransform: "none",
+                    color: "#64748B",
+                  }}
+                >
+                  Open in Browser
+                </Button>
+              </Box>
             </Box>
           )}
+        </Box>
+      )}
 
-          {/* Bottom baseline watermark */}
-          <Box
-            sx={{
-              position: "absolute",
-              bottom: 28,
-              left: 16,
-              right: 16,
-              borderBottom: "1.5px dashed #CBD5E1",
-              pointerEvents: "none",
+      {/* MODE 2: DIRECT DRAW CANVAS AREA */}
+      {mode === "DRAW" && (
+        <Box sx={{ mt: 1 }}>
+          <SignaturePad
+            ref={sigPadRef}
+            height={180}
+            color={isDarkMode ? "#38BDF8" : themeConfig.textMain || "#0F172A"}
+            placeholder="Touchscreen અથવા Mouse થી અહીં સહી કરો"
+            onSignChange={(signed) => {
+              setHasSignature(signed);
+              if (signed && sigPadRef.current && onChange) {
+                onChange(sigPadRef.current.toDataURL());
+              }
             }}
           />
-          <Typography
-            variant="caption"
-            sx={{
-              position: "absolute",
-              bottom: 6,
-              right: 12,
-              fontSize: "0.65rem",
-              color: "#94A3B8",
-              fontWeight: 800,
-              pointerEvents: "none",
-            }}
-          >
-            Sign-off (X)
-          </Typography>
         </Box>
-      ) : (
-        /* Typed Name in Cursive Style */
+      )}
+
+      {/* MODE 3: TYPED NAME IN CURSIVE STYLE */}
+      {mode === "TYPE" && (
         <Box sx={{ mt: 1 }}>
           <TextField
             fullWidth
@@ -463,7 +599,7 @@ export default function DigitalSignaturePad({
           variant="caption"
           sx={{ color: themeConfig.textMuted || "#94A3B8", fontSize: "0.65rem", fontWeight: 700 }}
         >
-          🔒 Legally binding digital acknowledgement
+          🔒 Legally binding digital acknowledgement • Mobile & Touch Supported
         </Typography>
       </Box>
     </Paper>

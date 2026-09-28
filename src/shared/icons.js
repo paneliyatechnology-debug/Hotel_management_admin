@@ -160,4 +160,9 @@ export {
   Usb,
   Fullscreen,
   FullscreenExit,
+  Smartphone,
+  PhoneAndroid,
+  QrCodeScanner,
+  OpenInNew,
+  Save,
 } from "@mui/icons-material";
