@@ -72,6 +72,8 @@ export default function AvailableRoomsPage({
   onRefresh,
   onRoomStatusChange,
   onSelectRoomForCheckIn,
+  initialSelectedCategory = null,
+  onClearInitialCategory,
 }) {
   const { themeConfig, isDarkMode } = useAppTheme();
 
@@ -105,6 +107,16 @@ export default function AvailableRoomsPage({
 
   // Category Drilldown Sub View Mode: "BOX" (Room Cards) or "TABLE" (Category Rooms Table)
   const [categorySubViewMode, setCategorySubViewMode] = useState("TABLE");
+
+  // Auto-select category when navigated from Dashboard
+  useEffect(() => {
+    if (initialSelectedCategory) {
+      setSelectedCategory(initialSelectedCategory);
+      setCategorySubViewMode("TABLE");
+      setPage(0);
+      if (onClearInitialCategory) onClearInitialCategory();
+    }
+  }, [initialSelectedCategory]);
 
   // Filters for Table View & Category Drilldown
   const [roomSearch, setRoomSearch] = useState("");
@@ -593,6 +605,7 @@ export default function AvailableRoomsPage({
                       className="card-3d"
                       onClick={() => {
                         setSelectedCategory(cat._id);
+                        setCategorySubViewMode("TABLE");
                         setPage(0);
                       }}
                       sx={{
