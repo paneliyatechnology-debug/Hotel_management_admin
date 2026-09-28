@@ -119,8 +119,10 @@ export default function UnifiedLogin({ onLoginSuccess }) {
     setForgotError("");
     setForgotMsg("");
 
-    if (!forgotEmail || !forgotEmail.includes("@")) {
-      setForgotError("Please enter a valid registered email address.");
+    const emailTrimmed = (forgotEmail || "").trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailTrimmed || !emailRegex.test(emailTrimmed)) {
+      setForgotError("Please enter a valid registered email address format (e.g. name@example.com).");
       return;
     }
 
@@ -129,10 +131,10 @@ export default function UnifiedLogin({ onLoginSuccess }) {
     try {
       const res = await apiRequest(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, {
         method: "POST",
-        body: { email: forgotEmail },
+        body: { email: emailTrimmed },
       });
 
-      setForgotMsg(res.message || "6-digit OTP has been dispatched to your email.");
+      setForgotMsg(res.message || "6-digit OTP has been sent to your email.");
       setForgotStep(2);
     } catch (err) {
       setForgotError(err.message || "Could not process password reset request.");
@@ -141,15 +143,41 @@ export default function UnifiedLogin({ onLoginSuccess }) {
     }
   };
 
-  // Step 2: Verify OTP & Reset Password
-  const handleResetWithOtp = async () => {
+  // Step 2: Verify 6-digit OTP
+  const handleVerifyOtp = async () => {
     setForgotError("");
     setForgotMsg("");
 
-    if (!forgotOtp || forgotOtp.trim().length < 6) {
-      setForgotError("Please enter the 6-digit OTP received in email.");
+    const otpTrimmed = (forgotOtp || "").trim();
+    if (!otpTrimmed || otpTrimmed.length !== 6) {
+      setForgotError("Please enter the complete 6-digit OTP code received in your email.");
       return;
     }
+
+    setForgotLoading(true);
+
+    try {
+      const res = await apiRequest(API_ENDPOINTS.AUTH.VERIFY_OTP, {
+        method: "POST",
+        body: {
+          email: (forgotEmail || "").trim().toLowerCase(),
+          otp: otpTrimmed,
+        },
+      });
+
+      setForgotMsg(res.message || "OTP verified successfully! Now create your new password.");
+      setForgotStep(3);
+    } catch (err) {
+      setForgotError(err.message || "Invalid or expired OTP code. Please check or request a new OTP.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  // Step 3: Set New Password & Submit
+  const handleResetWithOtp = async () => {
+    setForgotError("");
+    setForgotMsg("");
 
     if (!forgotNewPassword || forgotNewPassword.length < 6) {
       setForgotError("New password must be at least 6 characters long.");
@@ -157,7 +185,7 @@ export default function UnifiedLogin({ onLoginSuccess }) {
     }
 
     if (forgotNewPassword !== forgotConfirmPassword) {
-      setForgotError("New passwords do not match.");
+      setForgotError("New passwords do not match. Please re-enter.");
       return;
     }
 
@@ -167,8 +195,8 @@ export default function UnifiedLogin({ onLoginSuccess }) {
       const res = await apiRequest(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
         method: "POST",
         body: {
-          email: forgotEmail,
-          otp: forgotOtp.trim(),
+          email: (forgotEmail || "").trim().toLowerCase(),
+          otp: (forgotOtp || "").trim(),
           newPassword: forgotNewPassword,
         },
       });
@@ -184,9 +212,9 @@ export default function UnifiedLogin({ onLoginSuccess }) {
         setForgotOtp("");
         setForgotNewPassword("");
         setForgotConfirmPassword("");
-      }, 1200);
+      }, 1500);
     } catch (err) {
-      setForgotError(err.message || "Invalid or expired OTP. Please try again.");
+      setForgotError(err.message || "Failed to update password. Please try again.");
     } finally {
       setForgotLoading(false);
     }
@@ -377,18 +405,20 @@ export default function UnifiedLogin({ onLoginSuccess }) {
         </CardContent>
       </Card>
 
-      {/* Forgot Password with 2-Step OTP Dialog */}
+      {/* Forgot Password with 3-Step Wizard: 1. Email -> 2. Verify OTP -> 3. New Password */}
       <Dialog open={forgotOpen} onClose={() => setForgotOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle component="div" sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 1 }}>
+        <DialogTitle component="div" sx={{ fontWeight: 800, display: "flex", alignItems: "center", gap: 1 }}>
           <KeyIcon sx={{ color: themeConfig.primary }} />
-          {forgotStep === 1 ? "Password Recovery" : "Verify OTP & Reset"}
+          {forgotStep === 1 && "Password Recovery (Step 1/3)"}
+          {forgotStep === 2 && "Enter OTP Code (Step 2/3)"}
+          {forgotStep === 3 && "Set New Password (Step 3/3)"}
         </DialogTitle>
         <DialogContent>
-          {forgotStep === 1 ? (
+          {forgotStep === 1 && (
             /* STEP 1: Enter Email to Receive OTP */
             <Box sx={{ mt: 0.5 }}>
               <Typography variant="body2" sx={{ color: themeConfig.textMuted, mb: 2 }}>
-                Enter your registered email address. We will email you a 6-digit verification OTP.
+                તમારો રજીસ્ટર્ડ ઈમેઈલ એડ્રેસ નાખો. અમે તમને 6-આંકડાનો વેરિફિકેશન OTP મોકલીશું.
               </Typography>
 
               {forgotError && (
@@ -405,6 +435,7 @@ export default function UnifiedLogin({ onLoginSuccess }) {
                 required
                 value={forgotEmail}
                 onChange={(e) => setForgotEmail(e.target.value)}
+                placeholder="e.g. admin@grandroyale.com"
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -416,11 +447,13 @@ export default function UnifiedLogin({ onLoginSuccess }) {
                 }}
               />
             </Box>
-          ) : (
-            /* STEP 2: Enter OTP & New Password */
+          )}
+
+          {forgotStep === 2 && (
+            /* STEP 2: Enter & Verify 6-digit OTP */
             <Box sx={{ mt: 0.5 }}>
               <Typography variant="body2" sx={{ color: themeConfig.textMuted, mb: 2 }}>
-                Enter the 6-digit verification OTP sent to <strong>{forgotEmail}</strong> and your new password.
+                <strong>{forgotEmail}</strong> પર મોકલેલો 6-આંકડાનો OTP કોડ દાખલ કરો:
               </Typography>
 
               {forgotMsg && (
@@ -437,13 +470,20 @@ export default function UnifiedLogin({ onLoginSuccess }) {
 
               <TextField
                 autoFocus
-                label="6-Digit OTP"
+                label="6-Digit Verification OTP"
                 fullWidth
                 required
                 value={forgotOtp}
                 onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 placeholder="e.g. 583920"
-                sx={{ mb: 2 }}
+                sx={{
+                  mb: 1.5,
+                  "& input": {
+                    letterSpacing: "4px",
+                    fontWeight: 800,
+                    fontSize: "1.1rem",
+                  },
+                }}
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -455,13 +495,58 @@ export default function UnifiedLogin({ onLoginSuccess }) {
                 }}
               />
 
+              <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1 }}>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setForgotStep(1);
+                    setForgotError("");
+                    setForgotMsg("");
+                  }}
+                  sx={{ color: themeConfig.textMuted, fontSize: "0.75rem", textTransform: "none", fontWeight: 700 }}
+                >
+                  ← Change Email
+                </Button>
+                <Button
+                  size="small"
+                  onClick={handleSendOtp}
+                  disabled={forgotLoading}
+                  sx={{ color: themeConfig.primary, fontSize: "0.75rem", textTransform: "none", fontWeight: 700 }}
+                >
+                  Resend OTP (ફરીથી મોકલો)
+                </Button>
+              </Box>
+            </Box>
+          )}
+
+          {forgotStep === 3 && (
+            /* STEP 3: Enter New Password & Submit */
+            <Box sx={{ mt: 0.5 }}>
+              <Typography variant="body2" sx={{ color: themeConfig.textMuted, mb: 2 }}>
+                OTP સફળતાપૂર્વક વેરિફાય થઈ ગયો છે! કૃપા કરીને નવો કાયમી પાસવર્ડ બનાવો:
+              </Typography>
+
+              {forgotMsg && (
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  {forgotMsg}
+                </Alert>
+              )}
+
+              {forgotError && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {forgotError}
+                </Alert>
+              )}
+
               <TextField
+                autoFocus
                 label="New Permanent Password"
                 type={showForgotPass ? "text" : "password"}
                 fullWidth
                 required
                 value={forgotNewPassword}
                 onChange={(e) => setForgotNewPassword(e.target.value)}
+                placeholder="Minimum 6 characters"
                 sx={{ mb: 2 }}
                 slotProps={{
                   input: {
@@ -488,6 +573,7 @@ export default function UnifiedLogin({ onLoginSuccess }) {
                 required
                 value={forgotConfirmPassword}
                 onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                placeholder="Re-enter password"
                 sx={{ mb: 1 }}
                 slotProps={{
                   input: {
@@ -506,51 +592,41 @@ export default function UnifiedLogin({ onLoginSuccess }) {
                   },
                 }}
               />
-
-              <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1 }}>
-                <Button
-                  size="small"
-                  onClick={() => {
-                    setForgotStep(1);
-                    setForgotError("");
-                  }}
-                  sx={{ color: themeConfig.textMuted, fontSize: "0.75rem" }}
-                >
-                  Change Email
-                </Button>
-                <Button
-                  size="small"
-                  onClick={handleSendOtp}
-                  disabled={forgotLoading}
-                  sx={{ color: themeConfig.primary, fontSize: "0.75rem" }}
-                >
-                  Resend OTP
-                </Button>
-              </Box>
             </Box>
           )}
         </DialogContent>
         <DialogActions sx={{ p: 2.5, pt: 1 }}>
-          <Button onClick={() => setForgotOpen(false)} color="inherit">
+          <Button onClick={() => setForgotOpen(false)} color="inherit" sx={{ fontWeight: 700 }}>
             Cancel
           </Button>
-          {forgotStep === 1 ? (
+          {forgotStep === 1 && (
             <Button
               onClick={handleSendOtp}
               variant="contained"
               disabled={forgotLoading}
-              sx={{ bgcolor: themeConfig.primary, "&:hover": { bgcolor: themeConfig.primaryDark } }}
+              sx={{ bgcolor: themeConfig.primary, "&:hover": { bgcolor: themeConfig.primaryDark }, fontWeight: 800, textTransform: "none", px: 2.5 }}
             >
               {forgotLoading ? <CircularProgress size={20} color="inherit" /> : "Send 6-Digit OTP"}
             </Button>
-          ) : (
+          )}
+          {forgotStep === 2 && (
+            <Button
+              onClick={handleVerifyOtp}
+              variant="contained"
+              disabled={forgotLoading}
+              sx={{ bgcolor: themeConfig.primary, "&:hover": { bgcolor: themeConfig.primaryDark }, fontWeight: 800, textTransform: "none", px: 2.5 }}
+            >
+              {forgotLoading ? <CircularProgress size={20} color="inherit" /> : "Verify OTP (વેરિફાય કરો)"}
+            </Button>
+          )}
+          {forgotStep === 3 && (
             <Button
               onClick={handleResetWithOtp}
               variant="contained"
               disabled={forgotLoading}
-              sx={{ bgcolor: themeConfig.primary, "&:hover": { bgcolor: themeConfig.primaryDark } }}
+              sx={{ bgcolor: "#10B981", "&:hover": { bgcolor: "#059669" }, fontWeight: 800, textTransform: "none", px: 2.5 }}
             >
-              {forgotLoading ? <CircularProgress size={20} color="inherit" /> : "Verify & Reset Password"}
+              {forgotLoading ? <CircularProgress size={20} color="inherit" /> : "Change Password (પાસવર્ડ બદલો)"}
             </Button>
           )}
         </DialogActions>
