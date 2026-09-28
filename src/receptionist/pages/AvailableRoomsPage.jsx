@@ -74,6 +74,7 @@ export default function AvailableRoomsPage({
   onSelectRoomForCheckIn,
   initialSelectedCategory = null,
   onClearInitialCategory,
+  onNavigateTab,
 }) {
   const { themeConfig, isDarkMode } = useAppTheme();
 
@@ -108,11 +109,15 @@ export default function AvailableRoomsPage({
   // Category Drilldown Sub View Mode: "BOX" (Room Cards) or "TABLE" (Category Rooms Table)
   const [categorySubViewMode, setCategorySubViewMode] = useState("TABLE");
 
+  // Track if user navigated here from another route (e.g. Dashboard)
+  const [cameFromExternalRoute, setCameFromExternalRoute] = useState(false);
+
   // Auto-select category when navigated from Dashboard
   useEffect(() => {
     if (initialSelectedCategory) {
       setSelectedCategory(initialSelectedCategory);
       setCategorySubViewMode("TABLE");
+      setCameFromExternalRoute(true);
       setPage(0);
       if (onClearInitialCategory) onClearInitialCategory();
     }
@@ -1169,7 +1174,15 @@ export default function AvailableRoomsPage({
                   <Button
                     variant="outlined"
                     startIcon={<ArrowBack />}
-                    onClick={() => setSelectedCategory(null)}
+                    onClick={() => {
+                      if (cameFromExternalRoute && onNavigateTab) {
+                        setCameFromExternalRoute(false);
+                        setSelectedCategory(null);
+                        onNavigateTab(0);
+                      } else {
+                        setSelectedCategory(null);
+                      }
+                    }}
                     sx={{
                       borderRadius: "10px",
                       fontWeight: 800,
