@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -26,6 +26,7 @@ import {
   Paper,
   TablePagination,
   Checkbox,
+  Collapse,
 } from "@mui/material";
 import {
   CleaningServices,
@@ -54,6 +55,10 @@ import {
   Bolt,
   Build,
   Edit,
+  KeyboardArrowDown,
+  KeyboardArrowRight,
+  ExpandMore,
+  ExpandLess,
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import EmptyState from "@/shared/components/EmptyState";
@@ -354,6 +359,82 @@ export default function AvailableRoomsPage({
       return true;
     });
   }, [activeCategory, selectedFloor, selectedStatus, roomSearch, bookings]);
+
+  // Expanded Category IDs state for Table View (Category Grouped Accordion)
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState([]);
+
+  // Auto-expand all categories by default so user sees everything organized
+  useEffect(() => {
+    if (categoryStats.length > 0 && expandedCategoryIds.length === 0) {
+      setExpandedCategoryIds(categoryStats.map((c) => c._id));
+    }
+  }, [categoryStats]);
+
+  const toggleCategoryExpand = (catId, e) => {
+    if (e && typeof e.stopPropagation === "function") e.stopPropagation();
+    setExpandedCategoryIds((prev) =>
+      prev.includes(catId) ? prev.filter((id) => id !== catId) : [...prev, catId]
+    );
+  };
+
+  const handleExpandAll = () => {
+    setExpandedCategoryIds(categoryStats.map((c) => c._id));
+  };
+
+  const handleCollapseAll = () => {
+    setExpandedCategoryIds([]);
+  };
+
+  // Filtered categories with their matching rooms for Category Grouped Table View
+  const filteredCategoryGroups = useMemo(() => {
+    return categoryStats
+      .map((cat) => {
+        if (selectedCategoryFilter !== "ALL" && cat._id !== selectedCategoryFilter) {
+          return null;
+        }
+
+        const matchingRooms = cat.rooms.filter((r) => {
+          if (selectedFloor !== "ALL" && String(r.floor || 1) !== String(selectedFloor)) {
+            return false;
+          }
+          if (selectedStatus !== "ALL" && r.status !== selectedStatus) {
+            return false;
+          }
+          if (roomSearch.trim()) {
+            const q = roomSearch.toLowerCase();
+            const matchNum = r.roomNumber?.toString().toLowerCase().includes(q);
+            const gName = getRoomGuestName(r);
+            const matchGuest = gName.toLowerCase().includes(q);
+            const matchCat = (cat.name || "").toLowerCase().includes(q);
+            return matchNum || matchGuest || matchCat;
+          }
+          return true;
+        });
+
+        // Filter out categories with 0 matching rooms if floor, status or specific room search is active
+        if (
+          matchingRooms.length === 0 &&
+          (selectedFloor !== "ALL" ||
+            selectedStatus !== "ALL" ||
+            (roomSearch.trim() && !cat.name.toLowerCase().includes(roomSearch.toLowerCase())))
+        ) {
+          return null;
+        }
+
+        const availCount = matchingRooms.filter((r) => r.status === "AVAILABLE").length;
+        const occCount = matchingRooms.filter((r) => r.status === "OCCUPIED" || r.status === "RESERVED").length;
+        const cleanCount = matchingRooms.filter((r) => r.status === "CLEANING").length;
+
+        return {
+          ...cat,
+          filteredRooms: matchingRooms,
+          filteredAvailable: availCount,
+          filteredOccupied: occCount,
+          filteredCleaning: cleanCount,
+        };
+      })
+      .filter(Boolean);
+  }, [categoryStats, selectedCategoryFilter, selectedFloor, selectedStatus, roomSearch, bookings]);
 
   // Open Room Status Change Dialog
   const handleOpenStatusDialog = (room) => {
@@ -1457,11 +1538,11 @@ export default function AvailableRoomsPage({
       )}
 
       {/* ========================================================================= */}
-      {/* 2. TABLE VIEW (Full All-Rooms Table with Comprehensive Filters)          */}
+      {/* 2. TABLE VIEW (Category-Wise Grouped Table with Click to Expand Rooms)    */}
       {/* ========================================================================= */}
       {viewMode === "TABLE" && (
         <Box>
-          {/* Table Filters Bar: Search, Category, Floor, Status */}
+          {/* Table Filters Bar: Search, Category, Floor, Status & Expand All / Collapse All */}
           <Card
             sx={{
               p: { xs: 1.5, sm: 2 },
@@ -1562,321 +1643,493 @@ export default function AvailableRoomsPage({
                 <MenuItem value="BLOCKED">⚪ Blocked</MenuItem>
               </TextField>
 
-              {/* Reset Filter Button */}
-              {(roomSearch || selectedCategoryFilter !== "ALL" || selectedFloor !== "ALL" || selectedStatus !== "ALL") && (
+              {/* Expand / Collapse All & Reset Controls */}
+              <Box sx={{ display: "flex", gap: 1, gridColumn: { xs: "1 / -1", md: "auto" }, justifyContent: { xs: "flex-start", md: "flex-end" }, alignItems: "center" }}>
                 <Button
                   size="small"
-                  onClick={() => {
-                    setRoomSearch("");
-                    setSelectedCategoryFilter("ALL");
-                    setSelectedFloor("ALL");
-                    setSelectedStatus("ALL");
-                    setPage(0);
-                  }}
+                  onClick={expandedCategoryIds.length === filteredCategoryGroups.length ? handleCollapseAll : handleExpandAll}
                   sx={{
                     fontWeight: 800,
                     color: themeConfig.primary,
-                    fontSize: "0.78rem",
-                    gridColumn: { xs: "1 / -1", md: "auto" },
+                    bgcolor: themeConfig.champagne,
+                    fontSize: "0.75rem",
                     borderRadius: "8px",
+                    px: 1.5,
+                    py: 0.6,
+                    whiteSpace: "nowrap",
+                    textTransform: "none",
                   }}
                 >
-                  Reset
+                  {expandedCategoryIds.length === filteredCategoryGroups.length ? "Collapse All (બધા બંધ)" : "Expand All (બધા ખોલો)"}
                 </Button>
-              )}
+
+                {(roomSearch || selectedCategoryFilter !== "ALL" || selectedFloor !== "ALL" || selectedStatus !== "ALL") && (
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setRoomSearch("");
+                      setSelectedCategoryFilter("ALL");
+                      setSelectedFloor("ALL");
+                      setSelectedStatus("ALL");
+                      setPage(0);
+                    }}
+                    sx={{
+                      fontWeight: 800,
+                      color: "#EF4444",
+                      fontSize: "0.75rem",
+                      borderRadius: "8px",
+                      px: 1,
+                      textTransform: "none",
+                    }}
+                  >
+                    Reset
+                  </Button>
+                )}
+              </Box>
             </Box>
           </Card>
 
-          {/* All Rooms Table */}
-          {filteredAllRooms.length === 0 ? (
+          {/* Category-Wise Accordion List */}
+          {filteredCategoryGroups.length === 0 ? (
             <Box sx={{ py: 6 }}>
               <EmptyState
-                title="No Rooms Found"
-                description="No rooms match the selected search or filter criteria."
+                title="No Room Categories Found"
+                description="No room categories or rooms match the selected search or filter criteria."
               />
             </Box>
           ) : (
-            <Paper
-              sx={{
-                borderRadius: "18px",
-                border: `1px solid ${themeConfig.border}`,
-                boxShadow: "0 8px 24px rgba(12, 39, 59, 0.05)",
-                overflow: "hidden",
-              }}
-            >
-              <TableContainer
-                sx={{
-                  maxHeight: { xs: 480, md: 580 },
-                  overflowX: "auto",
-                  "&::-webkit-scrollbar": { height: "6px", width: "6px" },
-                  "&::-webkit-scrollbar-track": { background: isDarkMode ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)" },
-                  "&::-webkit-scrollbar-thumb": { background: themeConfig.border, borderRadius: "6px" },
-                }}
-              >
-                <Table stickyHeader size="small" sx={{ minWidth: 720 }}>
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: themeConfig.champagne }}>
-                      <TableCell padding="checkbox" sx={{ pl: 2, bgcolor: themeConfig.champagne }}>
-                        <Checkbox
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {filteredCategoryGroups.map((cat) => {
+                const isExpanded = expandedCategoryIds.includes(cat._id);
+                const hasRooms = cat.filteredRooms.length > 0;
+
+                return (
+                  <Card
+                    key={cat._id}
+                    sx={{
+                      borderRadius: "18px",
+                      border: `1.5px solid ${isExpanded ? themeConfig.primary : themeConfig.border}`,
+                      bgcolor: themeConfig.bgCard || "#FFFFFF",
+                      boxShadow: isExpanded
+                        ? (isDarkMode ? "0 10px 28px rgba(0,0,0,0.5)" : `0 8px 24px ${themeConfig.primaryGlow || "rgba(197, 160, 89, 0.15)"}`)
+                        : (isDarkMode ? "0 4px 14px rgba(0,0,0,0.3)" : "0 2px 8px rgba(12, 39, 59, 0.03)"),
+                      overflow: "hidden",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    {/* Category Master Header Row (Clickable to Toggle Category) */}
+                    <Box
+                      onClick={() => toggleCategoryExpand(cat._id)}
+                      sx={{
+                        p: { xs: 1.5, sm: 2 },
+                        bgcolor: isExpanded
+                          ? (isDarkMode ? "rgba(197, 160, 89, 0.1)" : "rgba(197, 160, 89, 0.08)")
+                          : (isDarkMode ? "rgba(255, 255, 255, 0.02)" : "#FAFAFA"),
+                        cursor: "pointer",
+                        display: "flex",
+                        flexDirection: { xs: "column", md: "row" },
+                        alignItems: { xs: "flex-start", md: "center" },
+                        justifyContent: "space-between",
+                        gap: 1.5,
+                        borderBottom: isExpanded ? `1.5px solid ${themeConfig.border}` : "none",
+                        transition: "background 0.15s ease",
+                        "&:hover": {
+                          bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(197, 160, 89, 0.12)",
+                        },
+                      }}
+                    >
+                      {/* Left: Expand Arrow, Category Avatar, Name & Capacity */}
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1.2, minWidth: 0 }}>
+                        <IconButton
                           size="small"
-                          color="success"
-                          checked={
-                            filteredAllRooms.filter((r) => r.status === "AVAILABLE").length > 0 &&
-                            filteredAllRooms.filter((r) => r.status === "AVAILABLE").every((r) => selectedRoomIds.includes(r._id))
-                          }
-                          indeterminate={
-                            filteredAllRooms.some((r) => r.status === "AVAILABLE" && selectedRoomIds.includes(r._id)) &&
-                            !filteredAllRooms.filter((r) => r.status === "AVAILABLE").every((r) => selectedRoomIds.includes(r._id))
-                          }
-                          onChange={() => handleSelectAllAvailable(filteredAllRooms)}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, py: 1.4, fontSize: "0.82rem", whiteSpace: "nowrap" }}>
-                        Room Number
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.82rem", whiteSpace: "nowrap" }}>
-                        Category / Type
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.82rem", whiteSpace: "nowrap" }}>
-                        Floor
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.82rem", whiteSpace: "nowrap" }}>
-                        Tariff / Night
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.82rem", whiteSpace: "nowrap" }}>
-                        Live Status
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.82rem", whiteSpace: "nowrap" }}>
-                        Guest / Occupant
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, textAlign: "right", pr: 2.5, fontSize: "0.82rem", whiteSpace: "nowrap" }}>
-                        Action
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredAllRooms
-                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                      .map((room) => {
-                        const isAvail = room.status === "AVAILABLE";
-                        const isOcc = room.status === "OCCUPIED" || room.status === "RESERVED";
-                        const isCln = room.status === "CLEANING";
-                        const isSelected = selectedRoomIds.includes(room._id);
+                          onClick={(e) => toggleCategoryExpand(cat._id, e)}
+                          sx={{
+                            color: themeConfig.primary,
+                            bgcolor: isExpanded ? themeConfig.champagne : "transparent",
+                            borderRadius: "8px",
+                            p: 0.5,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {isExpanded ? <KeyboardArrowDown /> : <KeyboardArrowRight />}
+                        </IconButton>
 
-                        const rtObj = typeof room.roomType === "object" ? room.roomType : null;
-                        const catName = rtObj?.name || room.type || "Standard Room";
-                        const tariff = room.customPricePerNight || rtObj?.basePrice || room.basePrice || 3000;
-                        const roomGuestName = getRoomGuestName(room);
+                        <Avatar
+                          sx={{
+                            bgcolor: themeConfig.champagne,
+                            color: themeConfig.primaryDark,
+                            width: 38,
+                            height: 38,
+                            borderRadius: "10px",
+                            border: `1px solid ${themeConfig.border}`,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {getCategoryIcon(cat.name)}
+                        </Avatar>
 
-                        return (
-                          <TableRow
-                            key={room._id || room.roomNumber}
-                            hover
-                            onClick={() => {
-                              if (isAvail) {
-                                handleToggleRoomSelection(room._id);
-                              } else {
-                                handleOpenStatusDialog(room);
-                              }
-                            }}
+                        <Box sx={{ minWidth: 0 }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                            <Typography
+                              variant="subtitle1"
+                              sx={{
+                                fontWeight: 900,
+                                color: themeConfig.textMain,
+                                fontSize: { xs: "0.95rem", sm: "1.05rem" },
+                                letterSpacing: -0.2,
+                              }}
+                            >
+                              {cat.name}
+                            </Typography>
+                            <Chip
+                              label={`${cat.filteredRooms.length} Rooms`}
+                              size="small"
+                              sx={{
+                                bgcolor: themeConfig.champagne,
+                                color: themeConfig.primaryDark,
+                                fontWeight: 900,
+                                fontSize: "0.72rem",
+                                height: 22,
+                                borderRadius: "6px",
+                              }}
+                            />
+                          </Box>
+                          <Typography
+                            variant="caption"
                             sx={{
-                              cursor: "pointer",
-                              bgcolor: isSelected
-                                ? (isDarkMode ? "rgba(16, 185, 129, 0.12)" : "rgba(16, 185, 129, 0.06)")
-                                : "transparent",
-                              "&:hover": {
-                                bgcolor: isSelected
-                                  ? (isDarkMode ? "rgba(16, 185, 129, 0.18)" : "rgba(16, 185, 129, 0.1)")
-                                  : "rgba(11, 142, 224, 0.04)",
-                              },
-                              transition: "background 0.15s ease",
+                              color: themeConfig.textMuted,
+                              fontWeight: 700,
+                              fontSize: { xs: "0.7rem", sm: "0.75rem" },
+                              display: "block",
                             }}
                           >
-                            {/* Multi-select Checkbox */}
-                            <TableCell padding="checkbox" sx={{ pl: 2 }} onClick={(e) => {
-                              if (isAvail) handleToggleRoomSelection(room._id, e);
-                            }}>
-                              {isAvail ? (
-                                <Checkbox
-                                  size="small"
-                                  color="success"
-                                  checked={isSelected}
-                                  onChange={(e) => handleToggleRoomSelection(room._id, e)}
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                              ) : (
-                                <Box sx={{ width: 24, height: 24 }} />
-                              )}
-                            </TableCell>
-                            {/* Room Number */}
-                            <TableCell sx={{ py: 1.2, pl: 2.5, whiteSpace: "nowrap" }}>
-                              <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
-                                <Avatar
-                                  sx={{
-                                    bgcolor: isAvail
-                                      ? "rgba(16, 185, 129, 0.15)"
-                                      : isOcc
-                                        ? "rgba(11, 142, 224, 0.15)"
-                                        : isCln
-                                          ? "rgba(217, 119, 6, 0.15)"
-                                          : "rgba(239, 68, 68, 0.15)",
-                                    color: isAvail
-                                      ? "#10B981"
-                                      : isOcc
-                                        ? "#0B8EE0"
-                                        : isCln
-                                          ? "#D97706"
-                                          : "#EF4444",
-                                    width: 32,
-                                    height: 32,
-                                    fontSize: "0.8rem",
-                                    fontWeight: 900,
-                                    borderRadius: "8px",
-                                  }}
-                                >
-                                  {room.roomNumber}
-                                </Avatar>
-                                <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.9rem" }}>
-                                  Room #{room.roomNumber}
-                                </Typography>
-                              </Box>
-                            </TableCell>
+                            ₹{Number(cat.basePrice || 0).toLocaleString()} / night &bull; {cat.bedCount} Bed ({cat.bedType}) &bull; Max {cat.capacity.adults} Guests
+                          </Typography>
+                        </Box>
+                      </Box>
 
-                            {/* Category */}
-                            <TableCell sx={{ whiteSpace: "nowrap" }}>
-                              <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
-                                <Avatar sx={{ width: 22, height: 22, bgcolor: themeConfig.champagne, color: themeConfig.primaryDark, fontSize: "0.65rem", borderRadius: "6px" }}>
-                                  {getCategoryIcon(catName)}
-                                </Avatar>
-                                <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain, fontSize: "0.82rem" }}>
-                                  {catName}
-                                </Typography>
-                              </Box>
-                            </TableCell>
+                      {/* Right: Status Badges, Tariff & Click to Expand Button */}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1.2,
+                          flexWrap: "wrap",
+                          width: { xs: "100%", md: "auto" },
+                          justifyContent: { xs: "space-between", md: "flex-end" },
+                        }}
+                      >
+                        <Box sx={{ display: "flex", gap: 0.8, flexWrap: "wrap" }}>
+                          <Chip
+                            label={`🟢 ${cat.filteredAvailable} Available`}
+                            size="small"
+                            sx={{
+                              bgcolor: "rgba(16, 185, 129, 0.12)",
+                              color: "#059669",
+                              fontWeight: 800,
+                              fontSize: "0.7rem",
+                              height: 24,
+                            }}
+                          />
+                          <Chip
+                            label={`🔵 ${cat.filteredOccupied} Booked`}
+                            size="small"
+                            sx={{
+                              bgcolor: "rgba(11, 142, 224, 0.12)",
+                              color: "#0284C7",
+                              fontWeight: 800,
+                              fontSize: "0.7rem",
+                              height: 24,
+                            }}
+                          />
+                          {cat.filteredCleaning > 0 && (
+                            <Chip
+                              label={`🟡 ${cat.filteredCleaning} Cleaning`}
+                              size="small"
+                              sx={{
+                                bgcolor: "rgba(217, 119, 6, 0.12)",
+                                color: "#D97706",
+                                fontWeight: 800,
+                                fontSize: "0.7rem",
+                                height: 24,
+                              }}
+                            />
+                          )}
+                        </Box>
 
-                            {/* Floor */}
-                            <TableCell sx={{ whiteSpace: "nowrap" }}>
-                              <Chip
-                                label={`Floor ${room.floor || 1}`}
-                                size="small"
-                                sx={{
-                                  fontWeight: 800,
-                                  fontSize: "0.7rem",
-                                  bgcolor: themeConfig.champagne,
-                                  color: themeConfig.primaryDark,
-                                  borderRadius: "6px",
-                                  height: 22,
-                                }}
-                              />
-                            </TableCell>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          onClick={(e) => toggleCategoryExpand(cat._id, e)}
+                          endIcon={isExpanded ? <KeyboardArrowDown sx={{ fontSize: 16 }} /> : <KeyboardArrowRight sx={{ fontSize: 16 }} />}
+                          sx={{
+                            fontWeight: 900,
+                            fontSize: "0.75rem",
+                            textTransform: "none",
+                            borderRadius: "8px",
+                            px: 1.6,
+                            py: 0.4,
+                            bgcolor: isExpanded ? themeConfig.primary : themeConfig.champagne,
+                            color: isExpanded ? "#FFFFFF !important" : `${themeConfig.primaryDark} !important`,
+                            boxShadow: isExpanded ? `0 2px 8px ${themeConfig.primaryGlow}` : "none",
+                            "&:hover": {
+                              bgcolor: isExpanded ? themeConfig.primaryDark : themeConfig.primary,
+                              color: "#FFFFFF !important",
+                            },
+                          }}
+                        >
+                          {isExpanded ? `Hide Rooms (${cat.filteredRooms.length})` : `Click to View Rooms (${cat.filteredRooms.length})`}
+                        </Button>
+                      </Box>
+                    </Box>
 
-                            {/* Rate */}
-                            <TableCell sx={{ whiteSpace: "nowrap" }}>
-                              <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.primary }}>
-                                ₹{Number(tariff).toLocaleString()}
-                                <Typography component="span" variant="caption" sx={{ color: themeConfig.textMuted, ml: 0.5 }}>
-                                  / night
-                                </Typography>
-                              </Typography>
-                            </TableCell>
-
-                            {/* Status */}
-                            <TableCell sx={{ whiteSpace: "nowrap" }}>
-                              <StatusChip status={room.status} size="small" />
-                            </TableCell>
-
-                            {/* Guest */}
-                            <TableCell sx={{ whiteSpace: "nowrap" }}>
-                              {roomGuestName ? (
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
-                                  <Avatar sx={{ width: 22, height: 22, fontSize: "0.65rem", bgcolor: themeConfig.primary }}>
-                                    {roomGuestName.charAt(0).toUpperCase()}
-                                  </Avatar>
-                                  <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain, fontSize: "0.82rem" }}>
-                                    {roomGuestName}
-                                  </Typography>
-                                </Box>
-                              ) : (
-                                <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontStyle: "italic" }}>
-                                  &mdash; Vacant &mdash;
-                                </Typography>
-                              )}
-                            </TableCell>
-
-                            {/* Action */}
-                            <TableCell sx={{ textAlign: "right", pr: 2.5, whiteSpace: "nowrap" }}>
-                              <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 0.8 }}>
-                                {isAvail && (
-                                  <Button
+                    {/* Expanded Rooms Table under This Specific Category */}
+                    <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                      {!hasRooms ? (
+                        <Box sx={{ p: 3, textAlign: "center" }}>
+                          <Typography variant="body2" sx={{ color: themeConfig.textMuted, fontStyle: "italic" }}>
+                            No rooms match the active filter criteria under this category.
+                          </Typography>
+                        </Box>
+                      ) : (
+                        <TableContainer
+                          sx={{
+                            maxHeight: 480,
+                            overflowX: "auto",
+                            "&::-webkit-scrollbar": { height: "6px", width: "6px" },
+                            "&::-webkit-scrollbar-track": { background: isDarkMode ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)" },
+                            "&::-webkit-scrollbar-thumb": { background: themeConfig.border, borderRadius: "6px" },
+                          }}
+                        >
+                          <Table size="small" sx={{ minWidth: 700 }}>
+                            <TableHead>
+                              <TableRow sx={{ bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)" }}>
+                                <TableCell padding="checkbox" sx={{ pl: 2 }}>
+                                  <Checkbox
                                     size="small"
-                                    variant="contained"
-                                    startIcon={<Bolt sx={{ fontSize: 13 }} />}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (onSelectRoomForCheckIn) onSelectRoomForCheckIn(room);
+                                    color="success"
+                                    checked={
+                                      cat.filteredRooms.filter((r) => r.status === "AVAILABLE").length > 0 &&
+                                      cat.filteredRooms.filter((r) => r.status === "AVAILABLE").every((r) => selectedRoomIds.includes(r._id))
+                                    }
+                                    indeterminate={
+                                      cat.filteredRooms.some((r) => r.status === "AVAILABLE" && selectedRoomIds.includes(r._id)) &&
+                                      !cat.filteredRooms.filter((r) => r.status === "AVAILABLE").every((r) => selectedRoomIds.includes(r._id))
+                                    }
+                                    onChange={() => handleSelectAllAvailable(cat.filteredRooms)}
+                                  />
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, py: 1.2, fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+                                  Room Number
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+                                  Floor
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+                                  Tariff / Night
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+                                  Live Status
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+                                  Guest / Occupant
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 900, color: themeConfig.textMain, textAlign: "right", pr: 2.5, fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+                                  Action
+                                </TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {cat.filteredRooms.map((room) => {
+                                const isAvail = room.status === "AVAILABLE";
+                                const isOcc = room.status === "OCCUPIED" || room.status === "RESERVED";
+                                const isCln = room.status === "CLEANING";
+                                const isSelected = selectedRoomIds.includes(room._id);
+                                const tariff = room.customPricePerNight || cat.basePrice || 3000;
+                                const roomGuestName = getRoomGuestName(room);
+
+                                return (
+                                  <TableRow
+                                    key={room._id || room.roomNumber}
+                                    hover
+                                    onClick={() => {
+                                      if (isAvail) handleToggleRoomSelection(room._id);
+                                      else handleOpenStatusDialog(room);
                                     }}
                                     sx={{
-                                      borderRadius: "8px",
-                                      fontWeight: 900,
-                                      fontSize: "0.72rem",
-                                      background: `linear-gradient(135deg, #10B981 0%, #059669 100%)`,
-                                      color: "#FFFFFF",
-                                      boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)",
-                                      px: 1.4,
-                                      py: 0.3,
-                                      "&:hover": { background: "#059669" },
+                                      cursor: "pointer",
+                                      bgcolor: isSelected
+                                        ? (isDarkMode ? "rgba(16, 185, 129, 0.12)" : "rgba(16, 185, 129, 0.06)")
+                                        : "transparent",
+                                      "&:hover": {
+                                        bgcolor: isSelected
+                                          ? (isDarkMode ? "rgba(16, 185, 129, 0.18)" : "rgba(16, 185, 129, 0.1)")
+                                          : "rgba(11, 142, 224, 0.04)",
+                                      },
+                                      transition: "background 0.15s ease",
                                     }}
                                   >
-                                    Check-In
-                                  </Button>
-                                )}
+                                    {/* Multi-select Checkbox */}
+                                    <TableCell padding="checkbox" sx={{ pl: 2 }} onClick={(e) => {
+                                      if (isAvail) handleToggleRoomSelection(room._id, e);
+                                    }}>
+                                      {isAvail ? (
+                                        <Checkbox
+                                          size="small"
+                                          color="success"
+                                          checked={isSelected}
+                                          onChange={(e) => handleToggleRoomSelection(room._id, e)}
+                                          onClick={(e) => e.stopPropagation()}
+                                        />
+                                      ) : (
+                                        <Box sx={{ width: 24, height: 24 }} />
+                                      )}
+                                    </TableCell>
 
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  startIcon={<Edit sx={{ fontSize: 12 }} />}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenStatusDialog(room);
-                                  }}
-                                  sx={{
-                                    borderRadius: "8px",
-                                    fontWeight: 800,
-                                    fontSize: "0.7rem",
-                                    borderColor: themeConfig.border,
-                                    color: themeConfig.textMain,
-                                    "&:hover": { borderColor: themeConfig.primary, bgcolor: themeConfig.champagne },
-                                  }}
-                                >
-                                  Status
-                                </Button>
-                              </Box>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                                    {/* Room Number */}
+                                    <TableCell sx={{ py: 1.2, pl: 2, whiteSpace: "nowrap" }}>
+                                      <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+                                        <Avatar
+                                          sx={{
+                                            bgcolor: isAvail
+                                              ? "rgba(16, 185, 129, 0.15)"
+                                              : isOcc
+                                                ? "rgba(11, 142, 224, 0.15)"
+                                                : isCln
+                                                  ? "rgba(217, 119, 6, 0.15)"
+                                                  : "rgba(239, 68, 68, 0.15)",
+                                            color: isAvail
+                                              ? "#10B981"
+                                              : isOcc
+                                                ? "#0B8EE0"
+                                                : isCln
+                                                  ? "#D97706"
+                                                  : "#EF4444",
+                                            width: 32,
+                                            height: 32,
+                                            fontSize: "0.8rem",
+                                            fontWeight: 900,
+                                            borderRadius: "8px",
+                                          }}
+                                        >
+                                          {room.roomNumber}
+                                        </Avatar>
+                                        <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "0.9rem" }}>
+                                          Room #{room.roomNumber}
+                                        </Typography>
+                                      </Box>
+                                    </TableCell>
 
-              {/* Table Pagination */}
-              <TablePagination
-                rowsPerPageOptions={[5, 10, 25, 50, 100]}
-                component="div"
-                count={filteredAllRooms.length}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={(e, newPage) => setPage(newPage)}
-                onRowsPerPageChange={(e) => {
-                  setRowsPerPage(parseInt(e.target.value, 10));
-                  setPage(0);
-                }}
-                sx={{
-                  borderTop: `1px solid ${themeConfig.border}`,
-                  bgcolor: themeConfig.bgCard || "#FFFFFF",
-                }}
-              />
-            </Paper>
+                                    {/* Floor */}
+                                    <TableCell sx={{ whiteSpace: "nowrap" }}>
+                                      <Chip
+                                        label={`Floor ${room.floor || 1}`}
+                                        size="small"
+                                        sx={{
+                                          fontWeight: 800,
+                                          fontSize: "0.7rem",
+                                          bgcolor: themeConfig.champagne,
+                                          color: themeConfig.primaryDark,
+                                          borderRadius: "6px",
+                                          height: 22,
+                                        }}
+                                      />
+                                    </TableCell>
+
+                                    {/* Rate */}
+                                    <TableCell sx={{ whiteSpace: "nowrap" }}>
+                                      <Typography variant="body2" sx={{ fontWeight: 900, color: themeConfig.primary }}>
+                                        ₹{Number(tariff).toLocaleString()}
+                                        <Typography component="span" variant="caption" sx={{ color: themeConfig.textMuted, ml: 0.5 }}>
+                                          / night
+                                        </Typography>
+                                      </Typography>
+                                    </TableCell>
+
+                                    {/* Status */}
+                                    <TableCell sx={{ whiteSpace: "nowrap" }}>
+                                      <StatusChip status={room.status} size="small" />
+                                    </TableCell>
+
+                                    {/* Guest */}
+                                    <TableCell sx={{ whiteSpace: "nowrap" }}>
+                                      {roomGuestName ? (
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+                                          <Avatar sx={{ width: 22, height: 22, fontSize: "0.65rem", bgcolor: themeConfig.primary }}>
+                                            {roomGuestName.charAt(0).toUpperCase()}
+                                          </Avatar>
+                                          <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain, fontSize: "0.82rem" }}>
+                                            {roomGuestName}
+                                          </Typography>
+                                        </Box>
+                                      ) : (
+                                        <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontStyle: "italic" }}>
+                                          &mdash; Vacant &mdash;
+                                        </Typography>
+                                      )}
+                                    </TableCell>
+
+                                    {/* Action */}
+                                    <TableCell sx={{ textAlign: "right", pr: 2.5, whiteSpace: "nowrap" }}>
+                                      <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 0.8 }}>
+                                        {isAvail && onSelectRoomForCheckIn && (
+                                          <Button
+                                            size="small"
+                                            variant="contained"
+                                            startIcon={<Bolt sx={{ fontSize: 13 }} />}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onSelectRoomForCheckIn(room);
+                                            }}
+                                            sx={{
+                                              borderRadius: "8px",
+                                              fontWeight: 900,
+                                              fontSize: "0.72rem",
+                                              background: `linear-gradient(135deg, #10B981 0%, #059669 100%)`,
+                                              color: "#FFFFFF",
+                                              boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)",
+                                              px: 1.4,
+                                              py: 0.3,
+                                              "&:hover": { background: "#059669" },
+                                            }}
+                                          >
+                                            Check-In
+                                          </Button>
+                                        )}
+
+                                        <Button
+                                          size="small"
+                                          variant="outlined"
+                                          startIcon={<Edit sx={{ fontSize: 12 }} />}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleOpenStatusDialog(room);
+                                          }}
+                                          sx={{
+                                            borderRadius: "8px",
+                                            fontWeight: 800,
+                                            fontSize: "0.7rem",
+                                            borderColor: themeConfig.border,
+                                            color: themeConfig.textMain,
+                                            "&:hover": { borderColor: themeConfig.primary, bgcolor: themeConfig.champagne },
+                                          }}
+                                        >
+                                          Status
+                                        </Button>
+                                      </Box>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      )}
+                    </Collapse>
+                  </Card>
+                );
+              })}
+            </Box>
           )}
         </Box>
       )}
