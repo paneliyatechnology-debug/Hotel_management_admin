@@ -128,10 +128,8 @@ const SignaturePad = forwardRef(function SignaturePad(
       ctx.arc(pos.x, pos.y, 1.8 * dpr, 0, Math.PI * 2);
       ctx.fill();
 
-      if (!hasDrawnRef.current) {
-        hasDrawnRef.current = true;
-        if (onSignChange) onSignChange(true);
-      }
+      hasDrawnRef.current = true;
+      if (onSignChange) onSignChange(true, canvas.toDataURL("image/png"));
     };
 
     // MOVE DRAWING (Touch / Pointer / Mouse)
@@ -155,11 +153,7 @@ const SignaturePad = forwardRef(function SignaturePad(
       ctx.stroke();
 
       lastPosRef.current = pos;
-
-      if (!hasDrawnRef.current) {
-        hasDrawnRef.current = true;
-        if (onSignChange) onSignChange(true);
-      }
+      hasDrawnRef.current = true;
     };
 
     // END DRAWING
@@ -171,6 +165,9 @@ const SignaturePad = forwardRef(function SignaturePad(
             canvas.releasePointerCapture(e.pointerId);
           }
         } catch (err) {}
+        if (hasDrawnRef.current && onSignChange) {
+          onSignChange(true, canvas.toDataURL("image/png"));
+        }
       }
     };
 

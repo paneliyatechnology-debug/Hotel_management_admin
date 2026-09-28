@@ -89,9 +89,16 @@ function MobileSignContent() {
 
         // 2. Also broadcast over Socket.io if available for instant zero-latency reception sync
         try {
-          const socketBase = window.location.hostname === "localhost" 
-            ? "http://localhost:5000" 
+          const isLocal =
+            window.location.hostname === "localhost" ||
+            window.location.hostname === "127.0.0.1";
+          const isVercel = window.location.hostname.includes("vercel.app");
+          const socketBase = isLocal
+            ? "http://localhost:5000"
+            : isVercel
+            ? "https://hotelmanagementbackend-dev.up.railway.app"
             : `http://${window.location.hostname}:5000`;
+
           const socket = io(socketBase, { transports: ["websocket", "polling"], timeout: 3000 });
           socket.emit("submit_signature", {
             sessionId,
