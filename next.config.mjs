@@ -14,6 +14,10 @@ const nextConfig = {
     return [
       // Don't proxy signature-sync to backend, keep inside Next.js API Route
       {
+        source: "/api/signature-sync",
+        destination: "/api/signature-sync",
+      },
+      {
         source: "/api/signature-sync/:path*",
         destination: "/api/signature-sync/:path*",
       },

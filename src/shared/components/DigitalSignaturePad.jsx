@@ -53,9 +53,14 @@ export default function DigitalSignaturePad({
   const [mode, setMode] = useState("QR_MOBILE"); // 'QR_MOBILE' | 'DRAW' | 'TYPE'
   const [typedName, setTypedName] = useState(signerName || "");
 
+  // Update signature status when value prop updates
+  useEffect(() => {
+    setHasSignature(Boolean(value));
+  }, [value]);
+
   // Mobile QR Code Sync state
   const [sessionId, setSessionId] = useState("");
-  const [networkHost, setNetworkHost] = useState("http://[IP_ADDRESS]");
+  const [networkHost, setNetworkHost] = useState("");
   const [isPollingMobile, setIsPollingMobile] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -66,7 +71,7 @@ export default function DigitalSignaturePad({
     return newId;
   }, []);
 
-  // Module-level cached network host to avoid redundant API calls
+  // Detect true network host (LAN IP for mobile phone on same Wi-Fi, or live domain)
   useEffect(() => {
     generateNewSession();
 
@@ -75,8 +80,21 @@ export default function DigitalSignaturePad({
       if (host !== "localhost" && host !== "127.0.0.1" && host !== "") {
         setNetworkHost(window.location.origin);
       } else {
-        // Default to local LAN IP directly
-        setNetworkHost("http://[IP_ADDRESS]");
+        // Fetch local LAN IPv4 address from API for mobile phone access
+        fetch("/api/signature-sync?action=network-info")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.fullUrl) {
+              setNetworkHost(data.fullUrl);
+            } else if (data?.localIp) {
+              setNetworkHost(`http://${data.localIp}:${window.location.port || 3001}`);
+            } else {
+              setNetworkHost(window.location.origin);
+            }
+          })
+          .catch(() => {
+            setNetworkHost(window.location.origin);
+          });
       }
     }
   }, [generateNewSession]);
@@ -87,30 +105,55 @@ export default function DigitalSignaturePad({
     socket.emit("join_signature_session", { sessionId });
   }, [socket, sessionId]);
 
-  // Real-time pure Socket.IO listener (0 Polling, 100% Event Driven)
+  // Dual Real-Time Sync: Socket.IO Instant Broadcast + Fast HTTP Polling Fallback
   useEffect(() => {
     if (!sessionId || hasSignature) return;
+
+    let isMounted = true;
+    setIsPollingMobile(true);
 
     const handleSignatureSubmitted = (e) => {
       const data = e.detail || e;
       if (data && data.sessionId === sessionId && data.signature) {
-        setIsPollingMobile(false);
-        setHasSignature(true);
-        if (onChange) {
-          onChange(data.signature);
+        if (isMounted) {
+          setIsPollingMobile(false);
+          setHasSignature(true);
+          if (onChange) {
+            onChange(data.signature);
+          }
         }
       }
     };
 
-    // Listen on window custom event dispatched by SocketContext
+    // 1. Listen on window custom event dispatched by SocketContext
     window.addEventListener("socket:SIGNATURE_SUBMITTED", handleSignatureSubmitted);
 
-    // Also listen directly on socket instance if connected
+    // 2. Also listen directly on socket instance if connected
     if (socket) {
       socket.on("SIGNATURE_SUBMITTED", handleSignatureSubmitted);
     }
 
+    // 3. Fast Polling interval (every 1.5s) to guarantee phone submission gets synced instantly
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/signature-sync?session=${sessionId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (isMounted && data?.status === "SIGNED" && data?.signature) {
+          setIsPollingMobile(false);
+          setHasSignature(true);
+          if (onChange) {
+            onChange(data.signature);
+          }
+        }
+      } catch (err) {
+        // Silent catch for network polling
+      }
+    }, 1500);
+
     return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
       window.removeEventListener("socket:SIGNATURE_SUBMITTED", handleSignatureSubmitted);
       if (socket) {
         socket.off("SIGNATURE_SUBMITTED", handleSignatureSubmitted);
@@ -118,7 +161,7 @@ export default function DigitalSignaturePad({
     };
   }, [socket, sessionId, hasSignature, onChange]);
 
-  const mobileSignUrl = `${networkHost}/mobile-sign?session=${sessionId}&name=${encodeURIComponent(
+  const mobileSignUrl = `${networkHost || (typeof window !== "undefined" ? window.location.origin : "")}/mobile-sign?session=${sessionId}&name=${encodeURIComponent(
     signerName || "Guest"
   )}`;
 
@@ -535,10 +578,12 @@ export default function DigitalSignaturePad({
             height={180}
             color={isDarkMode ? "#38BDF8" : themeConfig.textMain || "#0F172A"}
             placeholder="Touchscreen અથવા Mouse થી અહીં સહી કરો"
-            onSignChange={(signed) => {
+            onSignChange={(signed, dataUrl) => {
               setHasSignature(signed);
-              if (signed && sigPadRef.current && onChange) {
-                onChange(sigPadRef.current.toDataURL());
+              if (signed && onChange) {
+                onChange(dataUrl || sigPadRef.current?.toDataURL());
+              } else if (!signed && onChange) {
+                onChange(null);
               }
             }}
           />
