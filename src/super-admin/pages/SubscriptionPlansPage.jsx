@@ -37,6 +37,7 @@ import {
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
+import { toast } from "@/shared/utils/toast";
 import EmptyState from "@/shared/components/EmptyState";
 import ConfirmDialog from "@/shared/components/ConfirmDialog";
 
@@ -58,7 +59,6 @@ export default function SubscriptionPlansPage() {
   const [loading, setLoading] = useState(true);
   const [billingCycle, setBillingCycle] = useState("ANNUAL"); // "MONTHLY" | "ANNUAL"
 
-  const [notification, setNotification] = useState({ show: false, message: "", severity: "success" });
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: "", message: "", onConfirm: null });
 
   const [planModal, setPlanModal] = useState({
@@ -85,8 +85,7 @@ export default function SubscriptionPlansPage() {
   }
 
   const showToast = (message, severity = "success") => {
-    setNotification({ show: true, message, severity });
-    setTimeout(() => setNotification({ show: false, message: "", severity: "success" }), 4000);
+    toast.show(message, severity);
   };
 
   const fetchPlans = async () => {
@@ -267,24 +266,6 @@ export default function SubscriptionPlansPage() {
 
   return (
     <Box sx={{ maxWidth: 1180, mx: "auto", pt: { xs: 2, sm: 2.5 }, pb: { xs: 12, sm: 4 }, px: { xs: 1.5, sm: 2.5 } }}>
-      {/* Toast */}
-      {notification.show && (
-        <Alert
-          severity={notification.severity}
-          sx={{
-            position: "fixed",
-            top: 24,
-            right: 24,
-            zIndex: 9999,
-            borderRadius: "12px",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
-            bgcolor: notification.severity === "success" ? "#FAF9F6" : "#FFF5F5",
-            border: `1px solid ${notification.severity === "success" ? themeConfig.success : themeConfig.danger}`,
-          }}
-        >
-          {notification.message}
-        </Alert>
-      )}
 
       {/* Confirmation Dialog */}
       <ConfirmDialog

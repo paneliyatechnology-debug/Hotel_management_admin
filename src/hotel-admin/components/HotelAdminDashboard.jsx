@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Box, Alert } from "@mui/material";
+import { Box } from "@mui/material";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
+import { toast } from "@/shared/utils/toast";
 import ConfirmDialog from "@/shared/components/ConfirmDialog";
 import SettingsView from "@/shared/components/SettingsView";
 import HotelOverviewPage from "../pages/HotelOverviewPage";
@@ -28,7 +29,6 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
   const [staffList, setStaffList] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [notification, setNotification] = useState({ show: false, message: "", severity: "success" });
 
   // Filters & Searches
   const [guestSearch, setGuestSearch] = useState("");
@@ -172,8 +172,7 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
   );
 
   const showToast = (message, severity = "success") => {
-    setNotification({ show: true, message, severity });
-    setTimeout(() => setNotification({ show: false, message: "", severity: "success" }), 4000);
+    toast.show(message, severity);
   };
 
   // Guest CRUD Handlers
@@ -513,25 +512,6 @@ export default function HotelAdminDashboard({ user, activeNav = 0, onTabChange }
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, bgcolor: themeConfig.bgMain, minHeight: "100%" }}>
-      {/* Toast Notification */}
-      {notification.show && (
-        <Alert
-          severity={notification.severity}
-          sx={{
-            position: "fixed",
-            top: 24,
-            right: 24,
-            zIndex: 9999,
-            boxShadow: themeConfig.shadowModal,
-            borderRadius: 0,
-            bgcolor: notification.severity === "success" ? "#FAF9F6" : "#FFF5F5",
-            border: `1px solid ${notification.severity === "success" ? themeConfig.success : themeConfig.danger}`,
-          }}
-        >
-          {notification.message}
-        </Alert>
-      )}
-
       {/* Confirmation Dialog */}
       <ConfirmDialog
         open={confirmDelete.open}

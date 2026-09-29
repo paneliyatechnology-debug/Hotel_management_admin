@@ -29,6 +29,7 @@ import {
 } from "@/shared/icons";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
 import { useAppTheme } from "@/shared/context/ThemeContext";
+import { toast } from "@/shared/utils/toast";
 
 export default function UnifiedLogin({ onLoginSuccess }) {
   const { themeConfig } = useAppTheme();
@@ -169,6 +170,7 @@ export default function UnifiedLogin({ onLoginSuccess }) {
             setTempUser(user);
             setChangePassOpen(true);
           } else {
+            toast.success(`Welcome back, ${user.name || "User"}!`);
             onLoginSuccess(user);
           }
         } else {
@@ -178,6 +180,7 @@ export default function UnifiedLogin({ onLoginSuccess }) {
         throw new Error(res.message || "Invalid credentials.");
       }
     } catch (err) {
+      toast.error(err.message || "Invalid credentials or account suspended.");
       setError(err.message || "Invalid credentials or account suspended.");
     } finally {
       setLoading(false);
@@ -204,9 +207,12 @@ export default function UnifiedLogin({ onLoginSuccess }) {
         body: { email: emailTrimmed },
       });
 
-      setForgotMsg(res.message || "6-digit OTP has been sent to your email.");
+      const msg = res.message || "6-digit OTP has been sent to your email.";
+      toast.success(msg);
+      setForgotMsg(msg);
       setForgotStep(2);
     } catch (err) {
+      toast.error(err.message || "Could not process password reset request.");
       setForgotError(err.message || "Could not process password reset request.");
     } finally {
       setForgotLoading(false);

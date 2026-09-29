@@ -25,6 +25,7 @@ import {
 import { Download, Print } from "@/shared/icons";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
 import { useAppTheme } from "@/shared/context/ThemeContext";
+import { toast } from "@/shared/utils/toast";
 import { downloadTaxInvoicePDF } from "@/shared/utils/pdfGenerator";
 import { calculateOverstayFee, formatTime12Hour } from "@/shared/utils/timeUtils";
 import SettingsView from "@/shared/components/SettingsView";
@@ -185,8 +186,7 @@ export default function ReceptionistDashboard({ user, activeNav = 0, onTabChange
   );
 
   const showToast = (message, severity = "success") => {
-    setNotification({ show: true, message, severity });
-    setTimeout(() => setNotification({ show: false, message: "", severity: "success" }), 4000);
+    toast.show(message, severity);
   };
 
   const handleFinalCheckIn = async () => {

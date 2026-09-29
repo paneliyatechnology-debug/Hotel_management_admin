@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { ThemeProvider, createTheme, CssBaseline } from "@mui/material";
+import { ToastContainer } from "react-toastify";
 import { themePalettes, darkThemePalettes, getThemeConfig } from "@/config/theme";
 
 const ThemeContext = createContext(null);
@@ -577,6 +578,19 @@ export function AppThemeProvider({ children }) {
     >
       <ThemeProvider theme={muiTheme}>
         <CssBaseline />
+        <ToastContainer
+          position="top-right"
+          autoClose={3500}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme={isDarkMode ? "dark" : "colored"}
+          style={{ zIndex: 99999 }}
+        />
         {children}
       </ThemeProvider>
     </ThemeContext.Provider>

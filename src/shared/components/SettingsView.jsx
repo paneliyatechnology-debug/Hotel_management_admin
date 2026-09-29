@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -64,6 +64,7 @@ import {
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
+import { toast } from "@/shared/utils/toast";
 import {
   formatTime12Hour,
   formatTime24Hour,
@@ -138,6 +139,66 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
   const [timingsMsg, setTimingsMsg] = useState({ show: false, message: "", severity: "success" });
   const [savingTimings, setSavingTimings] = useState(false);
 
+  // System Settings / Free Trial State
+  const [freeTrialValue, setFreeTrialValue] = useState(30);
+  const [freeTrialUnit, setFreeTrialUnit] = useState("days");
+  const [savingTrial, setSavingTrial] = useState(false);
+  const [trialMsg, setTrialMsg] = useState({ show: false, message: "", severity: "success" });
+
+  useEffect(() => {
+    if (user?.role === "SUPER_ADMIN") {
+      apiRequest(API_ENDPOINTS.SETTINGS?.PUBLIC || "/api/v1/settings")
+        .then((res) => {
+          if (res?.settings) {
+            setFreeTrialValue(res.settings.freeTrialValue);
+            setFreeTrialUnit(res.settings.freeTrialUnit);
+          }
+        })
+        .catch((err) => console.log(err));
+    }
+  }, [user]);
+
+  const handleSaveTrial = async (e) => {
+    e.preventDefault();
+    setSavingTrial(true);
+    setTrialMsg({ show: false, message: "", severity: "success" });
+
+    try {
+      const res = await apiRequest(API_ENDPOINTS.SETTINGS?.UPDATE || "/api/v1/settings", {
+        method: "PUT",
+        body: JSON.stringify({
+          freeTrialValue: Number(freeTrialValue),
+          freeTrialUnit,
+        }),
+      });
+
+      if (res?.success) {
+        toast.success("Free trial settings updated successfully!");
+        setTrialMsg({
+          show: true,
+          message: "Free trial settings updated successfully!",
+          severity: "success",
+        });
+      } else {
+        toast.error(res?.message || "Failed to update free trial settings.");
+        setTrialMsg({
+          show: true,
+          message: res?.message || "Failed to update free trial settings.",
+          severity: "error",
+        });
+      }
+    } catch (err) {
+      toast.error(err.message || "An error occurred while updating settings.");
+      setTrialMsg({
+        show: true,
+        message: err.message || "An error occurred while updating settings.",
+        severity: "error",
+      });
+    } finally {
+      setSavingTrial(false);
+    }
+  };
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSavingProfile(true);
@@ -145,16 +206,19 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
     try {
       if (newPassword) {
         if (!currentPassword) {
+          toast.error("Please enter your current password to change password.");
           setProfileMsg({ show: true, message: "Please enter your current password to change password.", severity: "error" });
           setSavingProfile(false);
           return;
         }
         if (newPassword.length < 6) {
+          toast.error("New password must be at least 6 characters long.");
           setProfileMsg({ show: true, message: "New password must be at least 6 characters long.", severity: "error" });
           setSavingProfile(false);
           return;
         }
         if (newPassword !== confirmPassword) {
+          toast.error("New passwords do not match!");
           setProfileMsg({ show: true, message: "New passwords do not match!", severity: "error" });
           setSavingProfile(false);
           return;
@@ -177,14 +241,17 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
         onUpdateProfile({ name, phone });
       }
 
+      const successMsg = newPassword
+        ? "Profile and password updated successfully!"
+        : "Profile settings saved successfully!";
+      toast.success(successMsg);
       setProfileMsg({
         show: true,
-        message: newPassword
-          ? "Profile and password updated successfully!"
-          : "Profile settings saved successfully!",
+        message: successMsg,
         severity: "success",
       });
     } catch (err) {
+      toast.error(err.message || "Failed to update profile settings.");
       setProfileMsg({
         show: true,
         message: err.message || "Failed to update profile settings.",
@@ -330,6 +397,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
 
   const availableTabs = [
     { id: "themes", label: "Theme & Color Palettes", icon: <Palette fontSize="small" /> },
+    ...(isSuperAdmin ? [{ id: "freetrial", label: "Free Trial Settings", icon: <AccessTime fontSize="small" /> }] : []),
     ...(isHotelAdmin ? [{ id: "timings", label: "Hotel Timings & Operations", icon: <AccessTime fontSize="small" /> }] : []),
     { id: "profile", label: "My Profile & Security", icon: <Person fontSize="small" /> },
     { id: "preferences", label: "System Preferences", icon: <Settings fontSize="small" /> },
@@ -811,6 +879,76 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                   </Button>
                 </Box>
               </Paper>
+            </Box>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB: FREE TRIAL SETTINGS (SUPER ADMIN) */}
+          {/* ========================================================================= */}
+          {currentTab === "freetrial" && isSuperAdmin && (
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 0.5 }}>
+                Global Free Trial Configuration
+              </Typography>
+              <Typography variant="body2" sx={{ color: themeConfig.textMuted, mb: 3 }}>
+                Configure the default free trial duration applied to all newly registered hotels. This will instantly reflect on the landing page.
+              </Typography>
+
+              {trialMsg.show && (
+                <Alert severity={trialMsg.severity} sx={{ mb: 3, borderRadius: "12px" }}>
+                  {trialMsg.message}
+                </Alert>
+              )}
+
+              <Box component="form" onSubmit={handleSaveTrial}>
+                <Grid container spacing={3}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField
+                      fullWidth
+                      label="Trial Duration Value"
+                      type="number"
+                      value={freeTrialValue}
+                      onChange={(e) => setFreeTrialValue(e.target.value)}
+                      required
+                      sx={{
+                        "& .MuiOutlinedInput-root": { borderRadius: "12px", bgcolor: themeConfig.bgCard },
+                      }}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <FormControl fullWidth>
+                      <InputLabel>Unit</InputLabel>
+                      <Select
+                        value={freeTrialUnit}
+                        label="Unit"
+                        onChange={(e) => setFreeTrialUnit(e.target.value)}
+                        sx={{ borderRadius: "12px", bgcolor: themeConfig.bgCard }}
+                      >
+                        <MenuItem value="hours">Hours</MenuItem>
+                        <MenuItem value="days">Days</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      disabled={savingTrial}
+                      sx={{
+                        mt: 2,
+                        borderRadius: "12px",
+                        px: 4,
+                        py: 1.5,
+                        bgcolor: themeConfig.primary,
+                        fontWeight: 800,
+                        "&:hover": { bgcolor: themeConfig.primaryDark },
+                      }}
+                    >
+                      {savingTrial ? <CircularProgress size={24} color="inherit" /> : "Save Trial Configuration"}
+                    </Button>
+                  </Grid>
+                </Grid>
+              </Box>
             </Box>
           )}
 

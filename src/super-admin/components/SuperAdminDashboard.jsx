@@ -17,6 +17,7 @@ import { WarningAmber, CheckCircle } from "@/shared/icons";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
 import { useSocket } from "@/shared/context/SocketContext";
 import { useAppTheme } from "@/shared/context/ThemeContext";
+import { toast } from "@/shared/utils/toast";
 import SettingsView from "@/shared/components/SettingsView";
 import SuperAdminOverviewPage from "../pages/SuperAdminOverviewPage";
 import HotelsDirectoryPage from "../pages/HotelsDirectoryPage";
@@ -38,7 +39,6 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
   // Dialogs
   const [actionDialog, setActionDialog] = useState({ open: false, type: null, hotel: null, reason: "" });
   const [actionLoading, setActionLoading] = useState(false);
-  const [notification, setNotification] = useState({ show: false, message: "", severity: "success" });
 
   useEffect(() => {
     fetchHotels();
@@ -62,11 +62,6 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
     }
   };
 
-  const showToast = (message, severity = "success") => {
-    setNotification({ show: true, message, severity });
-    setTimeout(() => setNotification({ show: false, message: "", severity: "success" }), 4000);
-  };
-
   const handleStatusUpdate = async (hotelId, newStatus, reason = "") => {
     setActionLoading(true);
     try {
@@ -74,14 +69,14 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
         method: "PUT",
         body: { status: newStatus, reason },
       });
-      showToast(`Hotel status updated to ${newStatus} successfully!`);
+      toast.success(`Hotel status updated to ${newStatus} successfully!`);
       setActionDialog({ open: false, type: null, hotel: null, reason: "" });
       if (selectedHotel && selectedHotel._id === hotelId) {
         setSelectedHotel((prev) => ({ ...prev, status: newStatus }));
       }
       fetchHotels();
     } catch (err) {
-      showToast(err.message || "Failed to update hotel status", "error");
+      toast.error(err.message || "Failed to update hotel status");
     } finally {
       setActionLoading(false);
     }
@@ -94,10 +89,10 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
         method: "POST",
         body: { days },
       });
-      showToast(`Trial successfully extended by ${days} days!`);
+      toast.success(`Trial successfully extended by ${days} days!`);
       fetchHotels();
     } catch (err) {
-      showToast(err.message || "Failed to extend trial", "error");
+      toast.error(err.message || "Failed to extend trial");
     } finally {
       setActionLoading(false);
     }
@@ -109,24 +104,6 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, bgcolor: themeConfig.bgMain, minHeight: "100%" }}>
-      {/* Toast Notification */}
-      {notification.show && (
-        <Alert
-          severity={notification.severity}
-          sx={{
-            position: "fixed",
-            top: 24,
-            right: 24,
-            zIndex: 9999,
-            boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
-            borderRadius: "14px",
-            bgcolor: notification.severity === "success" ? "#FAF9F6" : "#FFF5F5",
-            border: `1px solid ${notification.severity === "success" ? themeConfig.success : themeConfig.danger}`,
-          }}
-        >
-          {notification.message}
-        </Alert>
-      )}
 
       {/* Confirmation & Remarks Dialog for Suspend / Activate */}
       <Dialog
