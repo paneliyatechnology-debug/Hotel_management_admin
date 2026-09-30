@@ -54,6 +54,7 @@ import {
   ShieldOutlined,
   Bolt,
   Download,
+  Edit,
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import StatusChip from "@/shared/components/StatusChip";
@@ -87,6 +88,7 @@ export default function HotelsDirectoryPage({
   drawerTab,
   setDrawerTab,
   onOpenActionDialog,
+  onEditHotel,
   onExtendTrial,
   onRefresh,
 }) {
@@ -454,6 +456,27 @@ export default function HotelsDirectoryPage({
                           }}
                         >
                           <Visibility fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+
+                      <Tooltip title="Edit Hotel & Trial Settings">
+                        <IconButton
+                          size="small"
+                          onClick={() => onEditHotel && onEditHotel(hotel)}
+                          sx={{
+                            width: 32,
+                            height: 32,
+                            color: themeConfig.primary,
+                            bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(11, 142, 224, 0.1)",
+                            borderRadius: "10px",
+                            border: `1px solid ${themeConfig.border}`,
+                            "&:hover": {
+                              borderColor: themeConfig.primary,
+                              bgcolor: "rgba(11, 142, 224, 0.2)",
+                            },
+                          }}
+                        >
+                          <Edit fontSize="small" />
                         </IconButton>
                       </Tooltip>
 

@@ -98,6 +98,59 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
     }
   };
 
+  // Edit Hotel & Trial Dialog State
+  const [editDialog, setEditDialog] = useState({ open: false, hotel: null });
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    ownerName: "",
+    ownerEmail: "",
+    ownerPhone: "",
+    status: "ACTIVE",
+    totalRooms: 20,
+    subscriptionPlan: "TRIAL",
+    extendTrialDays: 0,
+  });
+
+  const handleOpenEditDialog = (hotel) => {
+    setEditDialog({ open: true, hotel });
+    setEditFormData({
+      name: hotel?.name || "",
+      ownerName: hotel?.ownerName || hotel?.admin?.name || "",
+      ownerEmail: hotel?.ownerEmail || hotel?.admin?.email || "",
+      ownerPhone: hotel?.ownerPhone || hotel?.phone || "",
+      status: hotel?.status || "ACTIVE",
+      totalRooms: hotel?.totalRooms || 20,
+      subscriptionPlan: hotel?.subscription?.plan || "TRIAL",
+      extendTrialDays: 0,
+    });
+  };
+
+  const handleSaveHotelEdit = async () => {
+    if (!editDialog.hotel) return;
+    setActionLoading(true);
+    try {
+      await apiRequest(API_ENDPOINTS.SUPER_ADMIN.UPDATE_HOTEL(editDialog.hotel._id), {
+        method: "PUT",
+        body: editFormData,
+      });
+      toast.success(`Hotel '${editFormData.name}' and trial/subscription updated successfully! Realtime sync emitted.`);
+      setEditDialog({ open: false, hotel: null });
+      if (selectedHotel && selectedHotel._id === editDialog.hotel._id) {
+        setSelectedHotel((prev) => ({
+          ...prev,
+          name: editFormData.name,
+          ownerName: editFormData.ownerName,
+          status: editFormData.status,
+        }));
+      }
+      fetchHotels();
+    } catch (err) {
+      toast.error(err.message || "Failed to update hotel");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleOpenActionDialog = (type, hotel) => {
     setActionDialog({ open: true, type, hotel, reason: "" });
   };
@@ -245,6 +298,144 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
         </DialogActions>
       </Dialog>
 
+      {/* Edit Hotel & Trial Settings Dialog */}
+      <Dialog
+        open={editDialog.open}
+        onClose={() => setEditDialog({ open: false, hotel: null })}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "22px",
+              p: 1.5,
+              border: `1px solid ${themeConfig.border}`,
+              boxShadow: "0 24px 48px -12px rgba(12, 39, 59, 0.22)",
+            },
+          },
+        }}
+      >
+        <DialogTitle component="div" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
+          Edit Hotel &amp; Trial Settings
+          <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block" }}>
+            Target Hotel: <strong>{editDialog.hotel?.name}</strong>
+          </Typography>
+        </DialogTitle>
+
+        <DialogContent sx={{ pt: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+          <TextField
+            label="Hotel Name"
+            fullWidth
+            size="small"
+            value={editFormData.name}
+            onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+            sx={{ mt: 1 }}
+          />
+
+          <TextField
+            label="Owner Full Name"
+            fullWidth
+            size="small"
+            value={editFormData.ownerName}
+            onChange={(e) => setEditFormData({ ...editFormData, ownerName: e.target.value })}
+          />
+
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <TextField
+              label="Owner Email"
+              fullWidth
+              size="small"
+              value={editFormData.ownerEmail}
+              onChange={(e) => setEditFormData({ ...editFormData, ownerEmail: e.target.value })}
+            />
+            <TextField
+              label="Phone Number"
+              fullWidth
+              size="small"
+              value={editFormData.ownerPhone}
+              onChange={(e) => setEditFormData({ ...editFormData, ownerPhone: e.target.value })}
+            />
+          </Box>
+
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <TextField
+              select
+              label="Hotel Operational Status"
+              fullWidth
+              size="small"
+              value={editFormData.status}
+              onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+              SelectProps={{ native: true }}
+            >
+              <option value="ACTIVE">ACTIVE (Operational)</option>
+              <option value="SUSPENDED">SUSPENDED (Temporary Hold)</option>
+              <option value="DISABLED">DISABLED (Blocked)</option>
+              <option value="EXPIRED">EXPIRED (Trial/Plan Ended)</option>
+            </TextField>
+
+            <TextField
+              select
+              label="Subscription Plan"
+              fullWidth
+              size="small"
+              value={editFormData.subscriptionPlan}
+              onChange={(e) => setEditFormData({ ...editFormData, subscriptionPlan: e.target.value })}
+              SelectProps={{ native: true }}
+            >
+              <option value="TRIAL">TRIAL Plan</option>
+              <option value="FREE">FREE Plan</option>
+              <option value="STARTER">STARTER Tier</option>
+              <option value="PREMIUM">PREMIUM Tier</option>
+              <option value="ENTERPRISE">ENTERPRISE Tier</option>
+            </TextField>
+          </Box>
+
+          <Box sx={{ p: 2, borderRadius: "14px", bgcolor: themeConfig.champagne, border: `1px solid ${themeConfig.border}` }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.primaryDark, display: "block", mb: 1 }}>
+              ⚡ Extend Free Trial Period (Realtime Socket Update)
+            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              {[0, 7, 15, 30, 60, 90].map((days) => (
+                <Chip
+                  key={days}
+                  label={days === 0 ? "No Change" : `+${days} Days`}
+                  size="small"
+                  clickable
+                  onClick={() => setEditFormData((prev) => ({ ...prev, extendTrialDays: days }))}
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: "0.75rem",
+                    bgcolor: editFormData.extendTrialDays === days ? themeConfig.primary : themeConfig.bgCard,
+                    color: editFormData.extendTrialDays === days ? "#FFFFFF" : themeConfig.textMain,
+                  }}
+                />
+              ))}
+            </Box>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={() => setEditDialog({ open: false, hotel: null })} sx={{ fontWeight: 700, color: themeConfig.textMuted }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            disabled={actionLoading}
+            onClick={handleSaveHotelEdit}
+            className="btn-3d"
+            sx={{
+              bgcolor: themeConfig.primary,
+              color: "#FFFFFF",
+              fontWeight: 800,
+              borderRadius: "12px",
+              px: 3,
+            }}
+          >
+            {actionLoading ? "Saving..." : "Save & Sync Realtime (Socket) →"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* ROUTE 0: OVERVIEW & REVENUE TELEMETRY */}
       {activeNav === 0 && (
         <SuperAdminOverviewPage
@@ -270,6 +461,7 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
           drawerTab={drawerTab}
           setDrawerTab={setDrawerTab}
           onOpenActionDialog={handleOpenActionDialog}
+          onEditHotel={handleOpenEditDialog}
           onExtendTrial={handleExtendTrial}
           onRefresh={fetchHotels}
         />

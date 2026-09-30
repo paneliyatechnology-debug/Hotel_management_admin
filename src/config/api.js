@@ -6,7 +6,7 @@
  * - "LIVE"  -> https://hotelmanagementbackend-dev.up.railway.app
  */
 
-export const ENVIRONMENT = "LIVE"; // 👉 અહીં "LOCAL" અથવા "LIVE" બદલો
+export const ENVIRONMENT = "LOCAL"; // 👉 અહીં "LOCAL" અથવા "LIVE" બદલો
 
 export const LOCAL_API_URL = "http://localhost:5000";
 export const LIVE_API_URL = "https://hotelmanagementbackend-dev.up.railway.app";
@@ -61,6 +61,7 @@ export const API_ENDPOINTS = {
   SUPER_ADMIN: {
     DASHBOARD: `${API_BASE_URL}/api/v1/super-admin/dashboard`,
     HOTELS: `${API_BASE_URL}/api/v1/super-admin/hotels`,
+    UPDATE_HOTEL: (id) => `${API_BASE_URL}/api/v1/super-admin/hotels/${id}`,
     APPROVE_HOTEL: (id) => `${API_BASE_URL}/api/v1/super-admin/hotels/${id}/approve`,
     REJECT_HOTEL: (id) => `${API_BASE_URL}/api/v1/super-admin/hotels/${id}/reject`,
     UPDATE_STATUS: (id) => `${API_BASE_URL}/api/v1/super-admin/hotels/${id}/status`,
@@ -80,6 +81,7 @@ export const API_ENDPOINTS = {
   },
   HOTELS: {
     ALL: `${API_BASE_URL}/api/v1/super-admin/hotels`,
+    UPDATE: (id) => `${API_BASE_URL}/api/v1/super-admin/hotels/${id}`,
     UPDATE_STATUS: (id) => `${API_BASE_URL}/api/v1/super-admin/hotels/${id}/status`,
     EXTEND_TRIAL: (id) => `${API_BASE_URL}/api/v1/super-admin/hotels/${id}/extend-trial`,
     APPROVE: (id) => `${API_BASE_URL}/api/v1/super-admin/hotels/${id}/approve`,
