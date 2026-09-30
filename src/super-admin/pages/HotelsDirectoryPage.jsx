@@ -393,18 +393,38 @@ export default function HotelsDirectoryPage({
                     </Typography>
                   </TableCell>
                   <TableCell sx={{ whiteSpace: "nowrap" }}>
-                    <Chip
-                      label={hotel.subscriptionPlan || "Enterprise (30-Day Trial)"}
-                      size="small"
-                      sx={{
-                        fontWeight: 700,
-                        borderRadius: "8px",
-                        bgcolor: themeConfig.champagne,
-                        color: themeConfig.primaryDark,
-                        border: `1px solid ${themeConfig.border}`,
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
-                      }}
-                    />
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                      <Chip
+                        label={`${(hotel.subscription?.plan || hotel.subscriptionPlan || "TRIAL").toUpperCase()} PLAN`}
+                        size="small"
+                        sx={{
+                          fontWeight: 800,
+                          fontSize: "0.72rem",
+                          borderRadius: "8px",
+                          bgcolor:
+                            (hotel.subscription?.plan || hotel.subscriptionPlan) === "ENTERPRISE"
+                              ? "rgba(16, 185, 129, 0.15)"
+                              : (hotel.subscription?.plan || hotel.subscriptionPlan) === "PREMIUM"
+                              ? "rgba(11, 142, 224, 0.15)"
+                              : "rgba(245, 158, 11, 0.15)",
+                          color:
+                            (hotel.subscription?.plan || hotel.subscriptionPlan) === "ENTERPRISE"
+                              ? "#059669"
+                              : (hotel.subscription?.plan || hotel.subscriptionPlan) === "PREMIUM"
+                              ? themeConfig.primary
+                              : "#D97706",
+                          border: `1px solid ${themeConfig.border}`,
+                          width: "fit-content",
+                        }}
+                      />
+                      <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.73rem", fontWeight: 600 }}>
+                        {hotel.subscription?.trialEndDate
+                          ? `Trial Ends: ${formatDate(hotel.subscription.trialEndDate)}`
+                          : hotel.subscription?.status === "TRIAL"
+                          ? "Trial Active"
+                          : "Subscription Active"}
+                      </Typography>
+                    </Box>
                   </TableCell>
                   <TableCell sx={{ whiteSpace: "nowrap" }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
