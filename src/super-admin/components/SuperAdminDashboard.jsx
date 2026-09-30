@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  MenuItem,
   Typography,
   Button,
   Chip,
@@ -365,12 +366,11 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
               size="small"
               value={editFormData.status}
               onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
-              SelectProps={{ native: true }}
             >
-              <option value="ACTIVE">ACTIVE (Operational)</option>
-              <option value="SUSPENDED">SUSPENDED (Temporary Hold)</option>
-              <option value="DISABLED">DISABLED (Blocked)</option>
-              <option value="EXPIRED">EXPIRED (Trial/Plan Ended)</option>
+              <MenuItem value="ACTIVE">ACTIVE (Operational)</MenuItem>
+              <MenuItem value="SUSPENDED">SUSPENDED (Temporary Hold)</MenuItem>
+              <MenuItem value="DISABLED">DISABLED (Blocked)</MenuItem>
+              <MenuItem value="EXPIRED">EXPIRED (Trial/Plan Ended)</MenuItem>
             </TextField>
 
             <TextField
@@ -380,13 +380,12 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
               size="small"
               value={editFormData.subscriptionPlan}
               onChange={(e) => setEditFormData({ ...editFormData, subscriptionPlan: e.target.value })}
-              SelectProps={{ native: true }}
             >
-              <option value="TRIAL">TRIAL Plan</option>
-              <option value="FREE">FREE Plan</option>
-              <option value="STARTER">STARTER Tier</option>
-              <option value="PREMIUM">PREMIUM Tier</option>
-              <option value="ENTERPRISE">ENTERPRISE Tier</option>
+              <MenuItem value="TRIAL">TRIAL Plan</MenuItem>
+              <MenuItem value="FREE">FREE Plan</MenuItem>
+              <MenuItem value="STARTER">STARTER Tier</MenuItem>
+              <MenuItem value="PREMIUM">PREMIUM Tier</MenuItem>
+              <MenuItem value="ENTERPRISE">ENTERPRISE Tier</MenuItem>
             </TextField>
           </Box>
 
