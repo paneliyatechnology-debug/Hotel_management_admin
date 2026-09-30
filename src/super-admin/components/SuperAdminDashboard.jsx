@@ -110,9 +110,20 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
     totalRooms: 20,
     subscriptionPlan: "TRIAL",
     extendTrialDays: 0,
+    customTrialDays: "",
+    trialEndDate: "",
   });
 
   const handleOpenEditDialog = (hotel) => {
+    const rawDate = hotel?.subscription?.trialEndDate;
+    let formattedDate = "";
+    if (rawDate) {
+      try {
+        formattedDate = new Date(rawDate).toISOString().split("T")[0];
+      } catch {
+        formattedDate = "";
+      }
+    }
     setEditDialog({ open: true, hotel });
     setEditFormData({
       name: hotel?.name || "",
@@ -123,6 +134,8 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
       totalRooms: hotel?.totalRooms || 20,
       subscriptionPlan: hotel?.subscription?.plan || "TRIAL",
       extendTrialDays: 0,
+      customTrialDays: "",
+      trialEndDate: formattedDate,
     });
   };
 
@@ -389,26 +402,61 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
             </TextField>
           </Box>
 
-          <Box sx={{ p: 2, borderRadius: "14px", bgcolor: themeConfig.champagne, border: `1px solid ${themeConfig.border}` }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.primaryDark, display: "block", mb: 1 }}>
-              ⚡ Extend Free Trial Period (Realtime Socket Update)
+          <Box sx={{ p: 2, borderRadius: "14px", bgcolor: themeConfig.champagne, border: `1px solid ${themeConfig.border}`, display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.primaryDark, display: "block" }}>
+              ⚡ Free Trial &amp; Expiry Date Management (Custom &amp; Realtime Sync)
             </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              {[0, 7, 15, 30, 60, 90].map((days) => (
+
+            {/* Quick Presets */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, flexWrap: "wrap" }}>
+              {[0, 7, 15, 30, 60, 90, 180, 365].map((days) => (
                 <Chip
                   key={days}
-                  label={days === 0 ? "No Change" : `+${days} Days`}
+                  label={days === 0 ? "Default" : `+${days} Days`}
                   size="small"
                   clickable
-                  onClick={() => setEditFormData((prev) => ({ ...prev, extendTrialDays: days }))}
+                  onClick={() => setEditFormData((prev) => ({ ...prev, extendTrialDays: days, customTrialDays: "", trialEndDate: "" }))}
                   sx={{
                     fontWeight: 800,
-                    fontSize: "0.75rem",
-                    bgcolor: editFormData.extendTrialDays === days ? themeConfig.primary : themeConfig.bgCard,
-                    color: editFormData.extendTrialDays === days ? "#FFFFFF" : themeConfig.textMain,
+                    fontSize: "0.72rem",
+                    bgcolor: editFormData.extendTrialDays === days && !editFormData.customTrialDays && !editFormData.trialEndDate ? themeConfig.primary : themeConfig.bgCard,
+                    color: editFormData.extendTrialDays === days && !editFormData.customTrialDays && !editFormData.trialEndDate ? "#FFFFFF" : themeConfig.textMain,
                   }}
                 />
               ))}
+            </Box>
+
+            {/* Custom Inputs: Days or Exact Date */}
+            <Box sx={{ display: "flex", gap: 1.5, mt: 0.5 }}>
+              <TextField
+                label="Custom Trial (Days)"
+                type="number"
+                size="small"
+                fullWidth
+                placeholder="e.g. 45, 120"
+                value={editFormData.customTrialDays}
+                onChange={(e) => setEditFormData({ ...editFormData, customTrialDays: e.target.value, extendTrialDays: 0, trialEndDate: "" })}
+                slotProps={{
+                  input: {
+                    sx: { bgcolor: themeConfig.bgCard, fontSize: "0.82rem" },
+                  },
+                }}
+              />
+
+              <TextField
+                label="Custom Expiry Date"
+                type="date"
+                size="small"
+                fullWidth
+                value={editFormData.trialEndDate}
+                onChange={(e) => setEditFormData({ ...editFormData, trialEndDate: e.target.value, extendTrialDays: 0, customTrialDays: "" })}
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  input: {
+                    sx: { bgcolor: themeConfig.bgCard, fontSize: "0.82rem" },
+                  },
+                }}
+              />
             </Box>
           </Box>
         </DialogContent>
