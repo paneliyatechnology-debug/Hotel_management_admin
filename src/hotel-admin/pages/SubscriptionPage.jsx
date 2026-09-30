@@ -39,6 +39,7 @@ import {
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
+import { useLiveCountdown } from "@/shared/utils/countdown";
 
 export default function SubscriptionPage({ user, subscription: initialSub, onRefresh }) {
   const { themeConfig, isDarkMode } = useAppTheme();
@@ -62,6 +63,9 @@ export default function SubscriptionPage({ user, subscription: initialSub, onRef
     whatsapp: "+919876543210",
   };
 
+  // ⏱️ Live Ticking Countdown Hook (Updates every 1 second)
+  const countdown = useLiveCountdown(sub.trialEndDate);
+
   // Fetch real subscription plans from database
   useEffect(() => {
     fetchPlans();
@@ -84,23 +88,22 @@ export default function SubscriptionPage({ user, subscription: initialSub, onRef
   };
 
   // Real-time dynamic trial calculations
-  const now = new Date();
   const trialEnd = sub.trialEndDate ? new Date(sub.trialEndDate) : new Date(Date.now() + 24 * 86400000);
   const trialStart = sub.trialStartDate ? new Date(sub.trialStartDate) : new Date(trialEnd.getTime() - 30 * 86400000);
 
-  const diffMs = trialEnd.getTime() - now.getTime();
-  const daysLeft = sub.daysLeft !== undefined ? sub.daysLeft : Math.max(0, Math.ceil(diffMs / 86400000));
+  const daysLeft = countdown.isExpired ? 0 : countdown.days;
   const totalDays = sub.totalDays || 30;
-  const elapsedDays = sub.elapsedDays !== undefined ? sub.elapsedDays : Math.max(0, Math.min(totalDays, totalDays - daysLeft));
-  const elapsedPercentage = sub.elapsedPercentage !== undefined ? sub.elapsedPercentage : Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)));
+  const elapsedDays = Math.max(0, Math.min(totalDays, totalDays - daysLeft));
+  const elapsedPercentage = Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)));
 
-  const isTrial = sub.status === "TRIAL" || (!sub.subscriptionEndDate && daysLeft > 0);
-  const isExpired = sub.isExpired || (isTrial && daysLeft <= 0) || sub.status === "EXPIRED";
+  const isExpired = countdown.isExpired || sub.isExpired || sub.status === "EXPIRED";
 
-  const trialEndFormatted = trialEnd.toLocaleDateString("en-IN", {
+  const trialEndFormatted = trialEnd.toLocaleString("en-IN", {
     day: "numeric",
-    month: "long",
+    month: "short",
     year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 
   const handleOpenUpgrade = (plan) => {
@@ -185,7 +188,7 @@ export default function SubscriptionPage({ user, subscription: initialSub, onRef
           </Box>
 
           <Chip
-            label={isExpired ? "TRIAL EXPIRED" : `${daysLeft} DAYS REMAINING`}
+            label={isExpired ? "TRIAL EXPIRED" : `⏳ ${countdown.formatted}`}
             sx={{
               bgcolor: isExpired ? themeConfig.dangerBg : themeConfig.successBg,
               color: isExpired ? themeConfig.danger : themeConfig.success,

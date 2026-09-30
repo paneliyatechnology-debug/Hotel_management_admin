@@ -236,8 +236,19 @@ function AdminAppContent() {
       if (!currentToken && currentStoredUser) {
         console.warn("🔒 [Auth] Token was deleted. Auto-logging out immediately...");
         handleLogout();
+        return;
       }
-    }, 2000);
+
+      // ⏱️ Live Ticker: Periodically re-evaluate lockout so trial expiry locks portal at the exact second/minute
+      if (currentStoredUser) {
+        try {
+          const u = JSON.parse(currentStoredUser);
+          if (u && u.role !== "SUPER_ADMIN") {
+            checkUserLockout(u);
+          }
+        } catch {}
+      }
+    }, 3000);
 
     window.addEventListener("hotel-status-lockout", handleLockoutEvent);
     window.addEventListener("auth-unauthorized", handleUnauthorizedEvent);

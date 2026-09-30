@@ -60,6 +60,31 @@ import { useAppTheme } from "@/shared/context/ThemeContext";
 import StatusChip from "@/shared/components/StatusChip";
 import EmptyState from "@/shared/components/EmptyState";
 import LoadingState from "@/shared/components/LoadingState";
+import { useLiveCountdown } from "@/shared/utils/countdown";
+
+function TrialTimeCell({ trialEndDate, status, themeConfig }) {
+  const countdown = useLiveCountdown(trialEndDate);
+  if (!trialEndDate) {
+    return <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.73rem", fontWeight: 600 }}>Subscription Active</Typography>;
+  }
+
+  const d = new Date(trialEndDate);
+  const formattedDateTime = d.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+  if (countdown.isExpired || status === "EXPIRED") {
+    return (
+      <Typography variant="caption" sx={{ color: themeConfig.danger, fontSize: "0.73rem", fontWeight: 700 }}>
+        Expired ({formattedDateTime})
+      </Typography>
+    );
+  }
+
+  return (
+    <Typography variant="caption" sx={{ color: themeConfig.primaryDark, fontSize: "0.73rem", fontWeight: 700 }}>
+      ⏳ {countdown.formatted} ({formattedDateTime})
+    </Typography>
+  );
+}
 import { downloadHotelsDirectoryPDF } from "@/shared/utils/pdfGenerator";
 
 const formatDate = (dateString) => {
@@ -417,13 +442,7 @@ export default function HotelsDirectoryPage({
                           width: "fit-content",
                         }}
                       />
-                      <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.73rem", fontWeight: 600 }}>
-                        {hotel.subscription?.trialEndDate
-                          ? `Trial Ends: ${formatDate(hotel.subscription.trialEndDate)}`
-                          : hotel.subscription?.status === "TRIAL"
-                          ? "Trial Active"
-                          : "Subscription Active"}
-                      </Typography>
+                      <TrialTimeCell trialEndDate={hotel.subscription?.trialEndDate} status={hotel.status} themeConfig={themeConfig} />
                     </Box>
                   </TableCell>
                   <TableCell sx={{ whiteSpace: "nowrap" }}>
