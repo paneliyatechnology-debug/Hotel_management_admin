@@ -28,7 +28,7 @@ function AdminAppContent() {
       return ["overview", "daily-collections", "guests", "staff", "rooms", "subscriptions", "settings"];
     }
     if (currentUser.role === "SUPER_ADMIN") {
-      return ["overview", "hotels", "approvals", "subscriptions", "audit-logs", "settings"];
+      return ["overview", "hotels", "subscriptions", "audit-logs", "settings"];
     }
     if (currentUser.role === "RECEPTIONIST") {
       return ["rooms", "folios", "check-in", "id-compliance", "pos-billing", "settings"];

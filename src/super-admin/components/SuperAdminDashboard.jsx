@@ -275,22 +275,14 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
         />
       )}
 
-      {/* ROUTE 2: PENDING APPROVALS */}
-      {activeNav === 2 && (
-        <PendingApprovalsPage
-          hotels={hotels}
-          onOpenActionDialog={handleOpenActionDialog}
-        />
-      )}
+      {/* ROUTE 2: SUBSCRIPTION PLANS */}
+      {activeNav === 2 && <SubscriptionPlansPage />}
 
-      {/* ROUTE 3: SUBSCRIPTION PLANS */}
-      {activeNav === 3 && <SubscriptionPlansPage />}
+      {/* ROUTE 3: AUDIT LOGS */}
+      {activeNav === 3 && <AuditLogsPage />}
 
-      {/* ROUTE 4: AUDIT LOGS */}
-      {activeNav === 4 && <AuditLogsPage />}
-
-      {/* ROUTE 5: PROFILE & SETTINGS */}
-      {activeNav === 5 && <SettingsView user={user} />}
+      {/* ROUTE 4: PROFILE & SETTINGS */}
+      {activeNav === 4 && <SettingsView user={user} />}
     </Box>
   );
 }
