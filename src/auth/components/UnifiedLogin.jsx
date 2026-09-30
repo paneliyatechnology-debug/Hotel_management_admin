@@ -386,11 +386,24 @@ export default function UnifiedLogin({ onLoginSuccess }) {
             >
               <HotelIcon sx={{ fontSize: 28 }} />
             </Box>
+            <Typography
+              variant="overline"
+              sx={{
+                color: themeConfig.primary,
+                fontWeight: 900,
+                letterSpacing: 1.5,
+                display: "block",
+                mb: 0.5,
+                fontSize: "0.72rem",
+              }}
+            >
+              STAFF LOGIN PORTAL
+            </Typography>
             <Typography variant="h5" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-              Grand Royale Portal
+              Staff & Admin Login
             </Typography>
             <Typography variant="body2" sx={{ color: themeConfig.textMuted, mt: 0.5 }}>
-              Universal Sign-In for Super Admin, Hotel Admin & Receptionists
+              Universal Sign-In for Hotel Staff, Administrators & Receptionists
             </Typography>
           </Box>
 
