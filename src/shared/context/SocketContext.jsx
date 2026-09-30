@@ -83,6 +83,12 @@ export function SocketProvider({ children }) {
       "HANDOVER_SETTLED",
       "HOTEL_STATUS_UPDATED",
       "SIGNATURE_SUBMITTED",
+      "HOTEL_UPDATED",
+      "SUBSCRIPTION_UPDATED",
+      "TRIAL_REQUEST_APPROVED",
+      "TRIAL_REQUEST_REJECTED",
+      "NEW_TRIAL_REQUEST",
+      "HOTEL_REGISTERED",
     ];
 
     realTimeEvents.forEach((evtName) => {

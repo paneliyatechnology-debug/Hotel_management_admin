@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { Box, CircularProgress } from "@mui/material";
 import { AppThemeProvider, useAppTheme } from "@/shared/context/ThemeContext";
-import { SocketProvider } from "@/shared/context/SocketContext";
+import { SocketProvider, useSocket } from "@/shared/context/SocketContext";
 import UnifiedLogin from "@/auth/components/UnifiedLogin";
 import SuperAdminLayout from "@/super-admin/layout/SuperAdminLayout";
 import HotelAdminLayout from "@/hotel-admin/layout/HotelAdminLayout";
@@ -21,6 +21,26 @@ function AdminAppContent() {
   const { themeConfig } = useAppTheme();
   const pathname = usePathname();
   const router = useRouter();
+
+  // ⚡ Realtime Socket.IO Sync: Auto-show / Auto-hide Subscription Expired & Lockout Popup without Page Refresh
+  useSocket(
+    ["HOTEL_UPDATED", "SUBSCRIPTION_UPDATED", "HOTEL_STATUS_UPDATED", "TRIAL_REQUEST_APPROVED", "TRIAL_REQUEST_REJECTED", "DASHBOARD_SYNC"],
+    (payload, eventName) => {
+      console.log(`⚡ [Realtime Lockout Sync] Event received: ${eventName}`, payload);
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (token) {
+        apiRequest(API_ENDPOINTS.AUTH.ME)
+          .then((res) => {
+            if (res?.data) {
+              setUser(res.data);
+              localStorage.setItem("user", JSON.stringify(res.data));
+              checkUserLockout(res.data);
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  );
 
   const getNavListForUser = (currentUser) => {
     if (!currentUser) return [];

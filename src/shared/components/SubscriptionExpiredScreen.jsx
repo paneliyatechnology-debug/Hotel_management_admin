@@ -39,7 +39,9 @@ import {
   CorporateFare,
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
+import { useSocket } from "@/shared/context/SocketContext";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
+import { toast } from "@/shared/utils/toast";
 
 export default function SubscriptionExpiredScreen({
   user,
@@ -48,6 +50,15 @@ export default function SubscriptionExpiredScreen({
   type = "EXPIRED", // "EXPIRED" | "DISABLED" | "SUSPENDED"
 }) {
   const { themeConfig, isDarkMode } = useAppTheme();
+
+  // Listen for real-time trial approval or status changes
+  useSocket(["HOTEL_UPDATED", "SUBSCRIPTION_UPDATED", "TRIAL_REQUEST_APPROVED", "HOTEL_STATUS_UPDATED"], (payload, evt) => {
+    if (evt === "TRIAL_REQUEST_APPROVED") {
+      toast.success("⚡ Trial Extension Approved by Super Admin! Unlocking portal...");
+    } else if (evt === "HOTEL_UPDATED" || evt === "HOTEL_STATUS_UPDATED") {
+      toast.info("⚡ Hotel status updated in real-time by Super Admin!");
+    }
+  });
   const [plans, setPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [billingCycle, setBillingCycle] = useState("MONTHLY");
