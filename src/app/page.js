@@ -112,12 +112,21 @@ function AdminAppContent() {
     if (sub) {
       const now = new Date();
       const trialEndDate = sub.trialEndDate ? new Date(sub.trialEndDate) : null;
-      const isTrialExpired = sub.isExpired || (sub.status === "TRIAL" && trialEndDate && trialEndDate < now) || sub.status === "EXPIRED";
-      if (isTrialExpired && sub.status !== "ACTIVE") {
+
+      // ⚡ If trialEndDate is in the future AND hotel is ACTIVE, it is NOT locked!
+      if (trialEndDate && trialEndDate > now && (hotel.status === "ACTIVE" || !hotel.status)) {
+        return { locked: false, type: "EXPIRED", reason: "" };
+      }
+
+      // Genuinely expired if trialEndDate is in the past OR status is explicitly EXPIRED
+      const isExpiredByDate = trialEndDate ? trialEndDate <= now : false;
+      const isExpiredByStatus = sub.status === "EXPIRED" || sub.isExpired === true;
+
+      if ((isExpiredByDate || isExpiredByStatus) && sub.status !== "ACTIVE" && (sub.plan === "TRIAL" || !sub.plan)) {
         return {
           locked: true,
           type: "EXPIRED",
-          reason: "Your 30-day free trial or hotel subscription plan has ended.",
+          reason: "Your free trial or hotel subscription plan evaluation period has ended.",
         };
       }
     }

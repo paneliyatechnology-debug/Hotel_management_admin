@@ -43,6 +43,12 @@ export function SocketProvider({ children }) {
     // Only run on client side
     if (typeof window === "undefined") return;
 
+    // Prevent recreating connection if socket is already connected
+    if (socketRef.current && socketRef.current.connected) {
+      joinRoom();
+      return;
+    }
+
     const socketUrl = getApiBaseUrl() || "http://localhost:5000";
     console.log(`🔌 [Socket.io Client] Connecting to: ${socketUrl}`);
 
@@ -92,6 +98,7 @@ export function SocketProvider({ children }) {
     ];
 
     realTimeEvents.forEach((evtName) => {
+      socket.off(evtName);
       socket.on(evtName, (payload) => {
         console.log(`⚡ [Socket.io Client] Received Event '${evtName}':`, payload);
         setLastEvent({ name: evtName, payload, timestamp: Date.now() });
@@ -119,9 +126,8 @@ export function SocketProvider({ children }) {
     return () => {
       window.removeEventListener("auth-state-changed", handleAuthChange);
       window.removeEventListener("storage", handleAuthChange);
-      socket.disconnect();
     };
-  }, [joinRoom]);
+  }, []);
 
   return (
     <SocketContext.Provider value={{ socket: socketRef.current, isConnected, lastEvent, joinRoom }}>
