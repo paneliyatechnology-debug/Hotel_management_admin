@@ -128,6 +128,33 @@ export default function SubscriptionExpiredScreen({
     return <CorporateFare sx={{ fontSize: 24, color: themeConfig.primaryDark }} />;
   };
 
+  // Free Trial Extension Request State (Hotel Admin)
+  const [trialDialogOpen, setTrialDialogOpen] = useState(false);
+  const [trialForm, setTrialForm] = useState({ requestedDays: 30, reason: "" });
+  const [trialSubmitting, setTrialSubmitting] = useState(false);
+  const [trialSuccessMsg, setTrialSuccessMsg] = useState("");
+
+  const handleSendTrialRequest = async (e) => {
+    e.preventDefault();
+    if (!trialForm.reason.trim()) return;
+    setTrialSubmitting(true);
+    try {
+      const res = await apiRequest(API_ENDPOINTS.TRIAL_REQUESTS.SUBMIT, {
+        method: "POST",
+        body: trialForm,
+      });
+      setTrialSuccessMsg(res?.message || "Trial extension request submitted! Super Admin has been notified in real-time.");
+      setTimeout(() => {
+        setTrialDialogOpen(false);
+        setTrialSuccessMsg("");
+      }, 3000);
+    } catch (err) {
+      alert(err.message || "Failed to submit trial extension request");
+    } finally {
+      setTrialSubmitting(false);
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -142,6 +169,91 @@ export default function SubscriptionExpiredScreen({
         overflow: "hidden",
       }}
     >
+      {/* Trial Request Dialog */}
+      <Dialog
+        open={trialDialogOpen}
+        onClose={() => setTrialDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "22px",
+              p: 1.5,
+              border: `1px solid ${themeConfig.border}`,
+            },
+          },
+        }}
+      >
+        {trialSuccessMsg ? (
+          <Box sx={{ p: 4, textAlign: "center" }}>
+            <Avatar sx={{ width: 60, height: 60, bgcolor: themeConfig.successBg, color: themeConfig.success, mx: "auto", mb: 2 }}>
+              <CheckCircle sx={{ fontSize: 36 }} />
+            </Avatar>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 1 }}>
+              Request Sent to Super Admin! ⚡
+            </Typography>
+            <Typography variant="body2" sx={{ color: themeConfig.textMuted }}>
+              {trialSuccessMsg}
+            </Typography>
+          </Box>
+        ) : (
+          <form onSubmit={handleSendTrialRequest}>
+            <DialogTitle component="div" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
+              Request Free Trial Extension
+              <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block" }}>
+                Submit a request directly to Super Admin for complimentary trial days.
+              </Typography>
+            </DialogTitle>
+
+            <DialogContent sx={{ pt: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <TextField
+                label="Requested Extension Days"
+                type="number"
+                size="small"
+                fullWidth
+                value={trialForm.requestedDays}
+                onChange={(e) => setTrialForm({ ...trialForm, requestedDays: e.target.value })}
+                helperText="Standard trial extensions are 15, 30, 45, or 60 days."
+              />
+
+              <TextField
+                label="Reason for Trial Extension *"
+                required
+                multiline
+                rows={3}
+                size="small"
+                fullWidth
+                placeholder="e.g. We require additional evaluation time before deciding on an annual plan..."
+                value={trialForm.reason}
+                onChange={(e) => setTrialForm({ ...trialForm, reason: e.target.value })}
+              />
+            </DialogContent>
+
+            <DialogActions sx={{ p: 2, px: 3 }}>
+              <Button onClick={() => setTrialDialogOpen(false)} sx={{ fontWeight: 700, color: themeConfig.textMuted }}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={trialSubmitting || !trialForm.reason.trim()}
+                className="btn-3d"
+                sx={{
+                  bgcolor: themeConfig.primary,
+                  color: "#FFFFFF",
+                  fontWeight: 800,
+                  borderRadius: "10px",
+                  px: 3,
+                }}
+              >
+                {trialSubmitting ? "Submitting..." : "Send Request to Super Admin ⚡"}
+              </Button>
+            </DialogActions>
+          </form>
+        )}
+      </Dialog>
+
       {/* Background Decorative Ambient Radial Glows */}
       <Box
         sx={{
@@ -618,8 +730,27 @@ export default function SubscriptionExpiredScreen({
             </Grid>
           </Box>
 
-          {/* Quick Callback Request Button */}
+          {/* Quick Action Buttons */}
           <Box sx={{ mt: 3, display: "flex", justifyContent: "center", gap: 2, flexWrap: "wrap" }}>
+            <Button
+              variant="contained"
+              className="btn-3d"
+              startIcon={<HourglassBottom />}
+              onClick={() => setTrialDialogOpen(true)}
+              sx={{
+                background: `linear-gradient(135deg, ${themeConfig.accent || "#D97706"} 0%, #B45309 100%)`,
+                color: "#FFFFFF",
+                fontWeight: 800,
+                fontSize: "0.88rem",
+                px: 3.5,
+                py: 1.2,
+                borderRadius: "14px",
+                boxShadow: "0 6px 18px rgba(217, 119, 6, 0.3)",
+              }}
+            >
+              Request Free Trial Extension ⚡
+            </Button>
+
             <Button
               variant="contained"
               className="btn-3d"

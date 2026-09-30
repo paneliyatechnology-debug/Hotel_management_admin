@@ -14,17 +14,22 @@ import {
   Paper,
   Button,
   Avatar,
+  Tabs,
+  Tab,
 } from "@mui/material";
-import { VerifiedUser, Block, Business } from "@/shared/icons";
+import { VerifiedUser, Block, Business, HourglassEmpty } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import StatusChip from "@/shared/components/StatusChip";
 import EmptyState from "@/shared/components/EmptyState";
+import TrialExtensionRequestsSection from "../components/TrialExtensionRequestsSection";
 
 export default function PendingApprovalsPage({
   hotels = [],
   onOpenActionDialog,
+  onRefreshHotels,
 }) {
   const { themeConfig } = useAppTheme();
+  const [activeTab, setActiveTab] = useState(0);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -33,14 +38,38 @@ export default function PendingApprovalsPage({
 
   return (
     <Box>
-      <Box sx={{ mb: 3.5 }}>
+      <Box sx={{ mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 800, color: themeConfig.textMain, letterSpacing: -0.5 }}>
-          Priority Registration &amp; KYC Approvals Queue
+          Pending Approvals &amp; Free Trial Requests
         </Typography>
         <Typography variant="body2" sx={{ color: themeConfig.textMuted, mt: 0.5 }}>
-          Review pending property onboarding requests, legal compliance documents, and grant platform access.
+          Review pending hotel onboarding registrations and approve hotel free trial extension requests in real-time.
         </Typography>
+
+        <Tabs
+          value={activeTab}
+          onChange={(e, newVal) => setActiveTab(newVal)}
+          sx={{
+            mt: 2,
+            borderBottom: `1px solid ${themeConfig.border}`,
+            "& .MuiTab-root": {
+              fontWeight: 800,
+              fontSize: "0.9rem",
+              color: themeConfig.textMuted,
+              "&.Mui-selected": {
+                color: themeConfig.primary,
+              },
+            },
+          }}
+        >
+          <Tab icon={<Business fontSize="small" />} iconPosition="start" label={`Onboarding Approvals (${pendingHotels.length})`} />
+          <Tab icon={<HourglassEmpty fontSize="small" />} iconPosition="start" label="Free Trial Extension Requests ⚡" />
+        </Tabs>
       </Box>
+
+      {activeTab === 1 ? (
+        <TrialExtensionRequestsSection onRefreshHotels={onRefreshHotels} />
+      ) : (
 
       <TableContainer
         component={Paper}
@@ -167,6 +196,8 @@ export default function PendingApprovalsPage({
           />
         )}
       </TableContainer>
+      )}
     </Box>
   );
 }
+

@@ -517,8 +517,8 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
       {/* ROUTE 2: SUBSCRIPTION PLANS */}
       {activeNav === 2 && <SubscriptionPlansPage />}
 
-      {/* ROUTE 3: AUDIT LOGS */}
-      {activeNav === 3 && <AuditLogsPage />}
+      {/* ROUTE 3: AUDIT LOGS & SECURITY */}
+      {activeNav === 3 && <AuditLogsPage onRefreshHotels={fetchHotels} />}
 
       {/* ROUTE 4: PROFILE & SETTINGS */}
       {activeNav === 4 && <SettingsView user={user} />}

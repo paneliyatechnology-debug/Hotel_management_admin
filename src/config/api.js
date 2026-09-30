@@ -135,6 +135,12 @@ export const API_ENDPOINTS = {
   },
   SETTINGS: {
     PUBLIC: `${API_BASE_URL}/api/v1/settings`,
+  },
+  TRIAL_REQUESTS: {
+    SUBMIT: `${API_BASE_URL}/api/v1/hotels/request-trial-extension`,
+    SUPER_ADMIN_LIST: `${API_BASE_URL}/api/v1/super-admin/trial-requests`,
+    APPROVE: (id) => `${API_BASE_URL}/api/v1/super-admin/trial-requests/${id}/approve`,
+    REJECT: (id) => `${API_BASE_URL}/api/v1/super-admin/trial-requests/${id}/reject`,
   }
 };
 

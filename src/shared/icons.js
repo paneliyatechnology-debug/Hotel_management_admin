@@ -27,6 +27,7 @@ export {
   Business,
   CalendarMonth,
   CalendarToday,
+  Cancel,
   Category,
   Check,
   CheckCircle,

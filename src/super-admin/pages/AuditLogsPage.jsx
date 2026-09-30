@@ -16,14 +16,18 @@ import {
   Paper,
   Chip,
   Button,
+  Tabs,
+  Tab,
 } from "@mui/material";
-import { Download, Shield } from "@/shared/icons";
+import { Download, Shield, HourglassEmpty } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import EmptyState from "@/shared/components/EmptyState";
 import { downloadAuditLogsPDF } from "@/shared/utils/pdfGenerator";
+import TrialExtensionRequestsSection from "../components/TrialExtensionRequestsSection";
 
-export default function AuditLogsPage({ logs = [] }) {
+export default function AuditLogsPage({ logs = [], onRefreshHotels }) {
   const { themeConfig } = useAppTheme();
+  const [secTab, setSecTab] = useState(0);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -31,34 +35,60 @@ export default function AuditLogsPage({ logs = [] }) {
 
   return (
     <Box>
-      <Box sx={{ mb: 3.5, display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
+      <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
         <div>
           <Typography variant="h5" sx={{ fontWeight: 800, color: themeConfig.textMain, letterSpacing: -0.5 }}>
-            Platform Security &amp; Compliance Audit Logs
+            Security, Compliance &amp; Requests Portal
           </Typography>
           <Typography variant="body2" sx={{ color: themeConfig.textMuted, mt: 0.5 }}>
-            Immutable ledger of system administrative activities, tenant status modifications, and security events.
+            Review free trial extension requests from hotel tenants and inspect immutable system audit logs.
           </Typography>
         </div>
 
-        <Button
-          variant="contained"
-          startIcon={<Download />}
-          onClick={() => downloadAuditLogsPDF(logs)}
-          className="btn-3d"
-          sx={{
-            borderRadius: "12px",
-            background: `linear-gradient(135deg, ${themeConfig.primary} 0%, ${themeConfig.primaryDark} 100%)`,
-            color: "#FFFFFF",
-            fontWeight: 800,
-            textTransform: "none",
-            px: 2.5,
-            boxShadow: `0 6px 16px ${themeConfig.primaryGlow}`,
-          }}
-        >
-          Download PDF Audit Report
-        </Button>
+        {secTab === 1 && (
+          <Button
+            variant="contained"
+            startIcon={<Download />}
+            onClick={() => downloadAuditLogsPDF(logs)}
+            className="btn-3d"
+            sx={{
+              borderRadius: "12px",
+              background: `linear-gradient(135deg, ${themeConfig.primary} 0%, ${themeConfig.primaryDark} 100%)`,
+              color: "#FFFFFF",
+              fontWeight: 800,
+              textTransform: "none",
+              px: 2.5,
+              boxShadow: `0 6px 16px ${themeConfig.primaryGlow}`,
+            }}
+          >
+            Download PDF Audit Report
+          </Button>
+        )}
       </Box>
+
+      <Tabs
+        value={secTab}
+        onChange={(e, val) => setSecTab(val)}
+        sx={{
+          mb: 3,
+          borderBottom: `1px solid ${themeConfig.border}`,
+          "& .MuiTab-root": {
+            fontWeight: 800,
+            fontSize: "0.9rem",
+            color: themeConfig.textMuted,
+            "&.Mui-selected": {
+              color: themeConfig.primary,
+            },
+          },
+        }}
+      >
+        <Tab icon={<HourglassEmpty fontSize="small" />} iconPosition="start" label="Hotel Trial Extension Requests ⚡" />
+        <Tab icon={<Shield fontSize="small" />} iconPosition="start" label={`Security & System Audit Logs (${logs.length})`} />
+      </Tabs>
+
+      {secTab === 0 ? (
+        <TrialExtensionRequestsSection onRefreshHotels={onRefreshHotels} />
+      ) : (
 
       <TableContainer
         component={Paper}
@@ -148,6 +178,8 @@ export default function AuditLogsPage({ logs = [] }) {
           />
         )}
       </TableContainer>
+      )}
     </Box>
   );
 }
+
