@@ -119,7 +119,9 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
     let formattedDate = "";
     if (rawDate) {
       try {
-        formattedDate = new Date(rawDate).toISOString().split("T")[0];
+        const d = new Date(rawDate);
+        const pad = (n) => String(n).padStart(2, "0");
+        formattedDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
       } catch {
         formattedDate = "";
       }
@@ -444,8 +446,8 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
               />
 
               <TextField
-                label="Custom Expiry Date"
-                type="date"
+                label="Custom Expiry Date & Time (Hours/Mins)"
+                type="datetime-local"
                 size="small"
                 fullWidth
                 value={editFormData.trialEndDate}

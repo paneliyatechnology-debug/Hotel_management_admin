@@ -65,7 +65,8 @@ export default function TrialExtensionRequestsSection({ onRefreshHotels }) {
       type,
       request: reqItem,
       days: reqItem?.requestedDays || 30,
-      remarks: type === "APPROVE" ? `Approved +${reqItem?.requestedDays || 30} days by Super Admin.` : "Request declined by Super Admin.",
+      customEndDate: "",
+      remarks: type === "APPROVE" ? `Approved for trial extension by Super Admin.` : "Request declined by Super Admin.",
     });
   };
 
@@ -78,10 +79,11 @@ export default function TrialExtensionRequestsSection({ onRefreshHotels }) {
           method: "PUT",
           body: {
             approvedDays: Number(dialogState.days) || 30,
+            customEndDate: dialogState.customEndDate || undefined,
             remarks: dialogState.remarks,
           },
         });
-        toast.success(`Approved trial extension for '${dialogState.request.hotelName}'! (+${dialogState.days} days)`);
+        toast.success(`Approved trial extension for '${dialogState.request.hotelName}'!`);
       } else {
         await apiRequest(API_ENDPOINTS.TRIAL_REQUESTS.REJECT(dialogState.request._id), {
           method: "PUT",
@@ -89,7 +91,7 @@ export default function TrialExtensionRequestsSection({ onRefreshHotels }) {
         });
         toast.info(`Rejected trial extension for '${dialogState.request.hotelName}'.`);
       }
-      setDialogState({ open: false, type: null, request: null, days: 30, remarks: "" });
+      setDialogState({ open: false, type: null, request: null, days: 30, customEndDate: "", remarks: "" });
       fetchRequests();
       if (onRefreshHotels) onRefreshHotels();
     } catch (err) {
@@ -125,7 +127,7 @@ export default function TrialExtensionRequestsSection({ onRefreshHotels }) {
       {/* Action Dialog */}
       <Dialog
         open={dialogState.open}
-        onClose={() => setDialogState({ open: false, type: null, request: null, days: 30, remarks: "" })}
+        onClose={() => setDialogState({ open: false, type: null, request: null, days: 30, customEndDate: "", remarks: "" })}
         maxWidth="sm"
         fullWidth
         slotProps={{
@@ -147,15 +149,30 @@ export default function TrialExtensionRequestsSection({ onRefreshHotels }) {
 
         <DialogContent sx={{ pt: 1.5, display: "flex", flexDirection: "column", gap: 2 }}>
           {dialogState.type === "APPROVE" && (
-            <TextField
-              label="Approved Days (+Days)"
-              type="number"
-              fullWidth
-              size="small"
-              value={dialogState.days}
-              onChange={(e) => setDialogState({ ...dialogState, days: e.target.value })}
-              helperText="Specify exact number of free trial days to grant to this hotel property."
-            />
+            <Box sx={{ display: "flex", gap: 1.5, flexDirection: "column" }}>
+              <TextField
+                label="Approved Days (+Days)"
+                type="number"
+                fullWidth
+                size="small"
+                value={dialogState.days}
+                onChange={(e) => setDialogState({ ...dialogState, days: e.target.value, customEndDate: "" })}
+                helperText="Standard relative days extension."
+              />
+
+              <TextField
+                label="OR Custom Expiry Date & Exact Time (Hours/Mins)"
+                type="datetime-local"
+                fullWidth
+                size="small"
+                value={dialogState.customEndDate}
+                onChange={(e) => setDialogState({ ...dialogState, customEndDate: e.target.value })}
+                slotProps={{
+                  inputLabel: { shrink: true },
+                }}
+                helperText="Specify exact cutoff date and time (e.g. 2026-10-31 23:59)."
+              />
+            </Box>
           )}
 
           <TextField
