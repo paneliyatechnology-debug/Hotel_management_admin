@@ -417,7 +417,7 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
                   label={days === 0 ? "Default" : `+${days} Days`}
                   size="small"
                   clickable
-                  onClick={() => setEditFormData((prev) => ({ ...prev, extendTrialDays: days, customTrialDays: "", trialEndDate: "" }))}
+                  onClick={() => setEditFormData((prev) => ({ ...prev, extendTrialDays: days, customTrialDays: "", trialEndDate: "", status: days > 0 ? "ACTIVE" : prev.status }))}
                   sx={{
                     fontWeight: 800,
                     fontSize: "0.72rem",
@@ -437,7 +437,7 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
                 fullWidth
                 placeholder="e.g. 45, 120"
                 value={editFormData.customTrialDays}
-                onChange={(e) => setEditFormData({ ...editFormData, customTrialDays: e.target.value, extendTrialDays: 0, trialEndDate: "" })}
+                onChange={(e) => setEditFormData({ ...editFormData, customTrialDays: e.target.value, extendTrialDays: 0, trialEndDate: "", status: e.target.value ? "ACTIVE" : editFormData.status })}
                 slotProps={{
                   input: {
                     sx: { bgcolor: themeConfig.bgCard, fontSize: "0.82rem" },
@@ -451,7 +451,7 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
                 size="small"
                 fullWidth
                 value={editFormData.trialEndDate}
-                onChange={(e) => setEditFormData({ ...editFormData, trialEndDate: e.target.value, extendTrialDays: 0, customTrialDays: "" })}
+                onChange={(e) => setEditFormData({ ...editFormData, trialEndDate: e.target.value, extendTrialDays: 0, customTrialDays: "", status: e.target.value ? "ACTIVE" : editFormData.status })}
                 slotProps={{
                   inputLabel: { shrink: true },
                   input: {
