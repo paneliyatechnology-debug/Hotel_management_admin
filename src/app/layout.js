@@ -13,8 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Grand Royale | Admin & Operations Console",
+  title: "MYOWNPMS | Admin & Operations Console",
   description: "Multi-tenant cloud management platform for Super Admins, Hotel Admins, and Receptionists.",
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export default function RootLayout({ children }) {
