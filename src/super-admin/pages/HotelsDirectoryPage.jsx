@@ -61,6 +61,7 @@ import StatusChip from "@/shared/components/StatusChip";
 import EmptyState from "@/shared/components/EmptyState";
 import LoadingState from "@/shared/components/LoadingState";
 import { useLiveCountdown } from "@/shared/utils/countdown";
+import HotelGuestsModal from "@/super-admin/components/HotelGuestsModal";
 
 function TrialTimeCell({ trialEndDate, status, themeConfig }) {
   const countdown = useLiveCountdown(trialEndDate);
@@ -121,6 +122,8 @@ export default function HotelsDirectoryPage({
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [guestModalOpen, setGuestModalOpen] = useState(false);
+  const [guestModalHotel, setGuestModalHotel] = useState(null);
 
   const filteredHotels = hotels.filter((h) => {
     const matchSearch =
@@ -519,6 +522,30 @@ export default function HotelsDirectoryPage({
                         </IconButton>
                       </Tooltip>
 
+                      <Tooltip title={`View Guest Directory (${hotel.name})`}>
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            setGuestModalHotel(hotel);
+                            setGuestModalOpen(true);
+                          }}
+                          sx={{
+                            width: 32,
+                            height: 32,
+                            color: "#10B981",
+                            bgcolor: isDarkMode ? "rgba(16,185,129,0.15)" : "#E6F4EA",
+                            borderRadius: "10px",
+                            border: "1px solid rgba(16,185,129,0.3)",
+                            "&:hover": {
+                              borderColor: "#10B981",
+                              bgcolor: isDarkMode ? "rgba(16,185,129,0.25)" : "#CEEAD6",
+                            },
+                          }}
+                        >
+                          <People fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+
                       {hotel.status === "ACTIVE" ? (
                         <Tooltip title="Suspend Hotel Operational Access">
                           <Button
@@ -831,6 +858,13 @@ export default function HotelsDirectoryPage({
           </Box>
         )}
       </Drawer>
+
+      {/* Super Admin Hotel Guests Master Directory Modal */}
+      <HotelGuestsModal
+        open={guestModalOpen}
+        onClose={() => setGuestModalOpen(false)}
+        hotel={guestModalHotel}
+      />
     </Box>
   );
 }
