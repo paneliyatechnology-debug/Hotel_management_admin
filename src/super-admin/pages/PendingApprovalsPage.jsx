@@ -16,6 +16,8 @@ import {
   Avatar,
   Tabs,
   Tab,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import { VerifiedUser, Block, Business, HourglassEmpty } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
@@ -133,41 +135,45 @@ export default function PendingApprovalsPage({
                   </TableCell>
                   <TableCell align="right">
                     <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        startIcon={<VerifiedUser />}
-                        onClick={() => onOpenActionDialog("ACTIVATE", hotel)}
-                        className="btn-3d"
-                        sx={{
-                          background: `linear-gradient(135deg, ${themeConfig.success} 0%, #15803D 100%)`,
-                          color: "#FFFFFF",
-                          fontWeight: 800,
-                          borderRadius: "10px",
-                          boxShadow: "0 4px 12px rgba(22, 163, 74, 0.25)",
-                        }}
-                      >
-                        Approve &amp; Activate
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="error"
-                        startIcon={<Block />}
-                        onClick={() => onOpenActionDialog("DISABLE", hotel)}
-                        sx={{
-                          fontWeight: 800,
-                          borderRadius: "10px",
-                          borderColor: "rgba(220, 38, 38, 0.3)",
-                          color: themeConfig.danger,
-                          "&:hover": {
-                            borderColor: themeConfig.danger,
-                            bgcolor: "rgba(220, 38, 38, 0.08)",
-                          },
-                        }}
-                      >
-                        Reject
-                      </Button>
+                      <Tooltip title="Approve & Activate Hotel Application">
+                        <IconButton
+                          size="small"
+                          onClick={() => onOpenActionDialog("ACTIVATE", hotel)}
+                          sx={{
+                            width: 34,
+                            height: 34,
+                            color: "#FFFFFF",
+                            background: `linear-gradient(135deg, ${themeConfig.success} 0%, #15803D 100%)`,
+                            borderRadius: "10px",
+                            boxShadow: "0 4px 12px rgba(22, 163, 74, 0.25)",
+                            "&:hover": {
+                              transform: "translateY(-1px)",
+                            },
+                          }}
+                        >
+                          <VerifiedUser fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Reject Hotel Application">
+                        <IconButton
+                          size="small"
+                          onClick={() => onOpenActionDialog("DISABLE", hotel)}
+                          sx={{
+                            width: 34,
+                            height: 34,
+                            color: themeConfig.danger || "#EF4444",
+                            bgcolor: "rgba(220, 38, 38, 0.1)",
+                            borderRadius: "10px",
+                            border: "1px solid rgba(220, 38, 38, 0.3)",
+                            "&:hover": {
+                              borderColor: themeConfig.danger || "#EF4444",
+                              bgcolor: "rgba(220, 38, 38, 0.2)",
+                            },
+                          }}
+                        >
+                          <Block fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </Box>
                   </TableCell>
                 </TableRow>

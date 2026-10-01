@@ -548,48 +548,45 @@ export default function HotelsDirectoryPage({
 
                       {hotel.status === "ACTIVE" ? (
                         <Tooltip title="Suspend Hotel Operational Access">
-                          <Button
+                          <IconButton
                             size="small"
-                            variant="outlined"
-                            color="error"
-                            startIcon={<Block fontSize="small" />}
                             onClick={() => onOpenActionDialog("DISABLE", hotel)}
                             sx={{
+                              width: 32,
+                              height: 32,
+                              color: themeConfig.danger || "#EF4444",
+                              bgcolor: isDarkMode ? "rgba(239,68,68,0.15)" : "#FCE8E6",
                               borderRadius: "10px",
-                              fontWeight: 700,
-                              fontSize: "0.75rem",
-                              borderColor: "rgba(220, 38, 38, 0.3)",
+                              border: "1px solid rgba(239,68,68,0.3)",
                               "&:hover": {
-                                bgcolor: "rgba(220, 38, 38, 0.08)",
-                                borderColor: themeConfig.danger,
+                                borderColor: themeConfig.danger || "#EF4444",
+                                bgcolor: isDarkMode ? "rgba(239,68,68,0.25)" : "#F8D7DA",
                               },
                             }}
                           >
-                            Suspend
-                          </Button>
+                            <Block fontSize="small" />
+                          </IconButton>
                         </Tooltip>
                       ) : (
                         <Tooltip title="Activate Hotel Operational Access">
-                          <Button
+                          <IconButton
                             size="small"
-                            variant="contained"
-                            color="success"
-                            startIcon={<CheckCircle fontSize="small" />}
                             onClick={() => onOpenActionDialog("ACTIVE", hotel)}
-                            className="btn-3d"
                             sx={{
+                              width: 32,
+                              height: 32,
+                              color: "#10B981",
+                              bgcolor: isDarkMode ? "rgba(16,185,129,0.15)" : "#E6F4EA",
                               borderRadius: "10px",
-                              fontWeight: 800,
-                              fontSize: "0.75rem",
-                              background: `linear-gradient(135deg, ${themeConfig.success} 0%, #15803D 100%)`,
-                              boxShadow: "0 2px 8px rgba(22, 163, 74, 0.3)",
+                              border: "1px solid rgba(16,185,129,0.3)",
                               "&:hover": {
-                                transform: "translateY(-1px)",
+                                borderColor: "#10B981",
+                                bgcolor: isDarkMode ? "rgba(16,185,129,0.25)" : "#CEEAD6",
                               },
                             }}
                           >
-                            Activate
-                          </Button>
+                            <CheckCircle fontSize="small" />
+                          </IconButton>
                         </Tooltip>
                       )}
                     </Box>
