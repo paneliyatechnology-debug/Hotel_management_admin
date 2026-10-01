@@ -139,7 +139,7 @@ function MobileSignContent() {
             Signature Saved Successfully!
           </Typography>
           <Typography variant="body2" sx={{ color: "#047857", fontWeight: 700, mb: 2.5 }}>
-            ✓ તમારી સહી સફળતાપૂર્વક સિસ્ટમમાં સેવ થઈ ગઈ છે.
+            ✓ Your signature has been saved successfully in the system.
           </Typography>
 
           {savedSignature && (
@@ -281,7 +281,7 @@ function MobileSignContent() {
                 <QRCodeSVG value={qrUrl} size={180} level="M" fgColor="#0F172A" />
               </Box>
               <Typography variant="body2" sx={{ fontWeight: 800, color: "#334155", mb: 0.5 }}>
-                તમારા મોબાઈલ કેમેરાથી આ QR કોડ સ્કેન કરો
+                Scan this QR code with your mobile camera
               </Typography>
               <Typography variant="caption" sx={{ color: "#2563EB", fontWeight: 800, wordBreak: "break-all", mb: 0.5 }}>
                 {qrUrl}
@@ -293,7 +293,7 @@ function MobileSignContent() {
           </Dialog>
 
           <Typography variant="body2" sx={{ color: "#475569", fontWeight: 700, mb: 1, fontSize: "0.85rem" }}>
-            કૃપા કરીને નીચે આપેલા બોક્સમાં તમારી આંગળીથી સહી કરો:
+            Please sign with your finger in the box below:
           </Typography>
 
           {/* Pure PointerEvents Native Signature Pad Component (Stretches to fill available height) */}
@@ -312,7 +312,7 @@ function MobileSignContent() {
               ref={sigPadRef}
               height="100%"
               color="#0F172A"
-              placeholder="Sign here using finger (આંગળીથી સહી કરો)"
+              placeholder="Sign here using finger"
               onSignChange={(signed) => setHasDrawn(signed)}
             />
           </Box>
@@ -337,7 +337,7 @@ function MobileSignContent() {
                 px: 2,
               }}
             >
-              Clear (ફરીથી)
+              Clear
             </Button>
 
             <Button
@@ -358,7 +358,7 @@ function MobileSignContent() {
                 "&:hover": { bgcolor: hasDrawn ? "#059669" : "#CBD5E1" },
               }}
             >
-              {isSubmitting ? "Saving Signature..." : "Save Signature (સહી સેવ કરો)"}
+              {isSubmitting ? "Saving Signature..." : "Save Signature"}
             </Button>
           </Box>
         </Paper>
