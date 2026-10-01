@@ -2,7 +2,14 @@ import { toast as toastify } from "react-toastify";
 
 export const showToast = (message, severity = "success", options = {}) => {
   if (!message) return;
+  const toastId = options.toastId || (typeof message === "string" ? message : JSON.stringify(message));
+
+  if (toastify.isActive && toastify.isActive(toastId)) {
+    return toastId;
+  }
+
   const config = {
+    toastId,
     position: "top-right",
     autoClose: 3500,
     hideProgressBar: false,

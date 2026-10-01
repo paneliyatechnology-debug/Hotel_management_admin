@@ -56,10 +56,12 @@ export default function SuperAdminOverviewPage({
   const { themeConfig, isDarkMode } = useAppTheme();
 
   const [dashboardData, setDashboardData] = useState(null);
+  const [plans, setPlans] = useState([]);
   const [loadingStats, setLoadingStats] = useState(true);
 
   useEffect(() => {
     fetchDashboardStats();
+    fetchPlans();
   }, []);
 
   const fetchDashboardStats = async () => {
@@ -76,15 +78,59 @@ export default function SuperAdminOverviewPage({
     }
   };
 
+  const fetchPlans = async () => {
+    try {
+      const res = await apiRequest(API_ENDPOINTS.SUBSCRIPTION_PLANS.PUBLIC).catch(() => null);
+      if (res?.data?.all) {
+        setPlans(res.data.all);
+      } else if (Array.isArray(res?.data)) {
+        setPlans(res.data);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch subscription plans:", err);
+    }
+  };
+
   const totalActive = hotels.filter((h) => h.status === "ACTIVE").length;
   const totalPending = hotels.filter((h) => h.status === "PENDING" || h.status === "PENDING_APPROVAL").length;
   const totalDisabled = hotels.filter((h) => h.status === "DISABLED" || h.status === "SUSPENDED").length;
 
-  // Financial Metrics fallback calculation if API is loading/offline
-  const todayRevenue = dashboardData?.todayRevenue || (hotels.length ? 28500 : 0);
-  const monthlyRevenue = dashboardData?.monthlyRevenue || (totalActive * 4999 || 485000);
-  const totalRevenue = dashboardData?.totalRevenue || (totalActive * 24999 || 1840000);
-  const totalOrders = dashboardData?.totalOrders || (totalActive * 3 + 12 || 128);
+  // Financial Metrics: Fetch real calculations directly from MongoDB database API
+  const todayRevenue = dashboardData?.todayRevenue ?? 0;
+  const monthlyRevenue = dashboardData?.monthlyRevenue ?? 0;
+  const totalRevenue = dashboardData?.totalRevenue ?? 0;
+  const totalOrders = dashboardData?.totalOrders ?? 0;
+
+  // Real Subscription Tier Distribution Calculation
+  const realTiers = [];
+  const trialHotelsCount = hotels.filter(
+    (h) => !h.subscription?.plan || h.subscription?.plan === "TRIAL" || h.subscription?.status === "TRIAL"
+  ).length;
+  const trialPercent = hotels.length ? Math.round((trialHotelsCount / hotels.length) * 100) : 0;
+
+  if (plans.length > 0) {
+    plans.forEach((plan) => {
+      const matchCount = hotels.filter(
+        (h) =>
+          h.subscription?.plan?.toLowerCase() === plan.name?.toLowerCase() ||
+          (h.subscription?.status === "ACTIVE" && h.subscription?.plan === plan.name)
+      ).length;
+      const pct = hotels.length ? Math.round((matchCount / hotels.length) * 100) : 0;
+      realTiers.push({
+        name: `${plan.name} (₹${plan.price?.toLocaleString("en-IN") || 0}/${plan.billingCycle === "ANNUAL" ? "yr" : "mo"})`,
+        count: matchCount,
+        percent: pct,
+        color: plan.isPopular ? themeConfig.primary : "#10B981",
+      });
+    });
+  }
+
+  realTiers.push({
+    name: "Starter / 30-Day Free Trial (₹0)",
+    count: trialHotelsCount,
+    percent: trialPercent,
+    color: "#F59E0B",
+  });
 
   const recentHotels = hotels.slice(0, 5);
 
@@ -424,80 +470,31 @@ export default function SuperAdminOverviewPage({
               </Box>
 
               <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, mt: 3 }}>
-                {/* Enterprise Plan */}
-                <Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.8 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                      Enterprise Luxury Tier (₹9,999/mo)
-                    </Typography>
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.primaryDark }}>
-                      45% • {Math.round(hotels.length * 0.45) || 1} Hotels
-                    </Typography>
-                  </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={45}
-                    sx={{
-                      height: 8,
-                      borderRadius: 4,
-                      bgcolor: themeConfig.champagne,
-                      "& .MuiLinearProgress-bar": {
+                {realTiers.map((tier, idx) => (
+                  <Box key={idx}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.8 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
+                        {tier.name}
+                      </Typography>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: tier.color }}>
+                        {tier.percent}% • {tier.count} Hotel{tier.count === 1 ? "" : "s"}
+                      </Typography>
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={tier.percent}
+                      sx={{
+                        height: 8,
                         borderRadius: 4,
-                        background: `linear-gradient(90deg, ${themeConfig.primary}, ${themeConfig.primaryDark})`,
-                      },
-                    }}
-                  />
-                </Box>
-
-                {/* Professional Plan */}
-                <Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.8 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                      Professional Business Tier (₹4,999/mo)
-                    </Typography>
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: "#10B981" }}>
-                      35% • {Math.round(hotels.length * 0.35) || 1} Hotels
-                    </Typography>
+                        bgcolor: "rgba(0,0,0,0.06)",
+                        "& .MuiLinearProgress-bar": {
+                          borderRadius: 4,
+                          bgcolor: tier.color,
+                        },
+                      }}
+                    />
                   </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={35}
-                    sx={{
-                      height: 8,
-                      borderRadius: 4,
-                      bgcolor: "rgba(16, 185, 129, 0.12)",
-                      "& .MuiLinearProgress-bar": {
-                        borderRadius: 4,
-                        background: "linear-gradient(90deg, #10B981, #059669)",
-                      },
-                    }}
-                  />
-                </Box>
-
-                {/* Starter Plan / Trial */}
-                <Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.8 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                      Starter / 30-Day Trial (₹0)
-                    </Typography>
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: "#F59E0B" }}>
-                      20% • {Math.round(hotels.length * 0.2) || 1} Hotels
-                    </Typography>
-                  </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={20}
-                    sx={{
-                      height: 8,
-                      borderRadius: 4,
-                      bgcolor: "rgba(245, 158, 11, 0.12)",
-                      "& .MuiLinearProgress-bar": {
-                        borderRadius: 4,
-                        background: "linear-gradient(90deg, #F59E0B, #D97706)",
-                      },
-                    }}
-                  />
-                </Box>
+                ))}
               </Box>
             </CardContent>
 

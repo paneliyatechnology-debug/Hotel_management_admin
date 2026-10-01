@@ -52,11 +52,11 @@ export default function SubscriptionExpiredScreen({
   const { themeConfig, isDarkMode } = useAppTheme();
 
   // Listen for real-time trial approval or status changes
-  useSocket(["HOTEL_UPDATED", "SUBSCRIPTION_UPDATED", "TRIAL_REQUEST_APPROVED", "HOTEL_STATUS_UPDATED"], (payload, evt) => {
+  useSocket(["TRIAL_REQUEST_APPROVED", "HOTEL_STATUS_UPDATED"], (payload, evt) => {
     if (evt === "TRIAL_REQUEST_APPROVED") {
-      toast.success("⚡ Trial Extension Approved by Super Admin! Unlocking portal...");
-    } else if (evt === "HOTEL_UPDATED" || evt === "HOTEL_STATUS_UPDATED") {
-      toast.info("⚡ Hotel status updated in real-time by Super Admin!");
+      toast.success("⚡ Trial Extension Approved by Super Admin! Unlocking portal...", { toastId: "trial_approved_toast" });
+    } else if (evt === "HOTEL_STATUS_UPDATED") {
+      toast.info("⚡ Hotel status updated in real-time by Super Admin!", { toastId: "hotel_status_toast" });
     }
   });
   const [plans, setPlans] = useState([]);

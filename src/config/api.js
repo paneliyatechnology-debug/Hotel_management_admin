@@ -214,7 +214,8 @@ export async function apiRequest(endpoint, options = {}) {
   for (const targetUrl of candidateUrls) {
     try {
       response = await fetch(targetUrl, config);
-      if (response) break;
+      if (response && response.status < 500) break;
+      if (response && response.ok) break;
     } catch (netErr) {
       lastError = netErr;
       console.warn(`[API Network Warning] Attempt to reach ${targetUrl} failed, trying next candidate...`);

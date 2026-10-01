@@ -164,13 +164,24 @@ export default function UnifiedLogin({ onLoginSuccess }) {
         }
 
         if (user) {
+          if (user.role !== "SUPER_ADMIN") {
+            localStorage.removeItem("token");
+            localStorage.removeItem("refreshToken");
+            localStorage.removeItem("user");
+            const errStr = "Access Denied. This portal is strictly for Super Admin SaaS Governance. Hotel Admin and Receptionist users must log in through the Hotel Web Application.";
+            toast.error(errStr);
+            setError(errStr);
+            setLoading(false);
+            return;
+          }
+
           localStorage.setItem("user", JSON.stringify(user));
 
           if (user.mustChangePassword) {
             setTempUser(user);
             setChangePassOpen(true);
           } else {
-            toast.success(`Welcome back, ${user.name || "User"}!`);
+            toast.success(`Welcome back, ${user.name || "Super Admin"}!`);
             onLoginSuccess(user);
           }
         } else {
@@ -746,7 +757,16 @@ export default function UnifiedLogin({ onLoginSuccess }) {
 
 
       {/* Force Change Password Dialog for First-Time Login */}
-      <Dialog open={changePassOpen} disableEscapeKeyDown maxWidth="xs" fullWidth>
+      <Dialog
+        open={changePassOpen}
+        onClose={(event, reason) => {
+          if (reason !== "backdropClick" && reason !== "escapeKeyDown") {
+            setChangePassOpen(false);
+          }
+        }}
+        maxWidth="xs"
+        fullWidth
+      >
         <DialogTitle component="div" sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 1 }}>
           <KeyIcon sx={{ color: themeConfig.primary }} />
           First-Time Password Update

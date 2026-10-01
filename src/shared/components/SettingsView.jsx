@@ -102,6 +102,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
 
   // Profile Form State
   const [name, setName] = useState(user?.name || "");
+  const [phone, setPhone] = useState(user?.phone || user?.hotel?.ownerPhone || "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -110,6 +111,13 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState({ show: false, message: "", severity: "success" });
+
+  useEffect(() => {
+    if (user) {
+      if (user.name) setName(user.name);
+      if (user.phone || user.hotel?.ownerPhone) setPhone(user.phone || user.hotel?.ownerPhone || "");
+    }
+  }, [user]);
 
   // Hotel Check-In / Check-Out Timings State
   const [checkInTime, setCheckInTime] = useState(
