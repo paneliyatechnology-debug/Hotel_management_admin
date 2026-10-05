@@ -57,6 +57,8 @@ import {
   Edit,
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
+import { usePresence } from "@/shared/context/SocketContext";
+import PresenceBadge from "@/shared/components/PresenceBadge";
 import StatusChip from "@/shared/components/StatusChip";
 import EmptyState from "@/shared/components/EmptyState";
 import LoadingState from "@/shared/components/LoadingState";
@@ -119,6 +121,7 @@ export default function HotelsDirectoryPage({
   onRefresh,
 }) {
   const { themeConfig, isDarkMode } = useAppTheme();
+  const { isHotelOnline } = usePresence();
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -402,22 +405,25 @@ export default function HotelsDirectoryPage({
                         {hotel.name?.charAt(0).toUpperCase()}
                       </Avatar>
                       <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                          {hotel.name}
-                        </Typography>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
+                            {hotel.name}
+                          </Typography>
+                          <PresenceBadge isOnline={isHotelOnline(hotel._id)} size="small" />
+                        </Box>
                         <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "flex", alignItems: "center", gap: 0.5 }}>
                           <LocationOn sx={{ fontSize: 12, color: themeConfig.primary }} />
-                          {hotel.city || "Mumbai, India"} • {hotel.totalRooms || 24} Rooms
+                          {hotel.city ? `${hotel.city}${hotel.state ? `, ${hotel.state}` : ""}` : "Location N/A"} • {hotel.totalRooms ?? 0} Rooms
                         </Typography>
                       </Box>
                     </Box>
                   </TableCell>
                   <TableCell sx={{ whiteSpace: "nowrap" }}>
                     <Typography variant="body2" sx={{ fontWeight: 700, color: themeConfig.textMain }}>
-                      {hotel.admin?.name || "Hotel General Manager"}
+                      {hotel.admin?.name || hotel.ownerName || "Property Admin"}
                     </Typography>
                     <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
-                      {hotel.admin?.email || "admin@grandroyale.com"}
+                      {hotel.admin?.email || hotel.ownerEmail || "N/A"}
                     </Typography>
                   </TableCell>
                   <TableCell sx={{ whiteSpace: "nowrap" }}>
@@ -664,12 +670,15 @@ export default function HotelsDirectoryPage({
                   {selectedHotel.name?.charAt(0).toUpperCase()}
                 </Avatar>
                 <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 800, color: "#FFFFFF", lineHeight: 1.2 }}>
-                    {selectedHotel.name}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.8)", display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: "#FFFFFF", lineHeight: 1.2 }}>
+                      {selectedHotel.name}
+                    </Typography>
+                    <PresenceBadge isOnline={isHotelOnline(selectedHotel._id)} size="small" sx={{ bgcolor: "rgba(255,255,255,0.15)", px: 0.8, py: 0.2, borderRadius: "6px" }} />
+                  </Box>
+                  <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.8)", display: "flex", alignItems: "center", gap: 0.5, mt: 0.3 }}>
                     <LocationOn sx={{ fontSize: 13 }} />
-                    {selectedHotel.city || "Mumbai, Maharashtra"} • Code: <strong>{selectedHotel.code || "PMS"}</strong>
+                    {selectedHotel.city ? `${selectedHotel.city}${selectedHotel.state ? `, ${selectedHotel.state}` : ""}` : "Location N/A"} • Code: <strong>{selectedHotel.code || selectedHotel.slug?.toUpperCase() || "PMS"}</strong>
                   </Typography>
                 </Box>
               </Box>
@@ -738,19 +747,19 @@ export default function HotelsDirectoryPage({
                       <Grid container spacing={1.5} sx={{ fontSize: "0.85rem" }}>
                         <Grid size={{ xs: 6 }}>
                           <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Owner / Applicant:</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedHotel.admin?.name || selectedHotel.ownerName || "Siddharth Verma"}</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedHotel.admin?.name || selectedHotel.ownerName || "Property Admin"}</Typography>
                         </Grid>
                         <Grid size={{ xs: 6 }}>
                           <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Contact Email:</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedHotel.admin?.email || selectedHotel.ownerEmail || "owner@grandroyale.com"}</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedHotel.admin?.email || selectedHotel.ownerEmail || "N/A"}</Typography>
                         </Grid>
                         <Grid size={{ xs: 6 }}>
                           <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Phone Number:</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedHotel.phone || "+91 98200 12345"}</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedHotel.phone || selectedHotel.ownerPhone || selectedHotel.admin?.phone || "N/A"}</Typography>
                         </Grid>
                         <Grid size={{ xs: 6 }}>
                           <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>GST / Tax Number:</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedHotel.taxId || "27AABCU9603R1ZM"}</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedHotel.taxId || selectedHotel.gstNumber || selectedHotel.settings?.gstin || selectedHotel.panNumber || "N/A"}</Typography>
                         </Grid>
                       </Grid>
                     </CardContent>
@@ -765,21 +774,23 @@ export default function HotelsDirectoryPage({
                         <Grid size={{ xs: 4 }}>
                           <Paper sx={{ p: 1.5, textAlign: "center", borderRadius: "12px", bgcolor: themeConfig.bgMain }}>
                             <MeetingRoom fontSize="small" sx={{ color: themeConfig.primary }} />
-                            <Typography variant="h6" sx={{ fontWeight: 800 }}>{selectedHotel.totalRooms || 24}</Typography>
+                            <Typography variant="h6" sx={{ fontWeight: 800 }}>{selectedHotel.stats?.totalRooms ?? selectedHotel.totalRooms ?? 0}</Typography>
                             <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Inventory Rooms</Typography>
                           </Paper>
                         </Grid>
                         <Grid size={{ xs: 4 }}>
                           <Paper sx={{ p: 1.5, textAlign: "center", borderRadius: "12px", bgcolor: themeConfig.bgMain }}>
                             <People fontSize="small" sx={{ color: themeConfig.secondary }} />
-                            <Typography variant="h6" sx={{ fontWeight: 800 }}>{selectedHotel.staffCount || 6}</Typography>
+                            <Typography variant="h6" sx={{ fontWeight: 800 }}>{selectedHotel.stats?.staffCount ?? selectedHotel.staffCount ?? 1}</Typography>
                             <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Staff Logins</Typography>
                           </Paper>
                         </Grid>
                         <Grid size={{ xs: 4 }}>
                           <Paper sx={{ p: 1.5, textAlign: "center", borderRadius: "12px", bgcolor: themeConfig.bgMain }}>
                             <Dns fontSize="small" sx={{ color: themeConfig.primaryDark }} />
-                            <Typography variant="h6" sx={{ fontWeight: 800 }}>Online</Typography>
+                            <Box sx={{ display: "flex", justifyContent: "center", my: 0.5 }}>
+                              <PresenceBadge isOnline={isHotelOnline(selectedHotel._id)} size="small" />
+                            </Box>
                             <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Node Health</Typography>
                           </Paper>
                         </Grid>
@@ -795,17 +806,22 @@ export default function HotelsDirectoryPage({
                     <CardContent sx={{ p: 2.5 }}>
                       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 800, color: themeConfig.primaryDark }}>
-                          {selectedHotel.subscriptionPlan || "Enterprise Tier"}
+                          {((selectedHotel.subscription?.plan || selectedHotel.subscriptionPlan || "TRIAL") + " PLAN").toUpperCase()}
                         </Typography>
-                        <Chip label="ACTIVE" color="success" size="small" sx={{ fontWeight: 800, borderRadius: "6px" }} />
+                        <Chip
+                          label={selectedHotel.status || "ACTIVE"}
+                          color={selectedHotel.status === "ACTIVE" ? "success" : "warning"}
+                          size="small"
+                          sx={{ fontWeight: 800, borderRadius: "6px" }}
+                        />
                       </Box>
                       <Typography variant="body2" sx={{ color: themeConfig.textMuted, mb: 2 }}>
-                        Commercial License valid through <strong>{formatDate(selectedHotel.trialEndsAt || selectedHotel.createdAt)}</strong>. Includes unlimited guest check-ins, multi-lingual bills, &amp; 24/7 priority support.
+                        Commercial License valid through <strong>{formatDate(selectedHotel.subscription?.trialEndDate || selectedHotel.trialEndsAt || selectedHotel.subscription?.subscriptionEndDate || selectedHotel.createdAt)}</strong>. Includes full hotel operational management, multi-lingual bills, &amp; 24/7 priority support.
                       </Typography>
                       <Divider sx={{ my: 1.5 }} />
                       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMuted }}>
-                          Monthly Renewal Fee: <strong>₹4,999 / mo</strong>
+                          Monthly Renewal Fee: <strong>{selectedHotel.subscription?.plan === "PREMIUM" ? "₹7,999 / mo" : selectedHotel.subscription?.plan === "STANDARD" ? "₹4,999 / mo" : selectedHotel.subscription?.plan === "BASIC" ? "₹1,999 / mo" : "₹4,999 / mo"}</strong>
                         </Typography>
                         <Button
                           size="small"

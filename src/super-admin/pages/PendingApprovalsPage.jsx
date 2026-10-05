@@ -128,8 +128,8 @@ export default function PendingApprovalsPage({
                       </Typography>
                     </Box>
                   </TableCell>
-                  <TableCell>{hotel.city || "Mumbai, India"}</TableCell>
-                  <TableCell>{hotel.admin?.email || "applicant@hotel.com"}</TableCell>
+                  <TableCell>{hotel.city ? `${hotel.city}${hotel.state ? `, ${hotel.state}` : ""}` : "Location N/A"}</TableCell>
+                  <TableCell>{hotel.admin?.email || hotel.ownerEmail || "N/A"}</TableCell>
                   <TableCell>
                     <StatusChip status={hotel.status} size="small" />
                   </TableCell>

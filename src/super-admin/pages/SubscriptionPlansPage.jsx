@@ -442,29 +442,52 @@ export default function SubscriptionPlansPage() {
           {/* 3D Create Plan Button */}
           <Button
             variant="contained"
-            startIcon={<Add />}
+            startIcon={isCurrentCycleFull ? <CheckCircle sx={{ fontSize: "16px !important" }} /> : <Add sx={{ fontSize: "18px !important" }} />}
             disabled={meta.totalCount >= 6 || isCurrentCycleFull}
             onClick={handleOpenAddModal}
-            className="btn-3d"
+            className={!isCurrentCycleFull ? "btn-3d" : ""}
             sx={{
               borderRadius: "12px",
               textTransform: "none",
               fontWeight: 800,
-              fontSize: { xs: "0.78rem", sm: "0.8rem" },
-              background: `linear-gradient(135deg, ${themeConfig.primary} 0%, ${themeConfig.primaryDark} 100%)`,
-              color: "#FFFFFF",
-              px: 2.2,
-              py: 0.8,
-              boxShadow: `0 4px 12px ${themeConfig.primaryGlow}`,
+              fontSize: { xs: "0.78rem", sm: "0.82rem" },
+              px: 2.5,
+              py: 0.9,
               width: { xs: "100%", sm: "auto" },
-              "&:hover": {
-                transform: "translateY(-1px)",
-              },
+              transition: "all 0.2s ease",
+              ...(isCurrentCycleFull
+                ? {
+                    bgcolor: isDarkMode ? "rgba(255, 255, 255, 0.08) !important" : "#E2E8F0 !important",
+                    color: isDarkMode ? "rgba(255, 255, 255, 0.6) !important" : "#64748B !important",
+                    border: `1px solid ${themeConfig.border}`,
+                    boxShadow: "none !important",
+                    cursor: "not-allowed",
+                    "& .MuiButton-startIcon": {
+                      color: isDarkMode ? "rgba(255, 255, 255, 0.6) !important" : "#64748B !important",
+                    },
+                    "&.Mui-disabled": {
+                      bgcolor: isDarkMode ? "rgba(255, 255, 255, 0.08) !important" : "#E2E8F0 !important",
+                      color: isDarkMode ? "rgba(255, 255, 255, 0.6) !important" : "#64748B !important",
+                      boxShadow: "none !important",
+                    },
+                  }
+                : {
+                    background: `linear-gradient(135deg, ${themeConfig.primary} 0%, ${themeConfig.primaryDark} 100%) !important`,
+                    color: "#FFFFFF !important",
+                    boxShadow: `0 4px 12px ${themeConfig.primaryGlow}`,
+                    "& .MuiButton-startIcon": {
+                      color: "#FFFFFF !important",
+                    },
+                    "&:hover": {
+                      transform: "translateY(-1px)",
+                      boxShadow: `0 6px 16px ${themeConfig.primaryGlow}`,
+                    },
+                  }),
             }}
           >
             {isCurrentCycleFull
-              ? `Max 3 ${billingCycle} Plans Reached`
-              : ` Create ${billingCycle === "MONTHLY" ? "Monthly" : "Annual"} Plan (${billingCycle === "MONTHLY" ? meta.monthlyCount : meta.annualCount}/3)`}
+              ? `Max 3 ${billingCycle === "MONTHLY" ? "Monthly" : "Annual"} Plans Reached (3/3)`
+              : `Create ${billingCycle === "MONTHLY" ? "Monthly" : "Annual"} Plan (${billingCycle === "MONTHLY" ? meta.monthlyCount : meta.annualCount}/3)`}
           </Button>
         </Box>
       </Card>

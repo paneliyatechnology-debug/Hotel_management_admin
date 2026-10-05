@@ -587,7 +587,7 @@ export default function SuperAdminOverviewPage({
                             {hotel.name}
                           </Typography>
                           <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
-                            {hotel.city || "Mumbai"} • {hotel.admin?.email || "admin@hotel.com"}
+                            {hotel.city ? `${hotel.city}${hotel.state ? `, ${hotel.state}` : ""}` : "Location N/A"} • {hotel.admin?.email || hotel.ownerEmail || "N/A"}
                           </Typography>
                         </Box>
                       </Box>
