@@ -39,7 +39,15 @@ function SuperAdminAppContent() {
     try {
       const stored = localStorage.getItem("user");
       const token = localStorage.getItem("token");
-      return stored && token ? JSON.parse(stored) : null;
+      if (!stored || !token) return null;
+      const parsed = JSON.parse(stored);
+      if (parsed?.role !== "SUPER_ADMIN") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("user");
+        return null;
+      }
+      return parsed;
     } catch {
       return null;
     }
@@ -51,6 +59,7 @@ function SuperAdminAppContent() {
       const stored = localStorage.getItem("user");
       const token = localStorage.getItem("token");
       const u = stored && token ? JSON.parse(stored) : null;
+      if (u?.role !== "SUPER_ADMIN") return 0;
       return getActiveTabFromPath(u, pathname);
     } catch {
       return 0;
@@ -74,11 +83,17 @@ function SuperAdminAppContent() {
       apiRequest(API_ENDPOINTS.AUTH.ME)
         .then((res) => {
           if (res?.data) {
+            if (res.data.role !== "SUPER_ADMIN") {
+              handleLogout();
+              return;
+            }
             setUser(res.data);
             localStorage.setItem("user", JSON.stringify(res.data));
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          handleLogout();
+        });
     }
 
     const handleUnauthorizedEvent = () => {

@@ -42,14 +42,19 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    fetchHotels();
-  }, []);
+    if (user?.role === "SUPER_ADMIN") {
+      fetchHotels();
+    }
+  }, [user]);
 
   useSocket(["HOTEL_REGISTERED", "HOTEL_STATUS_UPDATED", "SUBSCRIPTION_UPDATED", "DASHBOARD_SYNC"], () => {
-    fetchHotels();
+    if (user?.role === "SUPER_ADMIN") {
+      fetchHotels();
+    }
   });
 
   const fetchHotels = async () => {
+    if (!user || user.role !== "SUPER_ADMIN") return;
     try {
       setLoading(true);
       const data = await apiRequest(API_ENDPOINTS.HOTELS.ALL);
@@ -57,7 +62,7 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
         setHotels(data.data);
       }
     } catch (err) {
-      console.error("Failed to fetch hotels:", err);
+      console.warn("Failed to fetch hotels:", err.message);
     } finally {
       setLoading(false);
     }
