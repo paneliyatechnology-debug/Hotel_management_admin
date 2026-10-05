@@ -34,6 +34,7 @@ import {
   WorkspacePremium,
   Layers,
   CheckCircle,
+  Star,
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
@@ -244,7 +245,7 @@ export default function SubscriptionPlansPage() {
             display: "inline-flex",
           }}
         >
-          <AutoAwesome sx={{ color: themeConfig.primary, fontSize: 20 }} />
+          <WorkspacePremium sx={{ color: themeConfig.primary, fontSize: 20 }} />
         </Box>
       );
     }
@@ -291,7 +292,7 @@ export default function SubscriptionPlansPage() {
         <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 2 }}>
           <div>
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, mb: 0.25 }}>
-              <AutoAwesome sx={{ fontSize: 16, color: themeConfig.primary }} />
+              <WorkspacePremium sx={{ fontSize: 16, color: themeConfig.primary }} />
               <Typography variant="caption" sx={{ fontWeight: 800, textTransform: "uppercase", color: themeConfig.primary, letterSpacing: 0.8, fontSize: "0.7rem" }}>
                 Commercial Subscription Architecture
               </Typography>
@@ -537,7 +538,7 @@ export default function SubscriptionPlansPage() {
                         gap: 0.6,
                       }}
                     >
-                      <AutoAwesome sx={{ fontSize: 13 }} />
+                      <Star sx={{ fontSize: 13 }} />
                       MOST POPULAR
                     </Box>
                   )}

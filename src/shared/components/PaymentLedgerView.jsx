@@ -115,7 +115,7 @@ export default function PaymentLedgerView({
   const [toast, setToast] = useState({ show: false, message: "", severity: "success" });
 
   const activeUpiId = hotelSettings?.upiId || "jatinkakadiya234-1@okicici";
-  const hotelName = user?.hotel?.name || "Grand Royale Luxury Resort";
+  const hotelName = user?.hotel?.name || "MYOWNPMS";
 
   const fetchPayments = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
