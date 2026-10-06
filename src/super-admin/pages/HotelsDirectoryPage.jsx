@@ -144,13 +144,13 @@ export default function HotelsDirectoryPage({
   const totalDisabled = hotels.filter((h) => h.status === "DISABLED" || h.status === "SUSPENDED").length;
 
   return (
-    <Box sx={{ px: { xs: 1.5, sm: 3 }, py: { xs: 1.5, sm: 3 } }}>
+    <Box sx={{ px: { xs: 1.5, sm: 3 }, py: { xs: 1.5, sm: 3 }, pb: { xs: 10, sm: 4 } }}>
       {/* 3D Page Title Banner */}
       <Box
         sx={{
-          mb: 3.5,
-          p: { xs: 2.5, md: 3 },
-          borderRadius: "24px",
+          mb: { xs: 2, sm: 3.5 },
+          p: { xs: 2, sm: 2.5, md: 3 },
+          borderRadius: { xs: "16px", sm: "24px" },
           background: `linear-gradient(135deg, ${themeConfig.primaryDark || "#0C273B"} 0%, ${themeConfig.primary || "#0B8EE0"} 100%)`,
           color: "#FFFFFF",
           boxShadow: `0 16px 36px -10px ${themeConfig.primaryGlow || "rgba(11, 142, 224, 0.4)"}, inset 0 1px 1px rgba(255,255,255,0.4)`,
@@ -158,16 +158,16 @@ export default function HotelsDirectoryPage({
           overflow: "hidden",
         }}
       >
-        <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 2, position: "relative", zIndex: 1 }}>
+        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "stretch", sm: "center" }, gap: 2, position: "relative", zIndex: 1 }}>
           <Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1, flexWrap: "wrap" }}>
               <Avatar
                 sx={{
                   bgcolor: "rgba(255,255,255,0.2)",
                   color: "#FFFFFF",
-                  width: 36,
-                  height: 36,
-                  borderRadius: "10px",
+                  width: 32,
+                  height: 32,
+                  borderRadius: "8px",
                 }}
               >
                 <Business fontSize="small" />
@@ -176,37 +176,40 @@ export default function HotelsDirectoryPage({
                 variant="caption"
                 sx={{
                   fontWeight: 800,
-                  letterSpacing: 1.2,
+                  letterSpacing: 1,
                   textTransform: "uppercase",
                   color: "rgba(255,255,255,0.85)",
-                  fontSize: "0.72rem",
+                  fontSize: { xs: "0.65rem", sm: "0.72rem" },
                 }}
               >
                 Multi-Tenant Hotel Network • Registered Properties
               </Typography>
             </Box>
-            <Typography variant="h5" sx={{ fontWeight: 900, color: "#FFFFFF", letterSpacing: -0.5, lineHeight: 1.2 }}>
+            <Typography variant="h5" sx={{ fontWeight: 900, color: "#FFFFFF", letterSpacing: -0.5, lineHeight: 1.2, fontSize: { xs: "1.2rem", sm: "1.5rem" } }}>
               Hotels Directory &amp; Governance
             </Typography>
-            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", mt: 0.5, fontSize: "0.85rem" }}>
+            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", mt: 0.5, fontSize: { xs: "0.78rem", sm: "0.85rem" } }}>
               Comprehensive tenant management, subscription lifecycle, property license suspension &amp; live diagnostics.
             </Typography>
           </Box>
 
-          <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", alignItems: "center" }}>
+          <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1.5, alignItems: { xs: "stretch", sm: "center" }, width: { xs: "100%", sm: "auto" } }}>
             <Button
               variant="contained"
               startIcon={<Refresh />}
               onClick={onRefresh}
               className="btn-3d"
               sx={{
+                width: { xs: "100%", sm: "auto" },
+                justifyContent: "center",
+                whiteSpace: "nowrap",
                 borderRadius: "14px",
                 bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                 color: themeConfig.primaryDark || "#0C273B",
                 fontWeight: 800,
-                fontSize: "0.82rem",
-                px: 2.5,
-                py: 1.1,
+                fontSize: { xs: "0.78rem", sm: "0.82rem" },
+                px: { xs: 2, sm: 2.5 },
+                py: 1,
                 boxShadow: isDarkMode ? "none" : "0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 #FFFFFF",
                 "&:hover": {
                   bgcolor: isDarkMode ? "rgba(20, 184, 166, 0.15)" : "#F8FAFC",
@@ -223,14 +226,17 @@ export default function HotelsDirectoryPage({
               onClick={() => downloadHotelsDirectoryPDF(filteredHotels)}
               className="btn-3d"
               sx={{
+                width: { xs: "100%", sm: "auto" },
+                justifyContent: "center",
+                whiteSpace: "nowrap",
                 borderRadius: "14px",
                 bgcolor: "rgba(255,255,255,0.15)",
                 color: "#FFFFFF",
                 border: "1.5px solid rgba(255,255,255,0.4)",
                 fontWeight: 800,
-                fontSize: "0.82rem",
-                px: 2.5,
-                py: 1.1,
+                fontSize: { xs: "0.78rem", sm: "0.82rem" },
+                px: { xs: 2, sm: 2.5 },
+                py: 1,
                 backdropFilter: "blur(10px)",
                 boxShadow: "0 6px 16px rgba(0,0,0,0.15)",
                 "&:hover": {
@@ -249,17 +255,17 @@ export default function HotelsDirectoryPage({
       <Paper
         className="card-3d"
         sx={{
-          p: 2,
+          p: { xs: 1.5, sm: 2 },
           mb: 3,
-          borderRadius: "18px",
+          borderRadius: { xs: "14px", sm: "18px" },
           bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
           border: `1.5px solid ${themeConfig.border}`,
           boxShadow: isDarkMode ? "none" : "0 8px 24px -4px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
           display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
           justifyContent: "space-between",
-          gap: 2,
+          gap: 1.5,
         }}
       >
         <TextField
@@ -272,7 +278,8 @@ export default function HotelsDirectoryPage({
           }}
           sx={{
             flex: 1,
-            minWidth: 260,
+            width: "100%",
+            minWidth: { xs: "100%", sm: 240 },
             "& .MuiOutlinedInput-root": {
               borderRadius: "12px",
               bgcolor: themeConfig.bgMain,
@@ -290,7 +297,7 @@ export default function HotelsDirectoryPage({
           }}
         />
 
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", width: { xs: "100%", sm: "auto" } }}>
           {["ALL", "ACTIVE", "PENDING", "DISABLED"].map((st) => {
             const isSelected = statusFilter === st;
             return (
@@ -303,6 +310,8 @@ export default function HotelsDirectoryPage({
                   setPage(0);
                 }}
                 sx={{
+                  flex: { xs: "1 1 calc(50% - 8px)", sm: "0 0 auto" },
+                  justifyContent: "center",
                   fontWeight: 800,
                   borderRadius: "10px",
                   fontSize: "0.75rem",
@@ -324,15 +333,16 @@ export default function HotelsDirectoryPage({
         </Box>
       </Paper>
 
-      {/* 3D Hotels Master Table */}
-      <TableContainer
-        component={Paper}
-        className="card-3d"
-        sx={{
-          borderRadius: "20px",
-          border: `1.5px solid ${themeConfig.border}`,
-          boxShadow: "0 10px 28px -6px rgba(12, 39, 59, 0.08), 0 4px 12px rgba(0,0,0,0.03), inset 0 1px 0 #FFFFFF",
-          overflowX: "auto",
+      {/* 3D Hotels Master Table Wrapper */}
+      <Box sx={{ width: "100%", overflow: "hidden", borderRadius: "20px" }}>
+        <TableContainer
+          component={Paper}
+          className="card-3d"
+          sx={{
+            borderRadius: "20px",
+            border: `1.5px solid ${themeConfig.border}`,
+            boxShadow: "0 10px 28px -6px rgba(12, 39, 59, 0.08), 0 4px 12px rgba(0,0,0,0.03), inset 0 1px 0 #FFFFFF",
+            overflowX: "auto",
           overflowY: "auto",
           maxHeight: { xs: "520px", md: "calc(100vh - 280px)" },
           maxWidth: "100%",
@@ -619,10 +629,21 @@ export default function HotelsDirectoryPage({
               bgcolor: themeConfig.bgCard,
               color: themeConfig.textMain,
               borderRadius: "0 0 20px 20px",
+              "& .MuiTablePagination-toolbar": {
+                flexWrap: "wrap",
+                justifyContent: { xs: "center", sm: "flex-end" },
+                px: { xs: 1, sm: 2 },
+                gap: 0.5,
+              },
+              "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
+                fontSize: { xs: "0.75rem", sm: "0.85rem" },
+                my: 0.5,
+              },
             }}
           />
         )}
       </TableContainer>
+      </Box>
 
       {/* 3D Slide-Over Dossier Drawer */}
       <Drawer
@@ -723,6 +744,9 @@ export default function HotelsDirectoryPage({
               <Tabs
                 value={drawerTab}
                 onChange={(e, v) => setDrawerTab(v)}
+                variant="scrollable"
+                scrollButtons="auto"
+                allowScrollButtonsMobile
                 sx={{
                   "& .MuiTab-root": { textTransform: "none", fontWeight: 700, fontSize: "0.85rem", minHeight: 48 },
                   "& .Mui-selected": { color: themeConfig.primary },

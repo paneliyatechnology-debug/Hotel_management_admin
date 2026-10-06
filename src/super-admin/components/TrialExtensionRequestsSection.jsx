@@ -104,10 +104,10 @@ export default function TrialExtensionRequestsSection({ onRefreshHotels }) {
   const pendingRequests = requests.filter((r) => r.status === "PENDING");
 
   return (
-    <Box sx={{ mt: 1 }}>
-      <Box sx={{ mb: 2.5, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
+    <Box sx={{ mt: 1, width: "100%", overflow: "hidden" }}>
+      <Box sx={{ mb: 2, display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, flexDirection: { xs: "column", sm: "row" }, gap: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.2, flexWrap: "wrap" }}>
+          <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, fontSize: { xs: "1rem", sm: "1.2rem" } }}>
             Free Trial Extension Requests Queue
           </Typography>
           {pendingRequests.length > 0 && (
@@ -119,7 +119,7 @@ export default function TrialExtensionRequestsSection({ onRefreshHotels }) {
             />
           )}
         </Box>
-        <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
+        <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontSize: "0.72rem" }}>
           ⚡ Realtime Socket.IO Sync Active
         </Typography>
       </Box>

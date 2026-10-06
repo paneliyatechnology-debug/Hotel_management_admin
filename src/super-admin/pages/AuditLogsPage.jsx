@@ -69,12 +69,15 @@ export default function AuditLogsPage({ logs = [], onRefreshHotels }) {
       <Tabs
         value={secTab}
         onChange={(e, val) => setSecTab(val)}
+        variant="scrollable"
+        scrollButtons="auto"
+        allowScrollButtonsMobile
         sx={{
           mb: 3,
           borderBottom: `1px solid ${themeConfig.border}`,
           "& .MuiTab-root": {
             fontWeight: 800,
-            fontSize: "0.9rem",
+            fontSize: { xs: "0.8rem", sm: "0.9rem" },
             color: themeConfig.textMuted,
             "&.Mui-selected": {
               color: themeConfig.primary,

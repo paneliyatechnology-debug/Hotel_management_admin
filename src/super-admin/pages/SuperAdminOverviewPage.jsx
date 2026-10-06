@@ -200,13 +200,13 @@ export default function SuperAdminOverviewPage({
   }, [hotels, detailModal.type, modalSearch]);
 
   return (
-    <Box sx={{ px: { xs: 1.5, sm: 3 }, py: { xs: 1.5, sm: 3 } }}>
+    <Box sx={{ px: { xs: 1.5, sm: 3 }, py: { xs: 1.5, sm: 3 }, pb: { xs: 10, sm: 4 } }}>
       {/* 3D Master Command Ribbon */}
       <Box
         sx={{
-          mb: 4,
-          p: { xs: 2.5, md: 3 },
-          borderRadius: "24px",
+          mb: { xs: 3, sm: 4 },
+          p: { xs: 2, sm: 2.5, md: 3 },
+          borderRadius: { xs: "18px", sm: "24px" },
           background: `linear-gradient(135deg, ${themeConfig.primaryDark || "#0C273B"} 0%, ${themeConfig.primary || "#0B8EE0"} 100%)`,
           color: "#FFFFFF",
           boxShadow: `0 16px 36px -10px ${themeConfig.primaryGlow || "rgba(11, 142, 224, 0.4)"}, inset 0 1px 1px rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.2)`,
@@ -228,32 +228,32 @@ export default function SuperAdminOverviewPage({
           }}
         />
 
-        <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 2, position: "relative", zIndex: 1 }}>
+        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "stretch", sm: "center" }, gap: 2, position: "relative", zIndex: 1 }}>
           <Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1, flexWrap: "wrap" }}>
               <Box className="live-pulse-3d" />
               <Typography
                 variant="caption"
                 sx={{
                   fontWeight: 800,
-                  letterSpacing: 1.2,
+                  letterSpacing: 1,
                   textTransform: "uppercase",
                   color: "rgba(255,255,255,0.9)",
-                  fontSize: "0.72rem",
+                  fontSize: { xs: "0.65rem", sm: "0.72rem" },
                 }}
               >
                 Super Admin Master Command • Real-Time Database Telemetry
               </Typography>
             </Box>
-            <Typography variant="h5" sx={{ fontWeight: 900, color: "#FFFFFF", letterSpacing: -0.5, lineHeight: 1.2 }}>
+            <Typography variant="h5" sx={{ fontWeight: 900, color: "#FFFFFF", letterSpacing: -0.5, lineHeight: 1.2, fontSize: { xs: "1.15rem", sm: "1.5rem" } }}>
               Platform Overview &amp; SaaS Governance
             </Typography>
-            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", mt: 0.5, fontSize: "0.85rem" }}>
+            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", mt: 0.5, fontSize: { xs: "0.78rem", sm: "0.85rem" } }}>
               Multi-tenant live database telemetry, verified payments, real-time subscriptions &amp; tenant security.
             </Typography>
           </Box>
 
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, width: { xs: "100%", sm: "auto" } }}>
             <Box
               sx={{
                 display: { xs: "none", sm: "flex" },
@@ -288,13 +288,16 @@ export default function SuperAdminOverviewPage({
               }}
               className="btn-3d"
               sx={{
+                width: { xs: "100%", sm: "auto" },
+                justifyContent: "center",
+                whiteSpace: "nowrap",
                 borderRadius: "14px",
                 bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
                 color: themeConfig.primaryDark || "#0C273B",
                 fontWeight: 800,
-                fontSize: "0.82rem",
+                fontSize: { xs: "0.78rem", sm: "0.82rem" },
                 px: 2.5,
-                py: 1.1,
+                py: 1,
                 boxShadow: isDarkMode ? "none" : "0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 #FFFFFF",
                 "&:hover": {
                   bgcolor: isDarkMode ? "rgba(20, 184, 166, 0.15)" : "#F8FAFC",
@@ -312,7 +315,7 @@ export default function SuperAdminOverviewPage({
       {/* SECTION 1: FINANCIAL & ORDER METRICS */}
       {/* ========================================================================= */}
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, alignItems: { xs: "flex-start", sm: "center" }, justifyContent: "space-between", gap: 1.5, mb: 2, flexWrap: "wrap" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
             <Avatar
               sx={{
@@ -325,7 +328,7 @@ export default function SuperAdminOverviewPage({
             >
               <Payments sx={{ fontSize: 18 }} />
             </Avatar>
-            <Typography variant="h6" sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "1.05rem" }}>
+            <Typography variant="h6" sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: { xs: "0.95rem", sm: "1.05rem" } }}>
               Financial &amp; Commercial Orders Telemetry
             </Typography>
           </Box>
@@ -334,11 +337,12 @@ export default function SuperAdminOverviewPage({
             size="small"
             sx={{
               fontWeight: 800,
-              fontSize: "0.7rem",
+              fontSize: "0.68rem",
               borderRadius: "8px",
               bgcolor: themeConfig.champagne,
               color: themeConfig.primaryDark,
               border: `1px solid ${themeConfig.border}`,
+              maxWidth: "100%",
             }}
           />
         </Box>
@@ -410,7 +414,7 @@ export default function SuperAdminOverviewPage({
       {/* SECTION 2: MULTI-TENANT HOTEL INVENTORY BOXES */}
       {/* ========================================================================= */}
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, alignItems: { xs: "flex-start", sm: "center" }, justifyContent: "space-between", gap: 1.5, mb: 2, flexWrap: "wrap" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
             <Avatar
               sx={{
@@ -423,7 +427,7 @@ export default function SuperAdminOverviewPage({
             >
               <Business sx={{ fontSize: 18 }} />
             </Avatar>
-            <Typography variant="h6" sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: "1.05rem" }}>
+            <Typography variant="h6" sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: { xs: "0.95rem", sm: "1.05rem" } }}>
               Multi-Tenant Hotel Inventory
             </Typography>
           </Box>
@@ -687,11 +691,11 @@ export default function SuperAdminOverviewPage({
             </CardContent>
 
             {/* Quick Navigation Icons */}
-            <Box sx={{ p: 2, px: 3.5, bgcolor: themeConfig.bgMain, borderTop: `1px solid ${themeConfig.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "0 0 22px 22px" }}>
+            <Box sx={{ p: 2, px: { xs: 2, sm: 3.5 }, bgcolor: themeConfig.bgMain, borderTop: `1px solid ${themeConfig.border}`, display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, gap: 1, borderRadius: "0 0 22px 22px" }}>
               <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontWeight: 700 }}>
                 Jump to:
               </Typography>
-              <Box sx={{ display: "flex", gap: 1 }}>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                 <Chip label="Hotels" clickable size="small" onClick={() => onTabChange && onTabChange(1)} sx={{ fontWeight: 700, borderRadius: "6px" }} />
                 <Chip label="Plans" clickable size="small" onClick={() => onTabChange && onTabChange(2)} sx={{ fontWeight: 700, borderRadius: "6px" }} />
                 <Chip label="Audit Logs" clickable size="small" onClick={() => onTabChange && onTabChange(3)} sx={{ fontWeight: 700, borderRadius: "6px" }} />

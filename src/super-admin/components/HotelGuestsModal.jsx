@@ -217,11 +217,13 @@ export default function HotelGuestsModal({ open, onClose, hotel }) {
               border: `1px solid ${themeConfig.border}`,
               boxShadow: "none",
               maxHeight: "440px",
+              overflowX: "auto",
+              WebkitOverflowScrolling: "touch",
             }}
           >
-            <Table stickyHeader size="small">
+            <Table stickyHeader size="small" sx={{ minWidth: 800 }}>
               <TableHead>
-                <TableRow sx={{ "& th": { bgcolor: isDarkMode ? "#092420" : "#F1F5F9", fontWeight: 800, color: themeConfig.textMain } }}>
+                <TableRow sx={{ "& th": { bgcolor: isDarkMode ? "#092420" : "#F1F5F9", fontWeight: 800, color: themeConfig.textMain, whiteSpace: "nowrap" } }}>
                   <TableCell>Guest Profile</TableCell>
                   <TableCell>Contact Details</TableCell>
                   <TableCell>City / Location</TableCell>
@@ -233,7 +235,7 @@ export default function HotelGuestsModal({ open, onClose, hotel }) {
               <TableBody>
                 {guests.map((g) => (
                   <TableRow key={g._id} hover sx={{ "&:hover": { bgcolor: `${themeConfig.primaryGlow} !important` } }}>
-                    <TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                         <Avatar
                           sx={{
@@ -258,7 +260,7 @@ export default function HotelGuestsModal({ open, onClose, hotel }) {
                       </Box>
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>
                       <Box sx={{ display: "flex", flexDirection: "column", gap: 0.3 }}>
                         <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, display: "flex", alignItems: "center", gap: 0.5 }}>
                           <Phone sx={{ fontSize: 12, color: themeConfig.primary }} /> {g.mobileNumber}
@@ -271,13 +273,13 @@ export default function HotelGuestsModal({ open, onClose, hotel }) {
                       </Box>
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>
                       <Typography variant="body2" sx={{ fontWeight: 600, color: themeConfig.textMain, fontSize: "0.8rem" }}>
                         {g.city || "N/A"}{g.state ? `, ${g.state}` : ""}
                       </Typography>
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>
                       <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
                         <Chip
                           label={`${g.idProof?.idType || "ID"}: ${g.idProof?.idNumber || "N/A"}`}
@@ -304,7 +306,7 @@ export default function HotelGuestsModal({ open, onClose, hotel }) {
                       </Box>
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>
                       <Box sx={{ display: "flex", flexDirection: "column", gap: 0.3 }}>
                         <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.primary }}>
                           Room: {g.latestRoomNumber || "N/A"}
@@ -315,7 +317,7 @@ export default function HotelGuestsModal({ open, onClose, hotel }) {
                       </Box>
                     </TableCell>
 
-                    <TableCell align="center">
+                    <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>
                       <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.3 }}>
                         <Chip
                           label={`${g.totalVisits || 1} Visit(s)`}
@@ -351,7 +353,7 @@ export default function HotelGuestsModal({ open, onClose, hotel }) {
       </DialogContent>
 
       <DialogActions sx={{ p: 2.5, bgcolor: themeConfig.bgCard, borderTop: `1px solid ${themeConfig.border}` }}>
-        <Button onClick={onClose} variant="contained" sx={{ borderRadius: "12px", px: 4, bgcolor: themeConfig.primary, fontWeight: 800 }}>
+        <Button onClick={onClose} variant="contained" sx={{ borderRadius: "12px", px: 4, width: { xs: "100%", sm: "auto" }, bgcolor: themeConfig.primary, fontWeight: 800 }}>
           Close Directory
         </Button>
       </DialogActions>
