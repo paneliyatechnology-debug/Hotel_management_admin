@@ -120,7 +120,7 @@ export default function PaymentLedgerView({
   const fetchPayments = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      const endpoint = apiEndpoint || API_ENDPOINTS.RECEPTIONIST.PAYMENTS;
+      const endpoint = apiEndpoint || API_ENDPOINTS.HOTEL_ADMIN.PAYMENTS;
       const params = new URLSearchParams();
       if (selectedMethod && selectedMethod !== "ALL") params.append("paymentMethod", selectedMethod);
       if (selectedType && selectedType !== "ALL") params.append("paymentType", selectedType);
@@ -193,7 +193,7 @@ export default function PaymentLedgerView({
     setCollectLoading(true);
     setCollectError("");
     try {
-      const endpoint = recordPaymentEndpoint || "/api/v1/receptionist/payments";
+      const endpoint = recordPaymentEndpoint || API_ENDPOINTS.HOTEL_ADMIN.RECORD_PAYMENT || "/api/v1/admin/payments";
       const res = await apiRequest(endpoint, {
         method: "POST",
         body: {

@@ -19,12 +19,20 @@ import { API_ENDPOINTS, apiRequest } from "@/config/api";
 import { useSocket } from "@/shared/context/SocketContext";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { toast } from "@/shared/utils/toast";
-import SettingsView from "@/shared/components/SettingsView";
-import SuperAdminOverviewPage from "../pages/SuperAdminOverviewPage";
-import HotelsDirectoryPage from "../pages/HotelsDirectoryPage";
-import PendingApprovalsPage from "../pages/PendingApprovalsPage";
-import SubscriptionPlansPage from "../pages/SubscriptionPlansPage";
-import AuditLogsPage from "../pages/AuditLogsPage";
+import dynamic from "next/dynamic";
+import { CircularProgress } from "@mui/material";
+
+const ComponentSpinner = () => (
+  <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 8 }}>
+    <CircularProgress size={36} />
+  </Box>
+);
+
+const SettingsView = dynamic(() => import("@/shared/components/SettingsView"), { loading: () => <ComponentSpinner /> });
+const SuperAdminOverviewPage = dynamic(() => import("../pages/SuperAdminOverviewPage"), { loading: () => <ComponentSpinner /> });
+const HotelsDirectoryPage = dynamic(() => import("../pages/HotelsDirectoryPage"), { loading: () => <ComponentSpinner /> });
+const SubscriptionPlansPage = dynamic(() => import("../pages/SubscriptionPlansPage"), { loading: () => <ComponentSpinner /> });
+const AuditLogsPage = dynamic(() => import("../pages/AuditLogsPage"), { loading: () => <ComponentSpinner /> });
 
 export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }) {
   const { themeConfig } = useAppTheme();
@@ -42,10 +50,10 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    if (user?.role === "SUPER_ADMIN") {
+    if (user?.role === "SUPER_ADMIN" && (activeNav === 0 || activeNav === 1)) {
       fetchHotels();
     }
-  }, [user]);
+  }, [user, activeNav]);
 
   useSocket(["HOTEL_REGISTERED", "HOTEL_STATUS_UPDATED", "SUBSCRIPTION_UPDATED", "DASHBOARD_SYNC"], () => {
     if (user?.role === "SUPER_ADMIN") {

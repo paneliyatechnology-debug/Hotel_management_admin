@@ -111,29 +111,6 @@ export const API_ENDPOINTS = {
     PROFILE: `${API_BASE_URL}/api/v1/admin/profile`,
     REPORTS: `${API_BASE_URL}/api/v1/admin/reports`,
   },
-  RECEPTIONIST: {
-    DASHBOARD: `${API_BASE_URL}/api/v1/receptionist/dashboard`,
-    AVAILABLE_ROOMS: `${API_BASE_URL}/api/v1/receptionist/rooms/available`,
-    ROOM_TYPES: `${API_BASE_URL}/api/v1/receptionist/room-types`,
-    ROOMS: `${API_BASE_URL}/api/v1/receptionist/rooms`,
-    CREATE_ROOM: `${API_BASE_URL}/api/v1/receptionist/rooms`,
-    UPDATE_ROOM: (id) => `${API_BASE_URL}/api/v1/receptionist/rooms/${id}`,
-    DELETE_ROOM: (id) => `${API_BASE_URL}/api/v1/receptionist/rooms/${id}`,
-    GUESTS: `${API_BASE_URL}/api/v1/receptionist/guests`,
-    GUEST_LOOKUP: (query) => `${API_BASE_URL}/api/v1/receptionist/guests/lookup?query=${encodeURIComponent(query)}`,
-    DELETE_GUEST: (id) => `${API_BASE_URL}/api/v1/receptionist/guests/${id}`,
-    VERIFY_GUEST_ID: (id) => `${API_BASE_URL}/api/v1/receptionist/guests/${id}/verify-id`,
-    BOOKINGS: `${API_BASE_URL}/api/v1/receptionist/bookings`,
-    UPDATE_ROOM_STATUS: (id) => `${API_BASE_URL}/api/v1/receptionist/rooms/${id}/status`,
-    ADD_CHARGE: (bookingId) => `${API_BASE_URL}/api/v1/receptionist/bookings/${bookingId}/charges`,
-    CHECKOUT: (bookingId) => `${API_BASE_URL}/api/v1/receptionist/bookings/${bookingId}/check-out`,
-    PAYMENTS: `${API_BASE_URL}/api/v1/receptionist/payments`,
-    RECORD_PAYMENT: `${API_BASE_URL}/api/v1/receptionist/payments`,
-    DAILY_COLLECTIONS: `${API_BASE_URL}/api/v1/receptionist/daily-collections`,
-    SETTLE_HANDOVER: `${API_BASE_URL}/api/v1/receptionist/daily-collections/handover`,
-    KYC_OCR_VERIFY: `${API_BASE_URL}/api/v1/receptionist/kyc/ocr-verify`,
-    KYC_VERIFY_DL: `${API_BASE_URL}/api/v1/receptionist/kyc/verify-driving-license`,
-  },
   SETTINGS: {
     PUBLIC: `${API_BASE_URL}/api/v1/settings`,
   },
@@ -145,12 +122,39 @@ export const API_ENDPOINTS = {
   }
 };
 
+const inFlightRequests = new Map();
+
 /**
- * Reusable helper for Authenticated API Requests with automatic resilient fallback
+ * Reusable helper for Authenticated API Requests with automatic resilient fallback & request deduplication
  */
 export async function apiRequest(endpoint, options = {}) {
-  const { method = "GET", body, headers = {}, token, ...rest } = options;
+  const method = (options.method || "GET").toUpperCase();
+  const authToken = options.token || (typeof window !== "undefined" ? localStorage.getItem("token") : null);
 
+  // In-flight GET request deduplication: Reuse identical pending GET requests to prevent duplicate network calls
+  if (method === "GET" && !options.skipDeduplication) {
+    const dedupeKey = `${authToken || "anon"}:${endpoint}`;
+    if (inFlightRequests.has(dedupeKey)) {
+      return inFlightRequests.get(dedupeKey);
+    }
+
+    const requestPromise = (async () => {
+      try {
+        return await executeApiRequest(endpoint, options);
+      } finally {
+        inFlightRequests.delete(dedupeKey);
+      }
+    })();
+
+    inFlightRequests.set(dedupeKey, requestPromise);
+    return requestPromise;
+  }
+
+  return executeApiRequest(endpoint, options);
+}
+
+async function executeApiRequest(endpoint, options = {}) {
+  const { method = "GET", body, headers = {}, token, ...rest } = options;
   const authToken = token || (typeof window !== "undefined" ? localStorage.getItem("token") : null);
 
   const reqHeaders = {

@@ -40,19 +40,21 @@ import { useAppTheme } from "@/shared/context/ThemeContext";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
 import LoadingState from "@/shared/components/LoadingState";
 import EmptyState from "@/shared/components/EmptyState";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 
 export default function HotelGuestsModal({ open, onClose, hotel }) {
   const { themeConfig, isDarkMode } = useAppTheme();
   const [guests, setGuests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 350);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalRecords, setTotalRecords] = useState(0);
 
   const fetchGuests = useCallback(
-    async (p = page, q = search) => {
-      if (!hotel?._id) return;
+    async (p = page, q = debouncedSearch) => {
+      if (!hotel?._id || !open) return;
       setLoading(true);
       try {
         const queryParams = new URLSearchParams({
@@ -76,22 +78,19 @@ export default function HotelGuestsModal({ open, onClose, hotel }) {
         setLoading(false);
       }
     },
-    [hotel?._id, page, rowsPerPage, search]
+    [hotel?._id, open, page, rowsPerPage, debouncedSearch]
   );
 
   useEffect(() => {
     if (open && hotel?._id) {
-      setPage(0);
-      setSearch("");
-      fetchGuests(0, "");
+      fetchGuests(page, debouncedSearch);
     }
-  }, [open, hotel?._id]);
+  }, [open, hotel?._id, page, rowsPerPage, debouncedSearch, fetchGuests]);
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
     setSearch(val);
     setPage(0);
-    fetchGuests(0, val);
   };
 
   const handlePageChange = (event, newPage) => {

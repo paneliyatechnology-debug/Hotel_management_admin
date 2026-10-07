@@ -361,10 +361,10 @@ export function downloadTaxInvoicePDF(booking = {}, hotel = {}) {
   const rawBookingTotal = Number(booking.totalAmount) || Number(booking.grandTotal) || (booking.paidAmount ? Number(booking.paidAmount) : 3000);
   const originalBookingTotal = isLate && rawBookingTotal > lateFee ? rawBookingTotal - lateFee : rawBookingTotal;
 
-  // Real GST & Taxable Calculations (Fixing NaN / undefined% / ₹0 bugs)
+  // Real GST & Taxable Calculations
   let defaultGstRate = Number(booking.gstRate);
-  if (isNaN(defaultGstRate) || defaultGstRate === undefined || defaultGstRate === null) {
-    defaultGstRate = originalBookingTotal > 7500 ? 18 : (originalBookingTotal > 0 ? 12 : 0);
+  if (isNaN(defaultGstRate) || defaultGstRate === undefined || defaultGstRate === null || defaultGstRate === 0) {
+    defaultGstRate = 18;
   }
 
   let taxableVal = Number(booking.taxableAmount);
@@ -376,21 +376,26 @@ export function downloadTaxInvoicePDF(booking = {}, hotel = {}) {
   }
 
   if (isNaN(taxableVal) || taxableVal === undefined || taxableVal === null || taxableVal === 0) {
-    if (defaultGstRate > 0) {
+    const basePerNight = Number(booking.rate) || Number(booking.pricePerNight) || Number(booking.basePrice) || Number(room.pricePerNight) || Number(roomType.basePrice);
+    if (basePerNight > 0) {
+      taxableVal = basePerNight * nights;
+    } else if (booking.taxInclusive) {
       taxableVal = Math.round(originalBookingTotal / (1 + defaultGstRate / 100));
-      totalGst = originalBookingTotal - taxableVal;
     } else {
       taxableVal = originalBookingTotal;
-      totalGst = 0;
     }
   }
 
-  if (isNaN(totalGst) || totalGst === undefined || totalGst === null) {
-    totalGst = Math.max(0, originalBookingTotal - taxableVal);
+  if (isNaN(totalGst) || totalGst === undefined || totalGst === null || totalGst === 0) {
+    if (booking.gstAmount !== undefined && booking.gstAmount !== null && Number(booking.gstAmount) > 0) {
+      totalGst = Number(booking.gstAmount);
+    } else {
+      totalGst = Math.round((taxableVal * defaultGstRate) / 100);
+    }
   }
 
-  const cgstVal = Number(booking.cgstAmount) ?? (roomBreakdowns.length > 0 ? roomBreakdowns.reduce((s, r) => s + (Number(r.cgstAmount) || 0), 0) : Math.round(totalGst / 2));
-  const sgstVal = Number(booking.sgstAmount) ?? (roomBreakdowns.length > 0 ? roomBreakdowns.reduce((s, r) => s + (Number(r.sgstAmount) || 0), 0) : Math.max(0, totalGst - cgstVal));
+  const cgstVal = Number(booking.cgstAmount) || (roomBreakdowns.length > 0 ? roomBreakdowns.reduce((s, r) => s + (Number(r.cgstAmount) || 0), 0) : Math.round(totalGst / 2));
+  const sgstVal = Number(booking.sgstAmount) || (roomBreakdowns.length > 0 ? roomBreakdowns.reduce((s, r) => s + (Number(r.sgstAmount) || 0), 0) : Math.max(0, totalGst - cgstVal));
 
   const mainGstRate = defaultGstRate;
   const mainCgstRate = Number(booking.cgstRate) || (mainGstRate / 2);
@@ -398,7 +403,7 @@ export function downloadTaxInvoicePDF(booking = {}, hotel = {}) {
 
   const baseRatePerNight = Math.round(taxableVal / nights) || Number(booking.pricePerNight) || Math.round(originalBookingTotal / nights);
 
-  const grandTotalAmount = Number(booking.grandTotal) || (taxableVal + totalGst + lateFee + posTotal) || rawBookingTotal;
+  const grandTotalAmount = Number(booking.grandTotal) || (taxableVal + totalGst + lateFee + posTotal);
   const paidAmount = Number(booking.paidAmount) !== undefined && Number(booking.paidAmount) !== null && !isNaN(Number(booking.paidAmount))
     ? Number(booking.paidAmount)
     : (paymentHistory.length > 0 ? paymentHistory.reduce((s, p) => s + (Number(p.amount) || 0), 0) : grandTotalAmount);
@@ -857,8 +862,8 @@ export function downloadGuestFolioPDF(data = {}, hotel = {}) {
   const originalBookingTotal = isLate && rawBookingTotal > lateFee ? rawBookingTotal - lateFee : rawBookingTotal;
 
   let defaultGstRate = Number(booking.gstRate);
-  if (isNaN(defaultGstRate) || defaultGstRate === undefined || defaultGstRate === null) {
-    defaultGstRate = originalBookingTotal > 7500 ? 18 : (originalBookingTotal > 0 ? 12 : 0);
+  if (isNaN(defaultGstRate) || defaultGstRate === undefined || defaultGstRate === null || defaultGstRate === 0) {
+    defaultGstRate = 18;
   }
 
   let taxableVal = Number(booking.taxableAmount);
@@ -870,24 +875,29 @@ export function downloadGuestFolioPDF(data = {}, hotel = {}) {
   }
 
   if (isNaN(taxableVal) || taxableVal === undefined || taxableVal === null || taxableVal === 0) {
-    if (defaultGstRate > 0) {
+    const basePerNight = Number(booking.rate) || Number(booking.pricePerNight) || Number(booking.basePrice) || Number(booking.room?.pricePerNight) || Number(booking.roomType?.basePrice);
+    if (basePerNight > 0) {
+      taxableVal = basePerNight * nights;
+    } else if (booking.taxInclusive) {
       taxableVal = Math.round(originalBookingTotal / (1 + defaultGstRate / 100));
-      totalGst = originalBookingTotal - taxableVal;
     } else {
       taxableVal = originalBookingTotal;
-      totalGst = 0;
     }
   }
 
-  if (isNaN(totalGst) || totalGst === undefined || totalGst === null) {
-    totalGst = Math.max(0, originalBookingTotal - taxableVal);
+  if (isNaN(totalGst) || totalGst === undefined || totalGst === null || totalGst === 0) {
+    if (booking.gstAmount !== undefined && booking.gstAmount !== null && Number(booking.gstAmount) > 0) {
+      totalGst = Number(booking.gstAmount);
+    } else {
+      totalGst = Math.round((taxableVal * defaultGstRate) / 100);
+    }
   }
 
-  const cgstVal = Number(booking.cgstAmount) ?? Math.round(totalGst / 2);
-  const sgstVal = Number(booking.sgstAmount) ?? Math.max(0, totalGst - cgstVal);
+  const cgstVal = Number(booking.cgstAmount) || (roomBreakdowns.length > 0 ? roomBreakdowns.reduce((s, r) => s + (Number(r.cgstAmount) || 0), 0) : Math.round(totalGst / 2));
+  const sgstVal = Number(booking.sgstAmount) || (roomBreakdowns.length > 0 ? roomBreakdowns.reduce((s, r) => s + (Number(r.sgstAmount) || 0), 0) : Math.max(0, totalGst - cgstVal));
   const baseRatePerNight = Math.round(taxableVal / nights) || Number(booking.pricePerNight) || Math.round(originalBookingTotal / nights);
 
-  const grandTotalAmount = Number(booking.grandTotal) || (taxableVal + totalGst + lateFee + posTotal) || rawBookingTotal;
+  const grandTotalAmount = Number(booking.grandTotal) || (taxableVal + totalGst + lateFee + posTotal);
   const paidAmount = Number(booking.paidAmount) !== undefined && Number(booking.paidAmount) !== null && !isNaN(Number(booking.paidAmount))
     ? Number(booking.paidAmount)
     : (paymentHistory.length > 0 ? paymentHistory.reduce((s, p) => s + (Number(p.amount) || 0), 0) : grandTotalAmount);
