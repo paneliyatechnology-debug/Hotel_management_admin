@@ -2,6 +2,13 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { themeConfig } from "@/config/theme";
 
+if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
+  console.log = () => {};
+  console.info = () => {};
+  console.debug = () => {};
+  console.warn = () => {};
+}
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
