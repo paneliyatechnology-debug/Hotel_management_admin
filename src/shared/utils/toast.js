@@ -1,8 +1,27 @@
 import { toast as toastify } from "react-toastify";
 
+function safeStringify(obj) {
+  if (typeof obj === "string") return obj;
+  try {
+    const seen = new WeakSet();
+    return JSON.stringify(obj, (k, v) => {
+      if (typeof v === "object" && v !== null) {
+        if (seen.has(v)) return undefined;
+        seen.add(v);
+      }
+      return v;
+    });
+  } catch {
+    return String(obj);
+  }
+}
+
 export const showToast = (message, severity = "success", options = {}) => {
   if (!message) return;
-  const toastId = options.toastId || (typeof message === "string" ? message : JSON.stringify(message));
+  const textMessage = typeof message === "string" ? message : (message?.message || message?.error || message?.detail || safeStringify(message));
+  if (!textMessage || textMessage === "{}" || textMessage === "[object Object]") return;
+
+  const toastId = options.toastId || textMessage;
 
   if (toastify.isActive && toastify.isActive(toastId)) {
     return toastId;
@@ -21,14 +40,14 @@ export const showToast = (message, severity = "success", options = {}) => {
 
   switch (severity) {
     case "error":
-      return toastify.error(message, config);
+      return toastify.error(textMessage, config);
     case "warning":
-      return toastify.warning(message, config);
+      return toastify.warning(textMessage, config);
     case "info":
-      return toastify.info(message, config);
+      return toastify.info(textMessage, config);
     case "success":
     default:
-      return toastify.success(message, config);
+      return toastify.success(textMessage, config);
   }
 };
 

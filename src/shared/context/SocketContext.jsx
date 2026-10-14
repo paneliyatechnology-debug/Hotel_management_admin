@@ -15,12 +15,23 @@ const SocketContext = createContext({
   joinRoom: () => {},
 });
 
+// 🔌 SOCKET.IO TEMPORARILY DISABLED AS PER REQUEST
+export const SOCKET_ENABLED = false;
+
+const dummySocket = {
+  connected: false,
+  emit: () => {},
+  on: () => {},
+  off: () => {},
+  disconnect: () => {},
+};
+
 export function SocketProvider({ children }) {
   const [isConnected, setIsConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState(null);
   const [onlineUserIds, setOnlineUserIds] = useState([]);
   const [onlineHotelIds, setOnlineHotelIds] = useState([]);
-  const socketRef = useRef(null);
+  const socketRef = useRef(dummySocket);
 
   const isUserOnline = useCallback(
     (userId) => {
@@ -41,6 +52,8 @@ export function SocketProvider({ children }) {
   );
 
   const joinRoom = useCallback(() => {
+    // Sockets temporarily disabled
+    /*
     const sock = socketRef.current;
     if (!sock || !sock.connected) return;
 
@@ -72,11 +85,17 @@ export function SocketProvider({ children }) {
       });
     }
 
-    // Always fetch latest presence list
     sock.emit("get_presence");
+    */
   }, []);
 
   useEffect(() => {
+    // Sockets are temporarily commented out / disabled
+    if (!SOCKET_ENABLED) {
+      return;
+    }
+
+    /*
     if (typeof window === "undefined") return;
 
     if (socketRef.current && socketRef.current.connected) {
@@ -223,13 +242,14 @@ export function SocketProvider({ children }) {
       window.removeEventListener("focus", handleWindowFocus);
       window.removeEventListener("visibilitychange", handleWindowFocus);
     };
+    */
   }, [joinRoom]);
 
   return (
     <SocketContext.Provider
       value={{
         socket: socketRef.current,
-        isConnected,
+        isConnected: false,
         lastEvent,
         onlineUserIds,
         onlineHotelIds,
@@ -246,11 +266,11 @@ export function SocketProvider({ children }) {
 export function usePresence() {
   const context = useContext(SocketContext);
   return {
-    onlineUserIds: context.onlineUserIds,
-    onlineHotelIds: context.onlineHotelIds,
-    isUserOnline: context.isUserOnline,
-    isHotelOnline: context.isHotelOnline,
-    isConnected: context.isConnected,
+    onlineUserIds: context.onlineUserIds || [],
+    onlineHotelIds: context.onlineHotelIds || [],
+    isUserOnline: context.isUserOnline || (() => false),
+    isHotelOnline: context.isHotelOnline || (() => false),
+    isConnected: false,
   };
 }
 
@@ -258,6 +278,7 @@ export function useSocket(eventSubscriptions = [], callback) {
   const context = useContext(SocketContext);
 
   useEffect(() => {
+    if (!SOCKET_ENABLED) return;
     if (!callback || eventSubscriptions.length === 0 || typeof window === "undefined") return;
 
     const handlers = eventSubscriptions.map((evtName) => {

@@ -9,6 +9,7 @@ import UnifiedLogin from "@/auth/components/UnifiedLogin";
 import SuperAdminLayout from "@/super-admin/layout/SuperAdminLayout";
 import SuperAdminDashboard from "@/super-admin/components/SuperAdminDashboard";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
+import { clearAuthCookies, getCookie, setAuthCookies } from "@/shared/utils/cookieAuth";
 
 function SuperAdminAppContent() {
   const { themeConfig } = useAppTheme();
@@ -38,13 +39,20 @@ function SuperAdminAppContent() {
     if (typeof window === "undefined") return null;
     try {
       const stored = localStorage.getItem("user");
-      const token = localStorage.getItem("token");
-      if (!stored || !token) return null;
-      const parsed = JSON.parse(stored);
+      const token = localStorage.getItem("token") || getCookie("accessToken") || getCookie("token");
+      let parsed = null;
+      if (stored && token) {
+        parsed = JSON.parse(stored);
+      } else {
+        const cookieUser = getCookie("user");
+        if (cookieUser && token) parsed = cookieUser;
+      }
+      if (!parsed || !token) return null;
       if (parsed?.role !== "SUPER_ADMIN") {
         localStorage.removeItem("token");
         localStorage.removeItem("refreshToken");
         localStorage.removeItem("user");
+        clearAuthCookies();
         return null;
       }
       return parsed;
@@ -71,6 +79,7 @@ function SuperAdminAppContent() {
       localStorage.removeItem("token");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
+      clearAuthCookies();
     } catch {}
     setUser(null);
     setActiveTab(0);
@@ -78,7 +87,7 @@ function SuperAdminAppContent() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || getCookie("accessToken") || getCookie("token");
     if (token) {
       apiRequest(API_ENDPOINTS.AUTH.ME)
         .then((res) => {
@@ -89,6 +98,7 @@ function SuperAdminAppContent() {
             }
             setUser(res.data);
             localStorage.setItem("user", JSON.stringify(res.data));
+            setAuthCookies({ user: res.data });
           }
         })
         .catch(() => {

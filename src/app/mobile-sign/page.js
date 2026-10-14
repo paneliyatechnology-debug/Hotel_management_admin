@@ -87,7 +87,8 @@ function MobileSignContent() {
         setSavedSignature(signatureDataUrl);
         setIsSuccess(true);
 
-        // 2. Also broadcast over Socket.io if available for instant zero-latency reception sync
+        // 2. Broadcast over Socket.io temporarily commented out
+        /*
         try {
           const isLocal =
             window.location.hostname === "localhost" ||
@@ -111,6 +112,7 @@ function MobileSignContent() {
         } catch (sockErr) {
           // Socket emit is non-blocking enhancement
         }
+        */
       } else {
         setErrorMsg(data.error || "Failed to submit signature");
       }

@@ -94,10 +94,15 @@ export default function SubscriptionPlansPage() {
       setLoading(true);
       const res = await apiRequest(API_ENDPOINTS.SUBSCRIPTION_PLANS.ADMIN_ALL);
       if (res?.data) {
-        setPlans(res.data);
-      }
-      if (res?.meta) {
-        setMeta(res.meta);
+        const planList = Array.isArray(res.data) ? res.data : (res.data.plans || []);
+        setPlans(planList);
+        const monthly = planList.filter((p) => p.billingCycle === "MONTHLY").length;
+        const annual = planList.filter((p) => p.billingCycle === "ANNUAL").length;
+        setMeta(res.meta || {
+          totalCount: planList.length,
+          monthlyCount: monthly,
+          annualCount: annual,
+        });
       }
     } catch (err) {
       showToast(err.message || "Failed to load subscription plans", "error");
@@ -167,7 +172,8 @@ export default function SubscriptionPlansPage() {
         });
         showToast(res.message || "Subscription plan created successfully!");
       } else {
-        const res = await apiRequest(API_ENDPOINTS.SUBSCRIPTION_PLANS.UPDATE(planModal.data._id), {
+        const planId = planModal.data._id || planModal.data.id;
+        const res = await apiRequest(API_ENDPOINTS.SUBSCRIPTION_PLANS.UPDATE(planId), {
           method: "PUT",
           body: payload,
         });
@@ -182,8 +188,9 @@ export default function SubscriptionPlansPage() {
 
   const handleTogglePlanActive = async (plan) => {
     try {
+      const planId = plan._id || plan.id;
       const newStatus = !(plan.isActive !== false);
-      const res = await apiRequest(API_ENDPOINTS.SUBSCRIPTION_PLANS.UPDATE(plan._id), {
+      const res = await apiRequest(API_ENDPOINTS.SUBSCRIPTION_PLANS.UPDATE(planId), {
         method: "PUT",
         body: { ...plan, isActive: newStatus },
       });
@@ -201,7 +208,8 @@ export default function SubscriptionPlansPage() {
       message: `Are you sure you want to delete '${plan.name}' (${plan.billingCycle})?`,
       onConfirm: async () => {
         try {
-          const res = await apiRequest(API_ENDPOINTS.SUBSCRIPTION_PLANS.DELETE(plan._id), {
+          const planId = plan._id || plan.id;
+          const res = await apiRequest(API_ENDPOINTS.SUBSCRIPTION_PLANS.DELETE(planId), {
             method: "DELETE",
           });
           showToast(res.message || "Subscription plan archived.");

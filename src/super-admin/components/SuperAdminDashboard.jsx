@@ -79,9 +79,10 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
   const handleStatusUpdate = async (hotelId, newStatus, reason = "") => {
     setActionLoading(true);
     try {
+      const isActive = newStatus === "ACTIVE";
       await apiRequest(API_ENDPOINTS.HOTELS.UPDATE_STATUS(hotelId), {
-        method: "PUT",
-        body: { status: newStatus, reason },
+        method: "PATCH",
+        body: { is_active: isActive, is_disabled: !isActive, reason },
       });
       toast.success(`Hotel status updated to ${newStatus} successfully!`);
       setActionDialog({ open: false, type: null, hotel: null, reason: "" });
@@ -158,11 +159,16 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
     if (!editDialog.hotel) return;
     setActionLoading(true);
     try {
+      const isTrial = editFormData.subscriptionPlan === "TRIAL" || editFormData.subscriptionPlan === "FREE";
+      const payload = {
+        ...editFormData,
+        subscriptionStatus: isTrial ? "TRIAL" : "ACTIVE",
+      };
       await apiRequest(API_ENDPOINTS.SUPER_ADMIN.UPDATE_HOTEL(editDialog.hotel._id), {
         method: "PUT",
-        body: editFormData,
+        body: payload,
       });
-      toast.success(`Hotel '${editFormData.name}' and trial/subscription updated successfully! Realtime sync emitted.`);
+      toast.success(`Hotel '${editFormData.name}' updated to ${editFormData.subscriptionPlan} plan! Realtime sync emitted.`);
       setEditDialog({ open: false, hotel: null });
       if (selectedHotel && selectedHotel._id === editDialog.hotel._id) {
         setSelectedHotel((prev) => ({

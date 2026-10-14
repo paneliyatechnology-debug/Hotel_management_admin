@@ -24,10 +24,6 @@ const nextConfig = {
         source: "/api/signature-sync/:path*",
         destination: "/api/signature-sync/:path*",
       },
-      {
-        source: "/api/:path*",
-        destination: `${BACKEND_URL}/api/:path*`,
-      },
     ];
   },
 };
