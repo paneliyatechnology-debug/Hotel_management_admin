@@ -66,9 +66,32 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
     try {
       setLoading(true);
       const data = await apiRequest(API_ENDPOINTS.HOTELS.ALL);
-      if (data?.data) {
-        setHotels(data.data);
-      }
+      const payload = data?.data;
+      const rawList = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.hotels)
+          ? payload.hotels
+          : [];
+      setHotels(rawList.map((hotel) => {
+        const active = hotel.is_active ?? hotel.isActive;
+        const disabled = hotel.is_disabled ?? hotel.isDisabled;
+        const status = String(
+          hotel.status || (disabled || active === false ? "DISABLED" : "ACTIVE")
+        ).toUpperCase();
+        const ownerName = hotel.ownerName || hotel.owner_name || hotel.admin?.name || "";
+        const ownerEmail = hotel.ownerEmail || hotel.owner_email || hotel.email || hotel.admin?.email || "";
+        const ownerPhone = hotel.ownerPhone || hotel.owner_phone || hotel.phone || hotel.admin?.phone || "";
+        return {
+          ...hotel,
+          _id: hotel._id || hotel.id,
+          name: hotel.name || hotel.hotel_name || hotel.hotelName || "Hotel",
+          ownerName,
+          ownerEmail,
+          ownerPhone,
+          status,
+          admin: hotel.admin || { name: ownerName, email: ownerEmail, phone: ownerPhone },
+        };
+      }));
     } catch (err) {
       console.warn("Failed to fetch hotels:", err.message);
     } finally {

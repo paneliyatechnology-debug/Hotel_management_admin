@@ -98,11 +98,11 @@ export const API_ENDPOINTS = createCaseFlexibleProxy({
     REGISTER: `${API_BASE_URL}/api/v1/hotels/register`,
   },
   HOTELS: {
-    ALL: `${API_BASE_URL}/api/v1/users?role=HOTEL_ADMIN`,
+    ALL: `${API_BASE_URL}/api/v1/hotels`,
     REGISTER: `${API_BASE_URL}/api/v1/hotels/register`,
-    BY_ID: (id) => `${API_BASE_URL}/api/v1/users/${id}`,
-    UPDATE: (id) => `${API_BASE_URL}/api/v1/users/${id}`,
-    UPDATE_STATUS: (id) => `${API_BASE_URL}/api/v1/users/${id}/account-status`,
+    BY_ID: (id) => `${API_BASE_URL}/api/v1/hotels/${id}`,
+    UPDATE: (id) => `${API_BASE_URL}/api/v1/hotels/${id}`,
+    UPDATE_STATUS: (id) => `${API_BASE_URL}/api/v1/hotels/${id}/active-status`,
     EXTEND_TRIAL: (id) => `${API_BASE_URL}/api/v1/users/${id}`,
     APPROVE: (id) => `${API_BASE_URL}/api/v1/users/${id}`,
     REJECT: (id) => `${API_BASE_URL}/api/v1/users/${id}`,
@@ -180,7 +180,7 @@ export const API_ENDPOINTS = createCaseFlexibleProxy({
   // Backward compatibility aliases for Super Admin & Hotel Admin pages
   SUPER_ADMIN: {
     DASHBOARD: `${API_BASE_URL}/api/v1/super-admin/dashboard`,
-    HOTELS: `${API_BASE_URL}/api/v1/users?role=HOTEL_ADMIN`,
+    HOTELS: `${API_BASE_URL}/api/v1/hotels`,
     UPDATE_HOTEL: (id) => `${API_BASE_URL}/api/v1/users/${id}`,
     APPROVE_HOTEL: (id) => `${API_BASE_URL}/api/v1/users/${id}`,
     REJECT_HOTEL: (id) => `${API_BASE_URL}/api/v1/users/${id}`,
@@ -212,7 +212,7 @@ export const API_ENDPOINTS = createCaseFlexibleProxy({
     PAYMENTS: `${API_BASE_URL}/api/v1/bookings`,
     RECORD_PAYMENT: `${API_BASE_URL}/api/v1/bookings`,
     DAILY_COLLECTIONS: `${API_BASE_URL}/api/v1/bookings`,
-    SETTLE_HANDOVER: `${API_BASE_URL}/api/v1/bookings`,
+    SETTLE_HANDOVER: `${API_BASE_URL}/api/v1/reports/collections/settle`,
     PROFILE: `${API_BASE_URL}/api/v1/auth/me`,
     REPORTS: `${API_BASE_URL}/api/v1/bookings`,
   },
@@ -238,7 +238,7 @@ export const API_ENDPOINTS = createCaseFlexibleProxy({
     PAYMENTS: `${API_BASE_URL}/api/v1/bookings`,
     RECORD_PAYMENT: `${API_BASE_URL}/api/v1/bookings`,
     DAILY_COLLECTIONS: `${API_BASE_URL}/api/v1/bookings`,
-    SETTLE_HANDOVER: `${API_BASE_URL}/api/v1/bookings`,
+    SETTLE_HANDOVER: `${API_BASE_URL}/api/v1/reports/collections/settle`,
     KYC_OCR_VERIFY: `${API_BASE_URL}/api/v1/bookings`,
     KYC_VERIFY_DL: `${API_BASE_URL}/api/v1/bookings`,
   },
@@ -1268,6 +1268,15 @@ function normalizeApiResponse(res) {
       arr.totalPages = d.total_pages || d.totalPages;
       res.data = arr;
     }
+    else if (Array.isArray(d.hotels)) {
+      const arr = d.hotels.map(deepDualCase);
+      arr.hotels = arr;
+      arr.total = d.total || arr.length;
+      arr.page = d.page;
+      arr.limit = d.limit;
+      arr.totalPages = d.total_pages || d.totalPages;
+      res.data = arr;
+    }
     // If users list
     else if (Array.isArray(d.users)) {
       const arr = d.users.map(deepDualCase);
@@ -1338,31 +1347,7 @@ async function executeApiRequest(endpoint, options = {}) {
   const { method = "GET", body, headers = {}, token, ...rest } = options;
   const authToken = token || (typeof window !== "undefined" ? (localStorage.getItem("token") || getCookie("accessToken") || getCookie("token")) : null);
 
-  // 1. Check for Virtual Dashboard & Static Endpoints fallback
   const normalizedEp = normalizeEndpointKey(endpoint);
-  if (
-    normalizedEp.includes("/super-admin/dashboard") ||
-    normalizedEp.includes("/admin/dashboard") ||
-    normalizedEp.includes("/receptionist/dashboard")
-  ) {
-    return {
-      success: true,
-      message: "Dashboard summary retrieved",
-      data: {
-        totalHotels: 2,
-        activeHotels: 2,
-        totalRooms: 25,
-        occupiedRooms: 1,
-        availableRooms: 24,
-        todayCheckIns: 1,
-        todayCheckOuts: 0,
-        pendingPayments: 7390,
-        totalRevenue: 12390,
-        monthlyRevenue: 12390,
-        recentBookings: [],
-      }
-    };
-  }
 
   if (normalizedEp.includes("/settings")) {
     return {

@@ -106,13 +106,15 @@ export default function HotelGuestsModal({ open, onClose, hotel }) {
       onClose={onClose}
       maxWidth="lg"
       fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: "24px",
-          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
-          border: `1.5px solid ${themeConfig.border}`,
-          boxShadow: "0 24px 48px -12px rgba(0,0,0,0.5)",
-          overflow: "hidden",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "24px",
+            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
+            border: `1.5px solid ${themeConfig.border}`,
+            boxShadow: "0 24px 48px -12px rgba(0,0,0,0.5)",
+            overflow: "hidden",
+          },
         },
       }}
     >
