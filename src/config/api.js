@@ -10,7 +10,7 @@ import { getCookie, setCookie, clearAuthCookies, getActiveHotelId } from '../sha
 export const ENVIRONMENT = "LIVE"; // 👉 Toggle "LOCAL" or "LIVE" here
 
 export const LOCAL_API_URL = "http://localhost:5000";
-export const LIVE_API_URL = "https://accomplished-smile-dev.up.railway.app";
+export const LIVE_API_URL = "https://hotel-management-admin-livid.vercel.app";
 
 export const LOCAL_ADMIN_URL = "http://localhost:3001";
 export const LIVE_ADMIN_URL = "https://hotel-management-admin-livid.vercel.app";
@@ -1495,7 +1495,7 @@ async function executeApiRequest(endpoint, options = {}) {
     const bId = bIdMatch ? bIdMatch[1] : null;
     let payloadObj = typeof preparedBody === "object" && preparedBody !== null ? { ...preparedBody } : {};
     if (typeof preparedBody === "string") {
-      try { payloadObj = JSON.parse(preparedBody); } catch {}
+      try { payloadObj = JSON.parse(preparedBody); } catch { }
     }
 
     if ((!payloadObj.paid_amount || Number(payloadObj.paid_amount) === 0) && bId) {

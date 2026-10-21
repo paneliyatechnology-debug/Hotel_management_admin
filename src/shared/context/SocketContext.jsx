@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
 import { io } from "socket.io-client";
-import { getApiBaseUrl } from "@/config/api";
 
 const SocketContext = createContext({
   socket: null,
@@ -15,8 +14,71 @@ const SocketContext = createContext({
   joinRoom: () => {},
 });
 
-// 🔌 SOCKET.IO TEMPORARILY DISABLED AS PER REQUEST
-export const SOCKET_ENABLED = false;
+// This app is the super-admin portal. Socket.IO talks to the live API, not the Vercel site.
+const SOCKET_URL = "https://hotelmanagementbackendnew-production.up.railway.app";
+const LOCAL_SOCKET_URL = "http://localhost:5000";
+
+export const SOCKET_ENABLED = true;
+
+const SUPER_ADMIN_EVENTS = [
+  "HOTEL_REGISTERED",
+  "NEW_TRIAL_REQUEST",
+  "TRIAL_REQUEST_APPROVED",
+  "TRIAL_REQUEST_REJECTED",
+  "HOTEL_STATUS_UPDATED",
+  "HOTEL_UPDATED",
+  "SUBSCRIPTION_UPDATED",
+  "DASHBOARD_SYNC",
+  "HOTEL_ONLINE",
+  "HOTEL_OFFLINE",
+  "USER_ONLINE",
+  "USER_OFFLINE",
+  "PRESENCE_SYNC",
+  "ONLINE_PRESENCE_STATE",
+];
+
+const HOTEL_ADMIN_EVENTS = [
+  "ROOM_UPDATED",
+  "room:category_counts",
+  "BOOKING_CREATED",
+  "BOOKING_UPDATED",
+  "GUEST_CHECKED_OUT",
+  "PAYMENT_RECORDED",
+  "GUEST_UPDATED",
+  "DASHBOARD_SYNC",
+  "HOTEL_STATUS_UPDATED",
+  "HOTEL_UPDATED",
+  "SUBSCRIPTION_UPDATED",
+  "STAFF_STATUS_UPDATED",
+  "USER_UPDATED",
+];
+
+function readSession() {
+  if (typeof window === "undefined") return { token: "", user: null, hotelId: "", role: "SUPER_ADMIN" };
+  const token = localStorage.getItem("token") || "";
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    user = null;
+  }
+  const hotelId = user?.hotel?._id || user?.hotel?.id || user?.hotel || user?.hotelId || user?.hotel_id || "";
+  const role = String(user?.role || "SUPER_ADMIN").toUpperCase();
+  return { token, user, hotelId: hotelId ? String(hotelId) : "", role };
+}
+
+function eventsForRole(role) {
+  if (role === "HOTEL_ADMIN" || role === "RECEPTIONIST") return HOTEL_ADMIN_EVENTS;
+  return SUPER_ADMIN_EVENTS;
+}
+
+function socketUrl() {
+  if (typeof window !== "undefined") {
+    const mode = String(localStorage.getItem("API_ENVIRONMENT") || "").toUpperCase();
+    if (mode === "LOCAL") return LOCAL_SOCKET_URL;
+  }
+  return SOCKET_URL;
+}
 
 const dummySocket = {
   connected: false,
@@ -33,45 +95,27 @@ export function SocketProvider({ children }) {
   const [onlineHotelIds, setOnlineHotelIds] = useState([]);
   const socketRef = useRef(dummySocket);
 
-  const isUserOnline = useCallback(
-    (userId) => {
-      if (!userId) return false;
-      const idStr = String(userId._id || userId.id || userId).trim();
-      return onlineUserIds.some((id) => String(id).trim() === idStr);
-    },
-    [onlineUserIds]
-  );
+  const isUserOnline = useCallback((userId) => {
+    if (!userId) return false;
+    const idStr = String(userId._id || userId.id || userId).trim();
+    return onlineUserIds.some((id) => String(id).trim() === idStr);
+  }, [onlineUserIds]);
 
-  const isHotelOnline = useCallback(
-    (hotelId) => {
-      if (!hotelId) return false;
-      const idStr = String(hotelId._id || hotelId.id || hotelId).trim();
-      return onlineHotelIds.some((id) => String(id).trim() === idStr);
-    },
-    [onlineHotelIds]
-  );
+  const isHotelOnline = useCallback((hotelId) => {
+    if (!hotelId) return false;
+    const idStr = String(hotelId._id || hotelId.id || hotelId).trim();
+    return onlineHotelIds.some((id) => String(id).trim() === idStr);
+  }, [onlineHotelIds]);
 
   const joinRoom = useCallback(() => {
-    // Sockets temporarily disabled
-    /*
     const sock = socketRef.current;
     if (!sock || !sock.connected) return;
+    const { token, user, hotelId, role } = readSession();
 
-    if (typeof window === "undefined") return;
-
-    const token = localStorage.getItem("token");
-    let user = null;
-    try {
-      const stored = localStorage.getItem("user");
-      if (stored) user = JSON.parse(stored);
-    } catch {}
-
-    const hotelId = user?.hotel?._id || user?.hotel?.id || user?.hotel || user?.hotelId;
-
-    if (user?.role === "SUPER_ADMIN") {
+    if (role === "SUPER_ADMIN" || !hotelId) {
       sock.emit("join_super_admin", { user, token });
-    } else if (hotelId) {
-      sock.emit("join_hotel", { hotelId: String(hotelId), token, user });
+    } else {
+      sock.emit("join_hotel", { hotelId, token, user });
     }
 
     if (user) {
@@ -79,177 +123,93 @@ export function SocketProvider({ children }) {
         userId: user._id || user.id,
         name: user.name,
         email: user.email,
-        role: user.role,
-        hotelId: hotelId ? String(hotelId) : null,
+        role: user.role || role,
+        hotelId: hotelId || null,
         token,
       });
     }
-
     sock.emit("get_presence");
-    */
   }, []);
 
   useEffect(() => {
-    // Sockets are temporarily commented out / disabled
-    if (!SOCKET_ENABLED) {
-      return;
-    }
+    if (!SOCKET_ENABLED || typeof window === "undefined") return undefined;
 
-    /*
-    if (typeof window === "undefined") return;
-
-    if (socketRef.current && socketRef.current.connected) {
-      joinRoom();
-      return;
-    }
-
-    const socketUrl = getApiBaseUrl() || "http://localhost:5000";
-
-    const socket = io(socketUrl, {
+    const { token } = readSession();
+    const socket = io(socketUrl(), {
       transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
+      auth: { token },
+      query: token ? { token } : {},
     });
-
     socketRef.current = socket;
 
     socket.on("connect", () => {
       setIsConnected(true);
       joinRoom();
     });
+    socket.on("disconnect", () => setIsConnected(false));
 
-    socket.on("joined_room", (data) => {
-    });
-
-    socket.on("disconnect", (reason) => {
-      setIsConnected(false);
-    });
-
-    // Real-Time Instant Presence Handlers (Zero Refresh)
     socket.on("ONLINE_PRESENCE_STATE", (data) => {
       if (Array.isArray(data?.onlineUserIds)) setOnlineUserIds(data.onlineUserIds.map(String));
       if (Array.isArray(data?.onlineHotelIds)) setOnlineHotelIds(data.onlineHotelIds.map(String));
     });
-
     socket.on("HOTEL_ONLINE", (data) => {
-      if (data?.hotelId) {
-        setOnlineHotelIds((prev) => Array.from(new Set([...prev, String(data.hotelId)])));
-      }
-      if (Array.isArray(data?.onlineHotelIds)) {
-        setOnlineHotelIds(data.onlineHotelIds.map(String));
-      }
+      if (Array.isArray(data?.onlineHotelIds)) setOnlineHotelIds(data.onlineHotelIds.map(String));
+      else if (data?.hotelId) setOnlineHotelIds((prev) => Array.from(new Set([...prev, String(data.hotelId)])));
     });
-
     socket.on("HOTEL_OFFLINE", (data) => {
-      if (Array.isArray(data?.onlineHotelIds)) {
-        setOnlineHotelIds(data.onlineHotelIds.map(String));
-      } else if (data?.hotelId) {
-        setOnlineHotelIds((prev) => prev.filter((id) => id !== String(data.hotelId)));
-      }
+      if (Array.isArray(data?.onlineHotelIds)) setOnlineHotelIds(data.onlineHotelIds.map(String));
+      else if (data?.hotelId) setOnlineHotelIds((prev) => prev.filter((id) => id !== String(data.hotelId)));
     });
-
     socket.on("USER_ONLINE", (data) => {
-      if (data?.userId) {
-        setOnlineUserIds((prev) => Array.from(new Set([...prev, String(data.userId)])));
-      }
-      if (data?.hotelId) {
-        setOnlineHotelIds((prev) => Array.from(new Set([...prev, String(data.hotelId)])));
-      }
-      if (Array.isArray(data?.onlineHotelIds)) {
-        setOnlineHotelIds(data.onlineHotelIds.map(String));
-      }
+      if (data?.userId) setOnlineUserIds((prev) => Array.from(new Set([...prev, String(data.userId)])));
+      if (Array.isArray(data?.onlineHotelIds)) setOnlineHotelIds(data.onlineHotelIds.map(String));
     });
-
     socket.on("USER_OFFLINE", (data) => {
-      if (data?.userId) {
-        setOnlineUserIds((prev) => prev.filter((id) => id !== String(data.userId)));
-      }
-      if (Array.isArray(data?.onlineHotelIds)) {
-        setOnlineHotelIds(data.onlineHotelIds.map(String));
-      } else if (Array.isArray(data?.onlineUserIds)) {
-        setOnlineUserIds(data.onlineUserIds.map(String));
-      }
+      if (data?.userId) setOnlineUserIds((prev) => prev.filter((id) => id !== String(data.userId)));
+      if (Array.isArray(data?.onlineHotelIds)) setOnlineHotelIds(data.onlineHotelIds.map(String));
     });
-
     socket.on("PRESENCE_SYNC", (data) => {
       if (Array.isArray(data?.onlineHotelIds)) setOnlineHotelIds(data.onlineHotelIds.map(String));
       if (Array.isArray(data?.onlineUserIds)) setOnlineUserIds(data.onlineUserIds.map(String));
     });
 
-    // Real-Time Event Dispatchers to Window
-    const realTimeEvents = [
-      "ROOM_UPDATED",
-      "BOOKING_CREATED",
-      "BOOKING_UPDATED",
-      "GUEST_CHECKED_OUT",
-      "PAYMENT_RECORDED",
-      "GUEST_UPDATED",
-      "DASHBOARD_SYNC",
-      "HANDOVER_SETTLED",
-      "HOTEL_STATUS_UPDATED",
-      "SIGNATURE_SUBMITTED",
-      "HOTEL_UPDATED",
-      "SUBSCRIPTION_UPDATED",
-      "TRIAL_REQUEST_APPROVED",
-      "TRIAL_REQUEST_REJECTED",
-      "NEW_TRIAL_REQUEST",
-      "HOTEL_REGISTERED",
-      "HOTEL_ONLINE",
-      "HOTEL_OFFLINE",
-      "USER_ONLINE",
-      "USER_OFFLINE",
-      "PRESENCE_SYNC",
-    ];
-
-    realTimeEvents.forEach((evtName) => {
-      socket.off(evtName);
-      socket.on(evtName, (payload) => {
-        setLastEvent({ name: evtName, payload, timestamp: Date.now() });
-        window.dispatchEvent(
-          new CustomEvent(`socket:${evtName}`, {
-            detail: payload,
-          })
-        );
-        window.dispatchEvent(
-          new CustomEvent("socket:any", {
-            detail: { name: evtName, payload },
-          })
-        );
+    const ALL_EVENTS = [...new Set([...SUPER_ADMIN_EVENTS, ...HOTEL_ADMIN_EVENTS])];
+    const bindRoleEvents = () => {
+      ALL_EVENTS.forEach((evtName) => socket.off(evtName));
+      eventsForRole(readSession().role).forEach((evtName) => {
+        socket.on(evtName, (payload) => {
+          setLastEvent({ name: evtName, payload, timestamp: Date.now() });
+          window.dispatchEvent(new CustomEvent(`socket:${evtName}`, { detail: payload }));
+          window.dispatchEvent(new CustomEvent("socket:any", { detail: { name: evtName, payload } }));
+        });
       });
-    });
+    };
+    bindRoleEvents();
 
-    // Listen for auth changes or window focus to re-join room & announce presence
     const handleAuthChange = () => {
+      bindRoleEvents();
       joinRoom();
     };
-    const handleWindowFocus = () => {
-      if (socketRef.current?.connected) {
-        socketRef.current.emit("get_presence");
-      }
-      joinRoom();
-    };
-
     window.addEventListener("auth-state-changed", handleAuthChange);
     window.addEventListener("storage", handleAuthChange);
-    window.addEventListener("focus", handleWindowFocus);
-    window.addEventListener("visibilitychange", handleWindowFocus);
 
     return () => {
       window.removeEventListener("auth-state-changed", handleAuthChange);
       window.removeEventListener("storage", handleAuthChange);
-      window.removeEventListener("focus", handleWindowFocus);
-      window.removeEventListener("visibilitychange", handleWindowFocus);
+      socket.disconnect();
+      socketRef.current = dummySocket;
     };
-    */
   }, [joinRoom]);
 
   return (
     <SocketContext.Provider
       value={{
         socket: socketRef.current,
-        isConnected: false,
+        isConnected,
         lastEvent,
         onlineUserIds,
         onlineHotelIds,
@@ -270,29 +230,34 @@ export function usePresence() {
     onlineHotelIds: context.onlineHotelIds || [],
     isUserOnline: context.isUserOnline || (() => false),
     isHotelOnline: context.isHotelOnline || (() => false),
-    isConnected: false,
+    isConnected: Boolean(context.isConnected),
   };
 }
 
 export function useSocket(eventSubscriptions = [], callback) {
   const context = useContext(SocketContext);
+  const callbackRef = useRef(callback);
 
   useEffect(() => {
-    if (!SOCKET_ENABLED) return;
-    if (!callback || eventSubscriptions.length === 0 || typeof window === "undefined") return;
+    callbackRef.current = callback;
+  }, [callback]);
 
-    const handlers = eventSubscriptions.map((evtName) => {
-      const handler = (e) => callback(e.detail, evtName);
+  const eventsKey = Array.isArray(eventSubscriptions) ? eventSubscriptions.join(",") : "";
+
+  useEffect(() => {
+    if (!SOCKET_ENABLED || !eventsKey || typeof window === "undefined") return undefined;
+    const events = eventsKey.split(",").filter(Boolean);
+    const handlers = events.map((evtName) => {
+      const handler = (e) => {
+        if (callbackRef.current) callbackRef.current(e.detail, evtName);
+      };
       window.addEventListener(`socket:${evtName}`, handler);
       return { evtName, handler };
     });
-
     return () => {
-      handlers.forEach(({ evtName, handler }) => {
-        window.removeEventListener(`socket:${evtName}`, handler);
-      });
+      handlers.forEach(({ evtName, handler }) => window.removeEventListener(`socket:${evtName}`, handler));
     };
-  }, [eventSubscriptions, callback]);
+  }, [eventsKey]);
 
   return context;
 }

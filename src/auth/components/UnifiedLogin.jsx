@@ -139,7 +139,10 @@ export default function UnifiedLogin({ onLoginSuccess }) {
     setError("");
     setLoginSuccessMsg("");
 
-    if (!email || !password) {
+    const cleanEmail = (email || "").trim();
+    const cleanPassword = (password || "").trim();
+
+    if (!cleanEmail || !cleanPassword) {
       setError("Please enter both email and password.");
       return;
     }
@@ -149,7 +152,7 @@ export default function UnifiedLogin({ onLoginSuccess }) {
     try {
       const res = await apiRequest(API_ENDPOINTS.AUTH.LOGIN, {
         method: "POST",
-        body: { email, password },
+        body: { email: cleanEmail, password: cleanPassword },
       });
 
       if (res.success && res.data) {
@@ -332,12 +335,15 @@ export default function UnifiedLogin({ onLoginSuccess }) {
   const handleChangePassword = async () => {
     setChangeError("");
 
-    if (!newPassword || newPassword.length < 6) {
+    const cleanNewPass = (newPassword || "").trim();
+    const cleanConfirmPass = (confirmPassword || "").trim();
+
+    if (!cleanNewPass || cleanNewPass.length < 6) {
       setChangeError("New password must be at least 6 characters long.");
       return;
     }
 
-    if (newPassword !== confirmPassword) {
+    if (cleanNewPass !== cleanConfirmPass) {
       setChangeError("Passwords do not match.");
       return;
     }
@@ -348,8 +354,8 @@ export default function UnifiedLogin({ onLoginSuccess }) {
       await apiRequest(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, {
         method: "PUT",
         body: {
-          currentPassword: password,
-          newPassword,
+          currentPassword: (password || "").trim(),
+          newPassword: cleanNewPass,
         },
       });
 
@@ -433,7 +439,12 @@ export default function UnifiedLogin({ onLoginSuccess }) {
               fullWidth
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value.replace(/\s+/g, ""))}
+              onPaste={(e) => {
+                e.preventDefault();
+                const text = (e.clipboardData || window.clipboardData)?.getData("text") || "";
+                setEmail(text.replace(/\s+/g, ""));
+              }}
               sx={{ mb: 2.5 }}
               slotProps={{
                 input: {
@@ -453,7 +464,12 @@ export default function UnifiedLogin({ onLoginSuccess }) {
               fullWidth
               required
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value.trim())}
+              onPaste={(e) => {
+                e.preventDefault();
+                const text = (e.clipboardData || window.clipboardData)?.getData("text") || "";
+                setPassword(text.trim());
+              }}
               sx={{ mb: 1.5 }}
               slotProps={{
                 input: {
@@ -538,7 +554,16 @@ export default function UnifiedLogin({ onLoginSuccess }) {
               fullWidth
               required
               value={forgotEmail}
-              onChange={(e) => setForgotEmail(e.target.value)}
+              onChange={(e) => {
+                setForgotEmail(e.target.value.replace(/\s+/g, ""));
+                if (forgotError) setForgotError("");
+              }}
+              onPaste={(e) => {
+                e.preventDefault();
+                const text = (e.clipboardData || window.clipboardData)?.getData("text") || "";
+                setForgotEmail(text.replace(/\s+/g, ""));
+                if (forgotError) setForgotError("");
+              }}
               placeholder="e.g. admin@grandroyale.com"
               slotProps={{
                 input: {
@@ -599,7 +624,12 @@ export default function UnifiedLogin({ onLoginSuccess }) {
             type={showNewPassword ? "text" : "password"}
             fullWidth
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={(e) => setNewPassword(e.target.value.trim())}
+            onPaste={(e) => {
+              e.preventDefault();
+              const text = (e.clipboardData || window.clipboardData)?.getData("text") || "";
+              setNewPassword(text.trim());
+            }}
             sx={{ mb: 2 }}
             slotProps={{
               input: {
@@ -624,7 +654,12 @@ export default function UnifiedLogin({ onLoginSuccess }) {
             type={showConfirmPassword ? "text" : "password"}
             fullWidth
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => setConfirmPassword(e.target.value.trim())}
+            onPaste={(e) => {
+              e.preventDefault();
+              const text = (e.clipboardData || window.clipboardData)?.getData("text") || "";
+              setConfirmPassword(text.trim());
+            }}
             slotProps={{
               input: {
                 startAdornment: (
