@@ -231,9 +231,9 @@ export default function SubscriptionPlansPage() {
           sx={{
             p: 1,
             borderRadius: "10px",
-            background: `linear-gradient(135deg, #FAF5FF 0%, #F3E8FF 100%)`,
-            border: "1px solid #E9D5FF",
-            boxShadow: "0 2px 6px rgba(126, 34, 206, 0.12), inset 0 1px 0 #FFFFFF",
+            background: themeConfig.bgSubtle || themeConfig.champagne,
+            border: `1px solid ${themeConfig.border}`,
+            boxShadow: "none",
             display: "inline-flex",
           }}
         >
@@ -247,9 +247,9 @@ export default function SubscriptionPlansPage() {
           sx={{
             p: 1,
             borderRadius: "10px",
-            background: `linear-gradient(135deg, ${themeConfig.champagne} 0%, #FFFFFF 100%)`,
+            background: themeConfig.bgSubtle || themeConfig.champagne,
             border: `1px solid ${themeConfig.border}`,
-            boxShadow: `0 2px 6px ${themeConfig.primaryGlow}, inset 0 1px 0 #FFFFFF`,
+            boxShadow: "none",
             display: "inline-flex",
           }}
         >
@@ -262,9 +262,9 @@ export default function SubscriptionPlansPage() {
         sx={{
           p: 1,
           borderRadius: "10px",
-          background: `linear-gradient(135deg, #F8FAFC 0%, #EDF2F7 100%)`,
-          border: "1px solid #E2E8F0",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.04), inset 0 1px 0 #FFFFFF",
+          background: themeConfig.bgSubtle || themeConfig.champagne,
+          border: `1px solid ${themeConfig.border}`,
+          boxShadow: "none",
           display: "inline-flex",
         }}
       >
@@ -274,7 +274,7 @@ export default function SubscriptionPlansPage() {
   };
 
   return (
-    <Box sx={{ maxWidth: 1180, mx: "auto", pt: { xs: 2, sm: 2.5 }, pb: { xs: 12, sm: 4 }, px: { xs: 1.5, sm: 2.5 } }}>
+    <Box sx={{ maxWidth: 1180, mx: "auto", pt: { xs: 2, sm: 2.5 }, pb: { xs: 12, sm: 4 }, px: { xs: 1.5, sm: 2.5 }, overflow: "hidden" }}>
 
       {/* Confirmation Dialog */}
       <ConfirmDialog
@@ -292,20 +292,20 @@ export default function SubscriptionPlansPage() {
           mb: 2.5,
           p: { xs: 1.8, sm: 2.2 },
           borderRadius: "18px",
-          background: `linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)`,
+          bgcolor: themeConfig.bgCard,
           border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 8px 20px -4px rgba(12, 39, 59, 0.06), inset 0 1px 1px #FFFFFF",
+          boxShadow: isDarkMode ? "none" : "0 8px 20px -4px rgba(32, 41, 35, 0.06)",
         }}
       >
         <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 2 }}>
           <div>
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, mb: 0.25 }}>
               <WorkspacePremium sx={{ fontSize: 16, color: themeConfig.primary }} />
-              <Typography variant="caption" sx={{ fontWeight: 800, textTransform: "uppercase", color: themeConfig.primary, letterSpacing: 0.8, fontSize: "0.7rem" }}>
+              <Typography variant="caption" sx={{ fontWeight: 800, textTransform: "uppercase", color: themeConfig.primary, letterSpacing: 0, fontSize: "0.7rem" }}>
                 Commercial Subscription Architecture
               </Typography>
             </Box>
-            <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, letterSpacing: -0.3, fontSize: { xs: "1rem", sm: "1.1rem" } }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, letterSpacing: 0, fontSize: { xs: "1rem", sm: "1.1rem" } }}>
               Subscription Tier Governance &amp; Quota
             </Typography>
             <Typography variant="body2" sx={{ color: themeConfig.textMuted, fontSize: "0.78rem", mt: 0.25 }}>
@@ -320,9 +320,9 @@ export default function SubscriptionPlansPage() {
                 py: 0.8,
                 px: { xs: 1, sm: 1.8 },
                 borderRadius: "12px",
-                background: `linear-gradient(135deg, #F8FAFC 0%, ${themeConfig.champagne} 100%)`,
+                bgcolor: themeConfig.bgSubtle || themeConfig.champagne,
                 border: `1px solid ${themeConfig.border}`,
-                boxShadow: "0 2px 5px rgba(0,0,0,0.03), inset 0 1px 0 #FFFFFF",
+                boxShadow: "none",
                 textAlign: "center",
               }}
             >
@@ -339,9 +339,9 @@ export default function SubscriptionPlansPage() {
                 py: 0.8,
                 px: { xs: 1, sm: 1.8 },
                 borderRadius: "12px",
-                background: `linear-gradient(135deg, #F8FAFC 0%, ${themeConfig.champagne} 100%)`,
+                bgcolor: themeConfig.bgSubtle || themeConfig.champagne,
                 border: `1px solid ${themeConfig.border}`,
-                boxShadow: "0 2px 5px rgba(0,0,0,0.03), inset 0 1px 0 #FFFFFF",
+                boxShadow: "none",
                 textAlign: "center",
               }}
             >
@@ -401,11 +401,11 @@ export default function SubscriptionPlansPage() {
                 fontSize: { xs: "0.75rem", sm: "0.8rem" },
                 fontWeight: 800,
                 textTransform: "none",
-                bgcolor: billingCycle === "MONTHLY" ? "#FFFFFF" : "transparent",
-                color: billingCycle === "MONTHLY" ? themeConfig.primaryDark : themeConfig.textMuted,
-                boxShadow: billingCycle === "MONTHLY" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                bgcolor: billingCycle === "MONTHLY" ? (isDarkMode ? themeConfig.bgElevated || themeConfig.bgCard : "#FFFFFF") : "transparent",
+                color: billingCycle === "MONTHLY" ? (themeConfig.accent || themeConfig.primary) : themeConfig.textMuted,
+                boxShadow: "none",
                 transition: "all 0.2s ease",
-                "&:hover": { bgcolor: billingCycle === "MONTHLY" ? "#FFFFFF" : "rgba(255,255,255,0.4)" },
+                "&:hover": { bgcolor: billingCycle === "MONTHLY" ? (isDarkMode ? themeConfig.bgElevated || themeConfig.bgCard : "#FFFFFF") : "transparent" },
               }}
             >
               Monthly ({meta.monthlyCount}/3)
@@ -424,11 +424,11 @@ export default function SubscriptionPlansPage() {
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 0.8,
-                bgcolor: billingCycle === "ANNUAL" ? "#FFFFFF" : "transparent",
-                color: billingCycle === "ANNUAL" ? themeConfig.primaryDark : themeConfig.textMuted,
-                boxShadow: billingCycle === "ANNUAL" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                bgcolor: billingCycle === "ANNUAL" ? (isDarkMode ? themeConfig.bgElevated || themeConfig.bgCard : "#FFFFFF") : "transparent",
+                color: billingCycle === "ANNUAL" ? (themeConfig.accent || themeConfig.primary) : themeConfig.textMuted,
+                boxShadow: "none",
                 transition: "all 0.2s ease",
-                "&:hover": { bgcolor: billingCycle === "ANNUAL" ? "#FFFFFF" : "rgba(255,255,255,0.4)" },
+                "&:hover": { bgcolor: billingCycle === "ANNUAL" ? (isDarkMode ? themeConfig.bgElevated || themeConfig.bgCard : "#FFFFFF") : "transparent" },
               }}
             >
               <span>Annual ({meta.annualCount}/3)</span>
@@ -513,21 +513,19 @@ export default function SubscriptionPlansPage() {
           onAction={handleOpenAddModal}
         />
       ) : (
-        <Grid container spacing={2.5} sx={{ alignItems: "stretch", pt: 2 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, gap: 2.5, pt: 2, width: "100%", minWidth: 0 }}>
           {currentPlans.map((plan, idx) => {
             const isPopular = Boolean(plan.isPopular || plan.badge === "MOST POPULAR");
 
             return (
-              <Grid size={{ xs: 12, md: 4 }} key={plan._id}>
+              <Box key={plan._id || plan.id || idx} sx={{ minWidth: 0 }}>
                 <Card
                   className="card-3d"
                   sx={{
                     borderRadius: "18px",
+                    bgcolor: themeConfig.bgCard,
                     border: isPopular ? `2px solid ${themeConfig.primary}` : `1px solid ${themeConfig.border}`,
-                    boxShadow: isPopular
-                      ? `0 12px 28px -8px ${themeConfig.primaryGlow}, 0 6px 12px rgba(0,0,0,0.04), inset 0 1px 1px #FFFFFF`
-                      : "0 8px 20px -4px rgba(12, 39, 59, 0.06), inset 0 1px 1px #FFFFFF",
-                    background: `linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)`,
+                    boxShadow: isDarkMode ? "none" : "0 8px 20px -4px rgba(32, 41, 35, 0.06)",
                     height: "100%",
                     display: "flex",
                     flexDirection: "column",
@@ -559,7 +557,6 @@ export default function SubscriptionPlansPage() {
                         py: 0.35,
                         fontSize: "0.68rem",
                         fontWeight: 900,
-                        letterSpacing: 0.8,
                         borderRadius: "10px",
                         textTransform: "uppercase",
                         boxShadow: `0 4px 12px ${themeConfig.primaryGlow}, inset 0 1px 0 rgba(255,255,255,0.4)`,
@@ -636,7 +633,7 @@ export default function SubscriptionPlansPage() {
                           fontWeight: 800,
                           color: themeConfig.textMain,
                           mb: 0.4,
-                          letterSpacing: -0.3,
+                          letterSpacing: 0,
                           fontSize: "1.1rem",
                         }}
                       >
@@ -649,7 +646,7 @@ export default function SubscriptionPlansPage() {
 
                       {/* 3D Price Display */}
                       <Box sx={{ display: "flex", alignItems: "baseline", mb: 1.5, pb: 1.5, borderBottom: `1px solid ${themeConfig.border}` }}>
-                        <Typography sx={{ fontWeight: 900, color: themeConfig.textMain, letterSpacing: -0.8, fontSize: "1.65rem" }}>
+                        <Typography sx={{ fontWeight: 900, color: themeConfig.textMain, letterSpacing: 0, fontSize: "1.65rem" }}>
                           ₹{plan.price.toLocaleString()}
                         </Typography>
                         <Typography variant="caption" sx={{ color: themeConfig.textMuted, ml: 0.8, fontSize: "0.78rem" }}>
@@ -663,7 +660,7 @@ export default function SubscriptionPlansPage() {
                         sx={{
                           fontWeight: 800,
                           color: themeConfig.primaryDark,
-                          letterSpacing: 0.8,
+                          letterSpacing: 0,
                           textTransform: "uppercase",
                           display: "block",
                           mb: 1,
@@ -710,8 +707,8 @@ export default function SubscriptionPlansPage() {
                         onClick={() => handleOpenEditModal(plan)}
                         className="btn-3d"
                         sx={{
-                          bgcolor: isPopular ? themeConfig.primary : "#FFFFFF",
-                          color: isPopular ? "#FFFFFF" : themeConfig.primaryDark,
+                          bgcolor: isPopular ? themeConfig.primary : (isDarkMode ? themeConfig.bgSubtle : "#FFFFFF"),
+                          color: isPopular ? (themeConfig.onPrimary || "#FFFFFF") : (themeConfig.accent || themeConfig.primaryDark),
                           fontWeight: 800,
                           fontSize: "0.78rem",
                           borderRadius: "10px",
@@ -746,10 +743,10 @@ export default function SubscriptionPlansPage() {
                     </Box>
                   </CardContent>
                 </Card>
-              </Grid>
+              </Box>
             );
           })}
-        </Grid>
+        </Box>
       )}
 
       {/* 3D MODAL: ADD / EDIT PLAN */}

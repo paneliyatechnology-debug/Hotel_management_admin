@@ -14,6 +14,7 @@ export default function StatCard({
   color,
   badgeText,
   onClick,
+  hideFooter = false,
 }) {
   const { themeConfig, isDarkMode } = useAppTheme();
   const cardColor = color || themeConfig.primary;
@@ -32,7 +33,9 @@ export default function StatCard({
       sx={{
         borderRadius: "22px",
         height: "100%",
-        minHeight: 180,
+        minHeight: hideFooter ? 0 : 180,
+        outline: "none",
+        "&:focus, &:focus-visible": { outline: "none" },
         display: "flex",
         flexDirection: "column",
         cursor: onClick ? "pointer" : "default",
@@ -96,15 +99,12 @@ export default function StatCard({
                 fontWeight: 800,
                 textTransform: "uppercase",
                 color: themeConfig.textMuted,
-                letterSpacing: 0.6,
+                letterSpacing: 0,
                 fontSize: "0.72rem",
-                lineHeight: 1.25,
-                height: 36,
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
+                lineHeight: 1.35,
                 overflow: "hidden",
                 flex: 1,
+                minWidth: 0,
               }}
             >
               {title}
@@ -149,7 +149,7 @@ export default function StatCard({
               alignItems: "center",
               fontSize: { xs: "1.75rem", sm: "1.95rem" },
               lineHeight: 1,
-              letterSpacing: -0.5,
+              letterSpacing: 0,
               my: 0.5,
               whiteSpace: "nowrap",
               overflow: "hidden",
@@ -160,7 +160,8 @@ export default function StatCard({
           </Typography>
         </Box>
 
-        {/* Dotted Divider - Guaranteed Identical Horizontal Alignment */}
+        {!hideFooter && (
+          <>
         <Box
           sx={{
             width: "100%",
@@ -170,7 +171,6 @@ export default function StatCard({
           }}
         />
 
-        {/* Bottom Area: Subtitle & Badges in One Clean Single Line */}
         <Box
           sx={{
             display: "flex",
@@ -241,6 +241,8 @@ export default function StatCard({
             )}
           </Box>
         </Box>
+          </>
+        )}
       </CardContent>
     </Card>
   );

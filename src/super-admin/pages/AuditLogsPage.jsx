@@ -29,15 +29,25 @@ export default function AuditLogsPage({ logs = [], onRefreshHotels }) {
   const { themeConfig } = useAppTheme();
   const [secTab, setSecTab] = useState(0);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
 
   const paginatedLogs = logs.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   return (
-    <Box>
+    <Box
+      sx={{
+        px: { xs: 1.5, sm: 3 },
+        py: { xs: 1.5, sm: 2 },
+        height: { xs: "calc(100vh - 132px)", sm: "calc(100vh - 148px)", md: "calc(100vh - 108px)" },
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 0,
+        overflow: "hidden",
+      }}
+    >
       <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
         <div>
-          <Typography variant="h5" sx={{ fontWeight: 800, color: themeConfig.textMain, letterSpacing: -0.5 }}>
+          <Typography variant="h5" sx={{ fontWeight: 800, color: themeConfig.textMain, letterSpacing: 0 }}>
             Security, Compliance &amp; Requests Portal
           </Typography>
           <Typography variant="body2" sx={{ color: themeConfig.textMuted, mt: 0.5 }}>
@@ -73,7 +83,8 @@ export default function AuditLogsPage({ logs = [], onRefreshHotels }) {
         scrollButtons="auto"
         allowScrollButtonsMobile
         sx={{
-          mb: 3,
+          mb: 2,
+          flexShrink: 0,
           borderBottom: `1px solid ${themeConfig.border}`,
           "& .MuiTab-root": {
             fontWeight: 800,
@@ -90,29 +101,36 @@ export default function AuditLogsPage({ logs = [], onRefreshHotels }) {
       </Tabs>
 
       {secTab === 0 ? (
-        <TrialExtensionRequestsSection onRefreshHotels={onRefreshHotels} />
+        <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          <TrialExtensionRequestsSection onRefreshHotels={onRefreshHotels} />
+        </Box>
       ) : (
-
+      <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+        <Paper
+          className="card-3d"
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+            borderRadius: "20px",
+            border: `1.5px solid ${themeConfig.border}`,
+            overflow: "hidden",
+            bgcolor: themeConfig.bgCard,
+          }}
+        >
       <TableContainer
-        component={Paper}
-        className="card-3d"
         sx={{
-          borderRadius: "20px",
-          border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 10px 25px -5px rgba(12, 39, 59, 0.08), inset 0 1px 1px #FFFFFF",
+          flex: 1,
+          minHeight: 0,
           overflowX: "auto",
           overflowY: "auto",
-          maxHeight: { xs: "520px", md: "calc(100vh - 280px)" },
           maxWidth: "100%",
-          "&::-webkit-scrollbar": { height: "8px", width: "8px" },
-          "&::-webkit-scrollbar-track": { background: "rgba(0,0,0,0.02)", borderRadius: "8px" },
-          "&::-webkit-scrollbar-thumb": { background: themeConfig.border, borderRadius: "8px" },
-          "&::-webkit-scrollbar-thumb:hover": { background: themeConfig.primary },
         }}
       >
-        <Table stickyHeader sx={{ minWidth: 850 }}>
+        <Table stickyHeader sx={{ width: "100%" }}>
           <TableHead>
-            <TableRow sx={{ background: `linear-gradient(135deg, ${themeConfig.champagne} 0%, #FFFFFF 100%)` }}>
+            <TableRow sx={{ bgcolor: themeConfig.bgSoft || themeConfig.champagne }}>
               <TableCell sx={{ fontWeight: 800, whiteSpace: "nowrap" }}>Log Event ID</TableCell>
               <TableCell sx={{ fontWeight: 800, whiteSpace: "nowrap" }}>Action Triggered</TableCell>
               <TableCell sx={{ fontWeight: 800, whiteSpace: "nowrap" }}>Target Hotel Property</TableCell>
@@ -160,7 +178,7 @@ export default function AuditLogsPage({ logs = [], onRefreshHotels }) {
             )}
           </TableBody>
         </Table>
-        {logs.length > 0 && (
+      </TableContainer>
           <TablePagination
             rowsPerPageOptions={[5, 10, 25, 50]}
             component="div"
@@ -173,14 +191,14 @@ export default function AuditLogsPage({ logs = [], onRefreshHotels }) {
               setPage(0);
             }}
             sx={{
+              flexShrink: 0,
               borderTop: `1px solid ${themeConfig.border}`,
               bgcolor: themeConfig.bgCard,
               color: themeConfig.textMain,
-              borderRadius: "0 0 20px 20px",
             }}
           />
-        )}
-      </TableContainer>
+        </Paper>
+      </Box>
       )}
     </Box>
   );

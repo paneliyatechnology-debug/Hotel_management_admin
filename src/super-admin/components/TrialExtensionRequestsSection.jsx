@@ -10,6 +10,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   Paper,
   Button,
   Chip,
@@ -32,6 +33,8 @@ export default function TrialExtensionRequestsSection({ onRefreshHotels }) {
   const { themeConfig } = useAppTheme();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
 
   // Dialog State for Approve / Reject
   const [dialogState, setDialogState] = useState({ open: false, type: null, request: null, days: 30, remarks: "" });
@@ -104,7 +107,7 @@ export default function TrialExtensionRequestsSection({ onRefreshHotels }) {
   const pendingRequests = requests.filter((r) => r.status === "PENDING");
 
   return (
-    <Box sx={{ mt: 1, width: "100%", overflow: "hidden" }}>
+    <Box sx={{ flex: 1, minHeight: 0, width: "100%", display: "flex", flexDirection: "column" }}>
       <Box sx={{ mb: 2, display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, flexDirection: { xs: "column", sm: "row" }, gap: 1 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.2, flexWrap: "wrap" }}>
           <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, fontSize: { xs: "1rem", sm: "1.2rem" } }}>
@@ -209,19 +212,23 @@ export default function TrialExtensionRequestsSection({ onRefreshHotels }) {
         </DialogActions>
       </Dialog>
 
-      <TableContainer
-        component={Paper}
+      <Paper
         className="card-3d"
         sx={{
-          borderRadius: "18px",
-          border: `1px solid ${themeConfig.border}`,
-          boxShadow: "0 10px 25px -5px rgba(12, 39, 59, 0.08)",
-          overflowX: "auto",
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          borderRadius: "20px",
+          border: `1.5px solid ${themeConfig.border}`,
+          overflow: "hidden",
+          bgcolor: themeConfig.bgCard,
         }}
       >
-        <Table sx={{ minWidth: 800 }}>
+      <TableContainer sx={{ flex: 1, minHeight: 0, overflowX: "auto", overflowY: "auto" }}>
+        <Table sx={{ width: "100%" }}>
           <TableHead>
-            <TableRow sx={{ background: `linear-gradient(135deg, ${themeConfig.champagne} 0%, #FFFFFF 100%)` }}>
+            <TableRow sx={{ bgcolor: themeConfig.bgSoft || themeConfig.champagne }}>
               <TableCell sx={{ fontWeight: 800 }}>Hotel &amp; Owner Details</TableCell>
               <TableCell sx={{ fontWeight: 800 }}>Requested Extension</TableCell>
               <TableCell sx={{ fontWeight: 800 }}>Reason / Note</TableCell>
@@ -239,7 +246,7 @@ export default function TrialExtensionRequestsSection({ onRefreshHotels }) {
                 </TableCell>
               </TableRow>
             ) : (
-              requests.map((req) => (
+              requests.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((req) => (
                 <TableRow key={req._id} hover>
                   <TableCell>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
@@ -369,6 +376,25 @@ export default function TrialExtensionRequestsSection({ onRefreshHotels }) {
           </TableBody>
         </Table>
       </TableContainer>
+      <TablePagination
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        component="div"
+        count={requests.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={(e, newPage) => setPage(newPage)}
+        onRowsPerPageChange={(e) => {
+          setRowsPerPage(parseInt(e.target.value, 10));
+          setPage(0);
+        }}
+        sx={{
+          flexShrink: 0,
+          borderTop: `1px solid ${themeConfig.border}`,
+          bgcolor: themeConfig.bgCard,
+          color: themeConfig.textMain,
+        }}
+      />
+      </Paper>
     </Box>
   );
 }

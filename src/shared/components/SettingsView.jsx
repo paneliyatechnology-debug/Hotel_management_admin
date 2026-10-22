@@ -18,9 +18,6 @@ import {
   Alert,
   Tooltip,
   Paper,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   MenuItem,
   FormControl,
   InputLabel,
@@ -34,19 +31,10 @@ import {
   DialogActions,
 } from "@mui/material";
 import {
-  Palette,
   Person,
-  Settings,
-  Help,
   CheckCircle,
   VpnKey,
   SupportAgent,
-  Refresh,
-  VolumeUp,
-  NotificationsActive,
-  TableRows,
-  ExpandMore,
-  ColorLens,
   Shield,
   Email,
   Phone,
@@ -57,10 +45,6 @@ import {
   InfoOutlined,
   WarningAmber,
   Public,
-  DarkMode,
-  LightMode,
-  WbSunny,
-  NightlightRound,
   CreditCard,
   Visibility,
   VisibilityOff,
@@ -92,16 +76,8 @@ const TIMEZONE_OPTIONS = [
 
 export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSettings }) {
   const {
-    paletteKey,
-    setPaletteKey,
     themeConfig,
-    themePalettes,
-    settings,
-    updateSettings,
     isDarkMode,
-    mode,
-    setThemeMode,
-    toggleThemeMode,
   } = useAppTheme();
   const [activeSubTab, setActiveSubTab] = useState(0);
 
@@ -416,365 +392,45 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
 
   const availableTabs = [
-    { id: "themes", label: "Theme & Color Palettes", icon: <Palette fontSize="small" /> },
     ...(isSuperAdmin ? [{ id: "freetrial", label: "Free Trial Settings", icon: <AccessTime fontSize="small" /> }] : []),
     ...(isHotelAdmin ? [{ id: "timings", label: "Hotel Timings & Operations", icon: <AccessTime fontSize="small" /> }] : []),
     { id: "profile", label: "My Profile & Security", icon: <Person fontSize="small" /> },
-    { id: "preferences", label: "System Preferences", icon: <Settings fontSize="small" /> },
-    { id: "help", label: "Help & Knowledge Base", icon: <Help fontSize="small" /> },
   ];
 
-  const currentTab = availableTabs[activeSubTab]?.id || "themes";
-
-  const paletteEntries = Object.entries(themePalettes);
+  const currentTab = availableTabs[activeSubTab]?.id || availableTabs[0]?.id || "profile";
   const turnaroundWindow = getTurnaroundWindow(checkInTime, checkOutTime);
   const timingValidation = validateHotelTimings(checkInTime, checkOutTime);
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, bgcolor: themeConfig.bgMain, minHeight: "100%" }}>
-      {/* 3D Page Header */}
-      <Box sx={{ mb: 3.5 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 0.8 }}>
-          <Avatar
-            sx={{
-              background: `linear-gradient(135deg, ${themeConfig.primary} 0%, ${themeConfig.primaryDark} 100%)`,
-              width: 48,
-              height: 48,
-              borderRadius: "16px",
-              boxShadow: `0 6px 18px ${themeConfig.primaryGlow}, inset 0 1px 0 rgba(255,255,255,0.4)`,
-              border: "2px solid #FFFFFF",
-            }}
-          >
-            <Settings sx={{ color: "#FFFFFF", fontSize: 26 }} />
-          </Avatar>
-          <Box>
-            <Typography variant="h5" sx={{ fontWeight: 900, color: themeConfig.textMain, letterSpacing: "-0.02em" }}>
-              Settings &amp; Preferences
-            </Typography>
-            <Typography variant="body2" sx={{ color: themeConfig.textMuted, fontWeight: 500 }}>
-              {isSuperAdmin
-                ? "Manage SaaS governance themes, master profile, security credentials, system behavior & support desk"
-                : "Manage themes, hotel check-in/out timings, personal profile, system behavior & support desk"}
-            </Typography>
-          </Box>
-        </Box>
-      </Box>
-
-      {/* 3D Main Container Card */}
-      <Card
+    <Box sx={{ width: "100%", minWidth: 0, px: { xs: 1.5, sm: 2.5, md: 3 }, py: { xs: 1, sm: 1.5 }, pb: { xs: 10, sm: 4 } }}>
+      <Tabs
+        value={activeSubTab >= availableTabs.length ? 0 : activeSubTab}
+        onChange={(e, v) => setActiveSubTab(v)}
+        variant="scrollable"
+        scrollButtons="auto"
+        allowScrollButtonsMobile
         sx={{
-          maxWidth: 1280,
-          mx: "auto",
-          borderRadius: "24px",
-          border: `1.5px solid ${themeConfig.border}`,
-          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
-          boxShadow: isDarkMode
-            ? "0 20px 45px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.05)"
-            : "0 20px 45px -12px rgba(12, 39, 59, 0.08), 0 4px 16px rgba(0,0,0,0.02), inset 0 1px 0 #FFFFFF",
-          overflow: "hidden",
+          minHeight: 44,
+          mb: 2.5,
+          borderBottom: `1px solid ${themeConfig.border}`,
+          "& .MuiTab-root": {
+            textTransform: "none",
+            fontWeight: 700,
+            fontSize: "0.9rem",
+            minHeight: 44,
+            px: 2,
+            color: themeConfig.textMuted,
+            "&.Mui-selected": { color: themeConfig.accent || themeConfig.primary },
+          },
+          "& .MuiTabs-indicator": { height: 2, borderRadius: "2px", bgcolor: themeConfig.primary },
         }}
       >
-        {/* 3D Navigation Tabs Header */}
-        <Box
-          sx={{
-            borderBottom: `1.5px solid ${themeConfig.border}`,
-            px: { xs: 1.5, sm: 3 },
-            py: 1.2,
-            bgcolor: isDarkMode ? "rgba(20, 184, 166, 0.08)" : (themeConfig.champagne || "rgba(240, 253, 250, 0.8)"),
-            backdropFilter: "blur(10px)",
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
-          <Tabs
-            value={activeSubTab >= availableTabs.length ? 0 : activeSubTab}
-            onChange={(e, v) => setActiveSubTab(v)}
-            variant="scrollable"
-            scrollButtons="auto"
-            allowScrollButtonsMobile
-            sx={{
-              minHeight: 48,
-              width: "100%",
-              maxWidth: 1200,
-              "& .MuiTabs-flexContainer": {
-                gap: 1.2,
-                justifyContent: { xs: "flex-start", md: "center" },
-              },
-              "& .MuiTab-root": {
-                textTransform: "none",
-                fontWeight: 800,
-                fontSize: "0.88rem",
-                py: 1.2,
-                px: 2.2,
-                minHeight: 44,
-                borderRadius: "14px",
-                color: themeConfig.textMuted,
-                transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-                "&.Mui-selected": {
-                  color: "#FFFFFF",
-                  background: `linear-gradient(135deg, ${themeConfig.primary} 0%, ${themeConfig.primaryDark} 100%)`,
-                  boxShadow: `0 4px 14px ${themeConfig.primaryGlow}, inset 0 1px 0 rgba(255,255,255,0.4)`,
-                  transform: "translateY(-1px)",
-                },
-                "&:hover:not(.Mui-selected)": {
-                  bgcolor: isDarkMode ? "rgba(255,255,255,0.06)" : themeConfig.champagne,
-                  color: themeConfig.primaryLight || themeConfig.primaryDark,
-                },
-              },
-              "& .MuiTabs-indicator": {
-                display: "none",
-              },
-            }}
-          >
-            {availableTabs.map((tab) => (
-              <Tab key={tab.id} icon={tab.icon} iconPosition="start" label={tab.label} />
-            ))}
-          </Tabs>
-        </Box>
+        {availableTabs.map((tab) => (
+          <Tab key={tab.id} label={tab.label} />
+        ))}
+      </Tabs>
 
-        <Box sx={{ p: { xs: 2.5, sm: 3.5, md: 4 }, maxWidth: 1000, mx: "auto", width: "100%" }}>
-          {/* ========================================================================= */}
-          {/* TAB: THEME & COLOR PALETTES */}
-          {/* ========================================================================= */}
-          {currentTab === "themes" && (
-            <Box>
-              {/* Appearance Mode (Light / Dark) */}
-              <Box sx={{ mb: 4 }}>
-                <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 0.5 }}>
-                  Appearance Mode
-                </Typography>
-                <Typography variant="body2" sx={{ color: themeConfig.textMuted, mb: 2 }}>
-                  Switch between Daylight Light Mode and OLED Dark Mode.
-                </Typography>
-
-                <Grid container spacing={2.5}>
-                  {/* Light Mode Card */}
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Card
-                      onClick={() => setThemeMode("light")}
-                      sx={{
-                        cursor: "pointer",
-                        borderRadius: "18px",
-                        p: 2.5,
-                        border: !isDarkMode ? `2.5px solid ${themeConfig.primary}` : `1.5px solid ${themeConfig.border}`,
-                        bgcolor: !isDarkMode ? "rgba(255, 255, 255, 0.9)" : "rgba(255, 255, 255, 0.02)",
-                        boxShadow: !isDarkMode ? `0 8px 24px ${themeConfig.primaryGlow}` : "none",
-                        transition: "all 0.25s ease",
-                        "&:hover": {
-                          borderColor: themeConfig.primary,
-                          transform: "translateY(-2px)",
-                        },
-                      }}
-                    >
-                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                          <Avatar
-                            sx={{
-                              bgcolor: "#FEF3C7",
-                              color: "#D97706",
-                              width: 44,
-                              height: 44,
-                              borderRadius: "12px",
-                              boxShadow: "0 2px 8px rgba(217, 119, 6, 0.2)",
-                            }}
-                          >
-                            <WbSunny sx={{ fontSize: 24 }} />
-                          </Avatar>
-                          <Box>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                              Light Mode
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
-                              Clean daylight theme &amp; sharp contrast
-                            </Typography>
-                          </Box>
-                        </Box>
-
-                        {!isDarkMode && (
-                          <Chip
-                            icon={<CheckCircle fontSize="small" sx={{ color: "#FFFFFF !important" }} />}
-                            label="ACTIVE"
-                            size="small"
-                            sx={{
-                              bgcolor: themeConfig.primary,
-                              color: "#FFFFFF",
-                              fontWeight: 800,
-                              fontSize: "0.7rem",
-                              borderRadius: "8px",
-                            }}
-                          />
-                        )}
-                      </Box>
-                      <Typography variant="body2" sx={{ color: themeConfig.textMuted, fontSize: "0.82rem" }}>
-                        Crisp white cards, subtle borders, and optimal contrast for bright work environments.
-                      </Typography>
-                    </Card>
-                  </Grid>
-
-                  {/* Dark Mode Card */}
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Card
-                      onClick={() => setThemeMode("dark")}
-                      sx={{
-                        cursor: "pointer",
-                        borderRadius: "18px",
-                        p: 2.5,
-                        border: isDarkMode ? `2.5px solid ${themeConfig.primary}` : `1.5px solid ${themeConfig.border}`,
-                        bgcolor: isDarkMode ? "rgba(22, 32, 50, 0.9)" : "rgba(15, 23, 42, 0.04)",
-                        boxShadow: isDarkMode ? `0 8px 24px ${themeConfig.primaryGlow}` : "none",
-                        transition: "all 0.25s ease",
-                        "&:hover": {
-                          borderColor: themeConfig.primary,
-                          transform: "translateY(-2px)",
-                        },
-                      }}
-                    >
-                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                          <Avatar
-                            sx={{
-                              bgcolor: "#312E81",
-                              color: "#A5B4FC",
-                              width: 44,
-                              height: 44,
-                              borderRadius: "12px",
-                              boxShadow: "0 2px 8px rgba(165, 180, 252, 0.2)",
-                            }}
-                          >
-                            <DarkMode sx={{ fontSize: 24 }} />
-                          </Avatar>
-                          <Box>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                              Dark Mode
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
-                              Sleek slate OLED theme &amp; reduced eye strain
-                            </Typography>
-                          </Box>
-                        </Box>
-
-                        {isDarkMode && (
-                          <Chip
-                            icon={<CheckCircle fontSize="small" sx={{ color: "#FFFFFF !important" }} />}
-                            label="ACTIVE"
-                            size="small"
-                            sx={{
-                              bgcolor: themeConfig.primary,
-                              color: "#FFFFFF",
-                              fontWeight: 800,
-                              fontSize: "0.7rem",
-                              borderRadius: "8px",
-                            }}
-                          />
-                        )}
-                      </Box>
-                      <Typography variant="body2" sx={{ color: themeConfig.textMuted, fontSize: "0.82rem" }}>
-                        Deep obsidian &amp; slate surfaces with glowing accent highlights for night shifts.
-                      </Typography>
-                    </Card>
-                  </Grid>
-                </Grid>
-              </Box>
-
-              <Divider sx={{ my: 3.5, borderColor: themeConfig.border }} />
-
-              {/* Currently Selected Theme Card & Interactive Actions */}
-              <Paper
-                sx={{
-                  p: { xs: 2.5, sm: 3.5 },
-                  borderRadius: "20px",
-                  bgcolor: themeConfig.bgCard || (isDarkMode ? "#162032" : "#FFFFFF"),
-                  border: `1.5px solid ${themeConfig.border}`,
-                  boxShadow: isDarkMode ? "0 8px 24px -6px rgba(0,0,0,0.4)" : "0 8px 24px -6px rgba(12, 39, 59, 0.05), inset 0 1px 0 #FFFFFF",
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 2, mb: 2.5 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.8 }}>
-                    <Box
-                      sx={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: "8px",
-                        bgcolor: themeConfig.primary,
-                        boxShadow: `0 3px 8px ${themeConfig.primaryGlow}`,
-                        border: "2px solid #FFFFFF",
-                      }}
-                    />
-                    <Box>
-                      <Typography variant="body1" sx={{ fontWeight: 900, color: themeConfig.textMain }}>
-                        Currently Selected: <strong>{themeConfig.name}</strong>
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block" }}>
-                        Active {isDarkMode ? "Dark" : "Light"} Hotel PMS Theme with Emerald Mint Accents
-                      </Typography>
-                    </Box>
-                  </Box>
-
-                  <Chip
-                    icon={<CheckCircle fontSize="small" sx={{ color: "#FFFFFF !important" }} />}
-                    label="THEME ACTIVE"
-                    size="small"
-                    sx={{
-                      background: `linear-gradient(135deg, ${themeConfig.primary} 0%, ${themeConfig.primaryDark} 100%)`,
-                      color: "#FFFFFF",
-                      fontWeight: 800,
-                      fontSize: "0.72rem",
-                      borderRadius: "10px",
-                      boxShadow: `0 2px 8px ${themeConfig.primaryGlow}`,
-                    }}
-                  />
-                </Box>
-
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 2, pt: 2, borderTop: `1px solid ${themeConfig.border}` }}>
-                  <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
-                    <Button
-                      variant="contained"
-                      onClick={() => {
-                        toast.success(`Theme "${themeConfig.name}" is currently active and applied across all modules.`);
-                      }}
-                      sx={{
-                        background: `linear-gradient(135deg, ${themeConfig.primary} 0%, ${themeConfig.primaryDark} 100%)`,
-                        color: "#FFFFFF",
-                        fontWeight: 800,
-                        borderRadius: "12px",
-                        px: 2.5,
-                        py: 0.9,
-                        boxShadow: `0 4px 14px ${themeConfig.primaryGlow}, inset 0 1px 0 rgba(255,255,255,0.4)`,
-                        "&:hover": { transform: "translateY(-1px)" },
-                      }}
-                    >
-                      Applied &amp; Active
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={() => {
-                        toggleThemeMode();
-                        toast.success(`Theme mode switched to ${isDarkMode ? "Light Mode" : "Dark Mode"}`);
-                      }}
-                      sx={{
-                        borderColor: themeConfig.border,
-                        bgcolor: themeConfig.bgCard,
-                        color: themeConfig.textMain,
-                        fontWeight: 800,
-                        borderRadius: "12px",
-                        px: 2.5,
-                        py: 0.9,
-                        boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
-                        "&:hover": { bgcolor: themeConfig.champagne, transform: "translateY(-1px)" },
-                      }}
-                    >
-                      Switch to {isDarkMode ? "Light Mode" : "Dark Mode"}
-                    </Button>
-                  </Box>
-
-                  <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontWeight: 600 }}>
-                    Applied across Front Desk, Room Matrix, Billing, and Admin Portals
-                  </Typography>
-                </Box>
-              </Paper>
-            </Box>
-          )}
-
+      <Box sx={{ maxWidth: 1000, width: "100%" }}>
           {/* ========================================================================= */}
           {/* TAB: FREE TRIAL SETTINGS (SUPER ADMIN) */}
           {/* ========================================================================= */}
@@ -1547,231 +1203,7 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
               </Box>
             </Box>
           )}
-
-          {/* ========================================================================= */}
-          {/* TAB: SYSTEM PREFERENCES */}
-          {/* ========================================================================= */}
-          {currentTab === "preferences" && (
-            <Box sx={{ width: "100%", mx: "auto" }}>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 0.5 }}>
-                System &amp; Workflow Preferences
-              </Typography>
-              <Typography variant="body2" sx={{ color: themeConfig.textMuted, mb: 3.5 }}>
-                Configure live synchronization, audio alerts, and layout density.
-              </Typography>
-
-              <Paper
-                sx={{
-                  p: 3.5,
-                  borderRadius: "22px",
-                  bgcolor: themeConfig.bgCard,
-                  border: `1.5px solid ${themeConfig.border}`,
-                  boxShadow: isDarkMode ? "0 10px 28px -6px rgba(0,0,0,0.4)" : "0 10px 28px -6px rgba(12, 39, 59, 0.05), inset 0 1px 0 #FFFFFF",
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <Avatar sx={{ bgcolor: themeConfig.champagne, color: themeConfig.primaryDark, width: 44, height: 44, borderRadius: "14px", boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}>
-                      <Refresh fontSize="small" />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="body1" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                        Auto-Refresh Live Data (30s)
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: themeConfig.textMuted }}>
-                        Automatically poll room status matrix and in-house folios
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Switch
-                    checked={settings.autoRefresh}
-                    onChange={(e) => updateSettings({ autoRefresh: e.target.checked })}
-                    color="primary"
-                  />
-                </Box>
-
-                <Divider sx={{ my: 2.5, borderColor: themeConfig.border }} />
-
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <Avatar sx={{ bgcolor: themeConfig.champagne, color: themeConfig.primaryDark, width: 44, height: 44, borderRadius: "14px", boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}>
-                      <VolumeUp fontSize="small" />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="body1" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                        Audio Chime for New Check-ins
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: themeConfig.textMuted }}>
-                        Play sound alert when new guest registration or check-in arrives
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Switch
-                    checked={settings.soundAlerts}
-                    onChange={(e) => updateSettings({ soundAlerts: e.target.checked })}
-                    color="primary"
-                  />
-                </Box>
-
-                <Divider sx={{ my: 2.5, borderColor: themeConfig.border }} />
-
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <Avatar sx={{ bgcolor: themeConfig.champagne, color: themeConfig.primaryDark, width: 44, height: 44, borderRadius: "14px", boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}>
-                      <NotificationsActive fontSize="small" />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="body1" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                        In-App Toast Notifications
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: themeConfig.textMuted }}>
-                        Display instant popup toast notifications on action status
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Switch
-                    checked={settings.notificationsEnabled}
-                    onChange={(e) => updateSettings({ notificationsEnabled: e.target.checked })}
-                    color="primary"
-                  />
-                </Box>
-
-                <Divider sx={{ my: 2.5, borderColor: themeConfig.border }} />
-
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <Avatar sx={{ bgcolor: themeConfig.champagne, color: themeConfig.primaryDark, width: 44, height: 44, borderRadius: "14px", boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}>
-                      <TableRows fontSize="small" />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="body1" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                        Compact Table Density
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: themeConfig.textMuted }}>
-                        Tighten table padding to maximize visible records on screen
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Switch
-                    checked={settings.compactMode}
-                    onChange={(e) => updateSettings({ compactMode: e.target.checked })}
-                    color="primary"
-                  />
-                </Box>
-              </Paper>
-            </Box>
-          )}
-
-          {/* ========================================================================= */}
-          {/* TAB: HELP & SUPPORT */}
-          {/* ========================================================================= */}
-          {currentTab === "help" && (
-            <Box sx={{ width: "100%", mx: "auto" }}>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 0.5 }}>
-                Help Center &amp; Knowledge Base
-              </Typography>
-              <Typography variant="body2" sx={{ color: themeConfig.textMuted, mb: 3.5 }}>
-                Frequently Asked Questions and 24/7 Enterprise Support Channels.
-              </Typography>
-
-              <Accordion sx={{ mb: 2, borderRadius: "16px !important", border: `1.5px solid ${themeConfig.border}`, boxShadow: "0 4px 14px rgba(12, 39, 59, 0.03)", "&:before": { display: "none" } }}>
-                <AccordionSummary expandIcon={<ExpandMore />}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                    How do Super Admins approve or reject registered hotels?
-                  </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Typography variant="body2" sx={{ color: themeConfig.textMuted, lineHeight: 1.6 }}>
-                    Go to the <strong>Pending Approvals</strong> tab. Click on <strong>Review Dossier</strong> to inspect hotel registration details, owner credentials, and tax documents. Click <strong>Approve &amp; Activate</strong> to grant 30-day active access, or <strong>Reject</strong> with reason.
-                  </Typography>
-                </AccordionDetails>
-              </Accordion>
-
-              <Accordion sx={{ mb: 2, borderRadius: "16px !important", border: `1.5px solid ${themeConfig.border}`, boxShadow: "0 4px 14px rgba(12, 39, 59, 0.03)", "&:before": { display: "none" } }}>
-                <AccordionSummary expandIcon={<ExpandMore />}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                    How does the 5-Step Check-in with Govt ID compliance work?
-                  </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Typography variant="body2" sx={{ color: themeConfig.textMuted, lineHeight: 1.6 }}>
-                    From the Receptionist Console, navigate to <strong>5-Step Check-In</strong>. Complete Guest details, select Govt ID document (Aadhaar / Passport / Driving License), choose room type, select check-in/out dates, and finalize billing settlement.
-                  </Typography>
-                </AccordionDetails>
-              </Accordion>
-
-              <Accordion sx={{ mb: 2, borderRadius: "16px !important", border: `1.5px solid ${themeConfig.border}`, boxShadow: "0 4px 14px rgba(12, 39, 59, 0.03)", "&:before": { display: "none" } }}>
-                <AccordionSummary expandIcon={<ExpandMore />}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                    How do Hotel Admins add staff receptionists?
-                  </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Typography variant="body2" sx={{ color: themeConfig.textMuted, lineHeight: 1.6 }}>
-                    From the Hotel Admin PMS, open the <strong>Receptionist Staff</strong> tab. Click <strong>Add Receptionist</strong>, enter full name, email, phone, and assign initial login credentials.
-                  </Typography>
-                </AccordionDetails>
-              </Accordion>
-
-              {/* 3D Support Hotline Banner */}
-              <Paper
-                sx={{
-                  mt: 4,
-                  p: 3.5,
-                  borderRadius: "22px",
-                  bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
-                  border: `1.5px dashed ${themeConfig.primary}`,
-                  boxShadow: isDarkMode ? "none" : "0 10px 30px -6px rgba(12, 39, 59, 0.06), inset 0 1px 0 #FFFFFF",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
-                  gap: 2.5,
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <Avatar
-                    sx={{
-                      background: `linear-gradient(135deg, ${themeConfig.primary} 0%, ${themeConfig.primaryDark} 100%)`,
-                      width: 52,
-                      height: 52,
-                      borderRadius: "16px",
-                      boxShadow: `0 6px 16px ${themeConfig.primaryGlow}`,
-                    }}
-                  >
-                    <SupportAgent sx={{ color: "#FFFFFF", fontSize: 28 }} />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 900, color: themeConfig.textMain }}>
-                      24/7 MYOWNPMS SaaS Support
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: themeConfig.textMuted }}>
-                      Email: support@grandroyale-saas.com | Hotline: +91 (800) 425-6789
-                    </Typography>
-                  </Box>
-                </Box>
-                <Button
-                  variant="outlined"
-                  onClick={() => setSupportModalOpen(true)}
-                  sx={{
-                    borderColor: themeConfig.primary,
-                    color: themeConfig.primaryLight || themeConfig.primary,
-                    fontWeight: 800,
-                    px: 3,
-                    py: 1,
-                    borderRadius: "12px",
-                    bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
-                    boxShadow: isDarkMode ? "none" : "0 2px 8px rgba(0,0,0,0.03)",
-                    "&:hover": { bgcolor: themeConfig.champagne, transform: "translateY(-1px)" },
-                  }}
-                >
-                  Create Support Ticket
-                </Button>
-              </Paper>
-            </Box>
-          )}
-        </Box>
-      </Card>
+      </Box>
 
       {/* 24x7 CUSTOMER SUPPORT TICKET MODAL */}
       <Dialog

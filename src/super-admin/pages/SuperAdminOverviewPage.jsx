@@ -10,7 +10,6 @@ import {
   Button,
   Chip,
   Avatar,
-  Divider,
   Grid,
   LinearProgress,
   Tooltip,
@@ -38,9 +37,6 @@ import {
   ReceiptLong,
   CalendarToday,
   Payments,
-  Lan,
-  ShieldOutlined,
-  Refresh,
   ArrowForward,
   Speed,
   CloudDone,
@@ -70,6 +66,54 @@ const formatCurrency = (val) => {
   return `₹${num.toLocaleString("en-IN")}`;
 };
 
+function pick(obj, keys) {
+  if (!obj || typeof obj !== "object") return undefined;
+  for (const key of keys) {
+    const value = obj[key];
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return undefined;
+}
+
+function asNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function mapDashboardBoxes(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const kpis = data.kpis || {};
+  const planDistribution = data.plan_distribution || data.planDistribution || [];
+  const estimatedMrr = asNumber(pick(kpis, ["estimated_mrr", "estimatedMrr"]));
+  const bookingVolume = asNumber(pick(kpis, ["total_platform_booking_volume", "totalPlatformBookingVolume"]));
+  const bookingsThisMonth = asNumber(pick(kpis, ["total_bookings_this_month", "totalBookingsThisMonth"]));
+  const totalHotels = asNumber(pick(kpis, ["total_hotels", "totalHotels"]));
+  const activeHotels = asNumber(pick(kpis, ["active_hotels", "activeHotels"]));
+  const inactiveHotels = asNumber(pick(kpis, ["inactive_hotels", "inactiveHotels"]));
+  const trialHotels = asNumber(pick(kpis, ["trial_hotels", "trialHotels"]));
+  const expiredHotels = asNumber(pick(kpis, ["expired_hotels", "expiredHotels"]));
+  const totalRooms = asNumber(pick(kpis, ["total_platform_rooms", "totalPlatformRooms"]));
+  const staffUsers = asNumber(pick(kpis, ["total_staff_users", "totalStaffUsers"]));
+
+  return {
+    ...data,
+    kpis,
+    planDistribution: Array.isArray(planDistribution) ? planDistribution : [],
+    monthlyRevenue: estimatedMrr,
+    totalRevenue: bookingVolume,
+    totalOrders: bookingsThisMonth,
+    totalBookings: bookingsThisMonth,
+    totalRooms,
+    totalHotels,
+    activeSubscriptions: activeHotels,
+    inactiveHotels,
+    trialHotels,
+    expiredHotels,
+    totalGuests: staffUsers,
+    pendingPayments: expiredHotels,
+  };
+}
+
 export default function SuperAdminOverviewPage({
   hotels = [],
   onRefresh,
@@ -98,7 +142,9 @@ export default function SuperAdminOverviewPage({
       setLoadingStats(true);
       const res = await apiRequest(API_ENDPOINTS.SUPER_ADMIN.DASHBOARD).catch(() => null);
       if (res?.data) {
-        setDashboardData(res.data);
+        setDashboardData(mapDashboardBoxes(res.data));
+      } else if (res && typeof res === "object") {
+        setDashboardData(mapDashboardBoxes(res));
       }
     } catch (err) {
       console.warn("Failed to fetch super admin dashboard stats:", err);
@@ -120,47 +166,38 @@ export default function SuperAdminOverviewPage({
     }
   };
 
-  const totalActive = hotels.filter((h) => h.status === "ACTIVE").length;
-  const totalPending = hotels.filter((h) => h.status === "PENDING" || h.status === "PENDING_APPROVAL").length;
-  const totalDisabled = hotels.filter((h) => h.status === "DISABLED" || h.status === "SUSPENDED").length;
+  const kpis = dashboardData?.kpis || {};
+  const totalHotels = dashboardData ? asNumber(kpis.total_hotels ?? kpis.totalHotels) : hotels.length;
+  const totalActive = dashboardData ? asNumber(kpis.active_hotels ?? kpis.activeHotels) : hotels.filter((h) => h.status === "ACTIVE").length;
+  const trialHotelsCount = dashboardData ? asNumber(kpis.trial_hotels ?? kpis.trialHotels) : hotels.filter((h) => !h.subscription?.plan || h.subscription?.plan === "TRIAL" || h.subscription?.status === "TRIAL").length;
+  const inactiveHotels = dashboardData ? asNumber(kpis.inactive_hotels ?? kpis.inactiveHotels) : hotels.filter((h) => h.status === "DISABLED" || h.status === "SUSPENDED" || h.status === "INACTIVE").length;
+  const expiredHotels = dashboardData ? asNumber(kpis.expired_hotels ?? kpis.expiredHotels) : 0;
+  const totalPending = expiredHotels;
+  const totalDisabled = inactiveHotels;
+  const staffUsers = asNumber(kpis.total_staff_users ?? kpis.totalStaffUsers);
 
-  // Real Database Metrics from Backend API
-  const todayRevenue = dashboardData?.todayRevenue ?? 0;
-  const monthlyRevenue = dashboardData?.monthlyRevenue ?? 0;
-  const totalRevenue = dashboardData?.totalRevenue ?? 0;
-  const totalOrders = dashboardData?.totalOrders ?? 0;
-  const totalRoomsCount = dashboardData?.totalRooms ?? hotels.reduce((acc, h) => acc + (h.totalRooms || 0), 0);
-  const totalCitiesCount = dashboardData?.totalCities ?? (new Set(hotels.map((h) => h.city).filter(Boolean)).size || (hotels.length ? 1 : 0));
-  const recentPayments = dashboardData?.recentPayments || [];
+  const monthlyRevenue = dashboardData?.monthlyRevenue ?? asNumber(kpis.estimated_mrr ?? kpis.estimatedMrr);
+  const totalRevenue = dashboardData?.totalRevenue ?? asNumber(kpis.total_platform_booking_volume ?? kpis.totalPlatformBookingVolume);
+  const totalOrders = dashboardData?.totalOrders ?? asNumber(kpis.total_bookings_this_month ?? kpis.totalBookingsThisMonth);
+  const totalRoomsCount = dashboardData?.totalRooms ?? asNumber(kpis.total_platform_rooms ?? kpis.totalPlatformRooms);
+  const planDistribution = dashboardData?.planDistribution || dashboardData?.plan_distribution || [];
 
-  // Real Subscription Tier Distribution Calculation from API
-  const realTiers = [];
-  const trialHotelsCount = hotels.filter(
-    (h) => !h.subscription?.plan || h.subscription?.plan === "TRIAL" || h.subscription?.status === "TRIAL"
-  ).length;
-  const trialPercent = hotels.length ? Math.round((trialHotelsCount / hotels.length) * 100) : 0;
-
-  if (plans.length > 0) {
-    plans.forEach((plan) => {
-      const matchCount = hotels.filter(
-        (h) =>
-          h.subscription?.plan?.toLowerCase() === plan.name?.toLowerCase() ||
-          (h.subscription?.status === "ACTIVE" && h.subscription?.plan === plan.name)
-      ).length;
-      const pct = hotels.length ? Math.round((matchCount / hotels.length) * 100) : 0;
-      realTiers.push({
-        name: `${plan.name} (₹${plan.price?.toLocaleString("en-IN") || 0}/${plan.billingCycle === "ANNUAL" ? "yr" : "mo"})`,
-        count: matchCount,
-        percent: pct,
-        color: plan.isPopular ? themeConfig.primary : "#10B981",
-      });
-    });
-  }
-
+  const tierBase = totalHotels || 1;
+  const tierColors = [themeConfig.primary, "#10B981", "#8B5CF6", "#0B8EE0"];
+  const realTiers = (Array.isArray(planDistribution) ? planDistribution : []).map((plan, idx) => {
+    const count = asNumber(plan.active_hotels_count ?? plan.activeHotelsCount);
+    const revenue = asNumber(plan.monthly_revenue ?? plan.monthlyRevenue);
+    return {
+      name: `${plan.plan_name || plan.planName || "Plan"} • ₹${revenue.toLocaleString("en-IN")}/mo`,
+      count,
+      percent: Math.round((count / tierBase) * 100),
+      color: tierColors[idx % tierColors.length],
+    };
+  });
   realTiers.push({
-    name: "Starter / 30-Day Free Trial (₹0)",
+    name: "Trial hotels",
     count: trialHotelsCount,
-    percent: trialPercent,
+    percent: Math.round((trialHotelsCount / tierBase) * 100),
     color: "#F59E0B",
   });
 
@@ -201,116 +238,6 @@ export default function SuperAdminOverviewPage({
 
   return (
     <Box sx={{ px: { xs: 1.5, sm: 3 }, py: { xs: 1.5, sm: 3 }, pb: { xs: 10, sm: 4 } }}>
-      {/* 3D Master Command Ribbon */}
-      <Box
-        sx={{
-          mb: { xs: 3, sm: 4 },
-          p: { xs: 2, sm: 2.5, md: 3 },
-          borderRadius: { xs: "18px", sm: "24px" },
-          background: `linear-gradient(135deg, ${themeConfig.primaryDark || "#0C273B"} 0%, ${themeConfig.primary || "#0B8EE0"} 100%)`,
-          color: "#FFFFFF",
-          boxShadow: `0 16px 36px -10px ${themeConfig.primaryGlow || "rgba(11, 142, 224, 0.4)"}, inset 0 1px 1px rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.2)`,
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        {/* 3D Radial Glow */}
-        <Box
-          sx={{
-            position: "absolute",
-            top: "-50%",
-            right: "-10%",
-            width: "380px",
-            height: "380px",
-            borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 70%)",
-            pointerEvents: "none",
-          }}
-        />
-
-        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "stretch", sm: "center" }, gap: 2, position: "relative", zIndex: 1 }}>
-          <Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1, flexWrap: "wrap" }}>
-              <Box className="live-pulse-3d" />
-              <Typography
-                variant="caption"
-                sx={{
-                  fontWeight: 800,
-                  letterSpacing: 1,
-                  textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.9)",
-                  fontSize: { xs: "0.65rem", sm: "0.72rem" },
-                }}
-              >
-                Super Admin Master Command • Real-Time Database Telemetry
-              </Typography>
-            </Box>
-            <Typography variant="h5" sx={{ fontWeight: 900, color: "#FFFFFF", letterSpacing: -0.5, lineHeight: 1.2, fontSize: { xs: "1.15rem", sm: "1.5rem" } }}>
-              Platform Overview &amp; SaaS Governance
-            </Typography>
-            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", mt: 0.5, fontSize: { xs: "0.78rem", sm: "0.85rem" } }}>
-              Multi-tenant live database telemetry, verified payments, real-time subscriptions &amp; tenant security.
-            </Typography>
-          </Box>
-
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, width: { xs: "100%", sm: "auto" } }}>
-            <Box
-              sx={{
-                display: { xs: "none", sm: "flex" },
-                alignItems: "center",
-                gap: 1.5,
-                px: 2,
-                py: 1,
-                borderRadius: "14px",
-                bgcolor: "rgba(0,0,0,0.2)",
-                backdropFilter: "blur(8px)",
-                border: "1px solid rgba(255,255,255,0.15)",
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, fontSize: "0.75rem", fontWeight: 700, color: "#FFFFFF" }}>
-                <Lan sx={{ fontSize: 16, color: "#92EEFF" }} />
-                <span>Isolated DB</span>
-              </Box>
-              <Divider orientation="vertical" flexItem sx={{ borderColor: "rgba(255,255,255,0.2)" }} />
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, fontSize: "0.75rem", fontWeight: 700, color: "#FFFFFF" }}>
-                <ShieldOutlined sx={{ fontSize: 16, color: "#C4F7CA" }} />
-                <span>AES-256</span>
-              </Box>
-            </Box>
-
-            <Button
-              variant="contained"
-              startIcon={<Refresh />}
-              onClick={() => {
-                if (onRefresh) onRefresh();
-                fetchDashboardStats();
-                fetchPlans();
-              }}
-              className="btn-3d"
-              sx={{
-                width: { xs: "100%", sm: "auto" },
-                justifyContent: "center",
-                whiteSpace: "nowrap",
-                borderRadius: "14px",
-                bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
-                color: themeConfig.primaryDark || "#0C273B",
-                fontWeight: 800,
-                fontSize: { xs: "0.78rem", sm: "0.82rem" },
-                px: 2.5,
-                py: 1,
-                boxShadow: isDarkMode ? "none" : "0 6px 16px rgba(0,0,0,0.15), inset 0 1px 0 #FFFFFF",
-                "&:hover": {
-                  bgcolor: isDarkMode ? "rgba(20, 184, 166, 0.15)" : "#F8FAFC",
-                  transform: "translateY(-2px)",
-                },
-              }}
-            >
-              Sync Telemetry
-            </Button>
-          </Box>
-        </Box>
-      </Box>
-
       {/* ========================================================================= */}
       {/* SECTION 1: FINANCIAL & ORDER METRICS */}
       {/* ========================================================================= */}
@@ -358,54 +285,40 @@ export default function SuperAdminOverviewPage({
             gap: 2.5,
           }}
         >
-          {/* Today's Revenue */}
           <StatCard
-            title="Today's Revenue"
-            value={formatCurrency(todayRevenue)}
-            subtitle={`${dashboardData?.todayCheckIns || 0} check-ins today`}
-            icon={<CalendarToday />}
-            color="#10B981"
-            trend={dashboardData?.todayGrowth ?? "+0%"}
-            trendType={dashboardData?.todayGrowth?.startsWith("-") ? "down" : "up"}
-            badgeText="Today"
-            onClick={() => handleOpenDetailModal("TODAY_REVENUE")}
-          />
-
-          {/* Monthly Revenue */}
-          <StatCard
-            title="Monthly Revenue"
+            hideFooter
+            title="Estimated MRR"
             value={formatCurrency(monthlyRevenue)}
-            subtitle="Recurring SaaS MRR"
             icon={<TrendingUp />}
             color="#0B8EE0"
-            trend={dashboardData?.monthlyGrowth ?? "+0%"}
-            trendType={dashboardData?.monthlyGrowth?.startsWith("-") ? "down" : "up"}
-            badgeText="Monthly"
             onClick={() => handleOpenDetailModal("MONTHLY_REVENUE")}
           />
 
-          {/* Total Orders / Subscriptions */}
           <StatCard
-            title="Total Orders"
-            value={`${totalOrders} Order${totalOrders === 1 ? "" : "s"}`}
-            subtitle={`${dashboardData?.activeSubscriptions || 0} active subscriptions`}
+            hideFooter
+            title="Platform Booking Volume"
+            value={formatCurrency(totalRevenue)}
+            icon={<AttachMoney />}
+            color="#F59E0B"
+            onClick={() => handleOpenDetailModal("TOTAL_PLATFORM_REVENUE")}
+          />
+
+          <StatCard
+            hideFooter
+            title="Bookings This Month"
+            value={totalOrders}
             icon={<ReceiptLong />}
             color="#8B5CF6"
-            trend={totalOrders > 0 ? `${totalOrders} Settled` : "0 Orders"}
-            trendType="up"
-            badgeText="Orders"
             onClick={() => handleOpenDetailModal("TOTAL_ORDERS")}
           />
 
-          {/* Lifetime SaaS Platform Revenue */}
           <StatCard
-            title="Total Platform Revenue"
-            value={formatCurrency(totalRevenue)}
-            subtitle={`₹${(dashboardData?.pendingPayments || 0).toLocaleString("en-IN")} pending dues`}
-            icon={<AttachMoney />}
-            color="#F59E0B"
-            badgeText="Lifetime"
-            onClick={() => handleOpenDetailModal("TOTAL_PLATFORM_REVENUE")}
+            hideFooter
+            title="Staff Users"
+            value={staffUsers}
+            icon={<People />}
+            color="#10B981"
+            onClick={() => handleOpenDetailModal("TOTAL_ORDERS")}
           />
         </Box>
       </Box>
@@ -458,48 +371,39 @@ export default function SuperAdminOverviewPage({
             gap: 2.5,
           }}
         >
-          {/* Total Registered Hotels */}
           <StatCard
-            title="Total Registered Hotels"
-            value={hotels.length}
-            subtitle={`${totalCitiesCount} Cit${totalCitiesCount === 1 ? "y" : "ies"} registered`}
+            hideFooter
+            title="Total Hotels"
+            value={totalHotels}
             icon={<Business />}
             color={themeConfig.primary}
-            trend={`${totalRoomsCount} Rooms`}
-            trendType="up"
             onClick={() => handleOpenDetailModal("TOTAL_HOTELS")}
           />
 
-          {/* Active SaaS Properties */}
           <StatCard
-            title="Active SaaS Properties"
+            hideFooter
+            title="Active Hotels"
             value={totalActive}
-            subtitle="Live & operational"
             icon={<CheckCircle />}
             color={themeConfig.success}
-            badgeText={totalActive > 0 ? "Online" : "0 Active"}
             onClick={() => handleOpenDetailModal("ACTIVE_HOTELS")}
           />
 
-          {/* Pending Approvals */}
           <StatCard
-            title="Pending Approvals"
-            value={totalPending}
-            subtitle="Document KYC"
+            hideFooter
+            title="Trial Hotels"
+            value={trialHotelsCount}
             icon={<HourglassEmpty />}
             color={themeConfig.warning}
-            badgeText={totalPending > 0 ? `${totalPending} Action Needed` : "All Clear"}
             onClick={() => handleOpenDetailModal("PENDING_APPROVALS")}
           />
 
-          {/* Disabled / Suspended */}
           <StatCard
-            title="Disabled / Suspended"
-            value={totalDisabled}
-            subtitle="Compliance holds"
+            hideFooter
+            title="Inactive Hotels"
+            value={inactiveHotels}
             icon={<Block />}
             color={themeConfig.danger}
-            badgeText={totalDisabled > 0 ? `${totalDisabled} Suspended` : "Zero Holds"}
             onClick={() => handleOpenDetailModal("DISABLED_HOTELS")}
           />
         </Box>
@@ -816,7 +720,7 @@ export default function SuperAdminOverviewPage({
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }, gap: 2 }}>
                 <Paper sx={{ p: 2, borderRadius: "16px", bgcolor: themeConfig.bgMain, border: `1px solid ${themeConfig.border}` }}>
                   <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontWeight: 700 }}>TODAY'S COLLECTION</Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 900, color: "#10B981", mt: 0.5 }}>{formatCurrency(todayRevenue)}</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 900, color: "#10B981", mt: 0.5 }}>{formatCurrency(monthlyRevenue)}</Typography>
                   <Typography variant="caption" sx={{ color: "#10B981", fontWeight: 700 }}>{dashboardData?.todayGrowth || "0%"} vs yesterday</Typography>
                 </Paper>
 
@@ -861,13 +765,13 @@ export default function SuperAdminOverviewPage({
               </Box>
 
               {/* Real Recent Payments from API */}
-              {recentPayments.length > 0 && (
+              {(dashboardData?.recentPayments || []).length > 0 && (
                 <Paper sx={{ p: 2.5, borderRadius: "18px", bgcolor: themeConfig.bgMain, border: `1px solid ${themeConfig.border}` }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 1.5 }}>
                     Latest Live Transactions (Database Feed)
                   </Typography>
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                    {recentPayments.slice(0, 5).map((pay) => (
+                    {(dashboardData?.recentPayments || []).slice(0, 5).map((pay) => (
                       <Box key={pay._id} sx={{ p: 1.2, px: 2, borderRadius: "10px", bgcolor: themeConfig.champagne, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <Box>
                           <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>

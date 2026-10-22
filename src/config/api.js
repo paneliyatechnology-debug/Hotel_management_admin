@@ -10,7 +10,7 @@ import { getCookie, setCookie, clearAuthCookies, getActiveHotelId } from '../sha
 export const ENVIRONMENT = "LIVE"; // 👉 Toggle "LOCAL" or "LIVE" here
 
 export const LOCAL_API_URL = "http://localhost:5000";
-export const LIVE_API_URL = "https://hotel-management-admin-livid.vercel.app";
+export const LIVE_API_URL = "https://hotelmanagementbackendnew-production.up.railway.app";
 
 export const LOCAL_ADMIN_URL = "http://localhost:3001";
 export const LIVE_ADMIN_URL = "https://hotel-management-admin-livid.vercel.app";
@@ -179,7 +179,7 @@ export const API_ENDPOINTS = createCaseFlexibleProxy({
 
   // Backward compatibility aliases for Super Admin & Hotel Admin pages
   SUPER_ADMIN: {
-    DASHBOARD: `${API_BASE_URL}/api/v1/super-admin/dashboard`,
+    DASHBOARD: `${API_BASE_URL}/api/v1/dashboard`,
     HOTELS: `${API_BASE_URL}/api/v1/hotels`,
     UPDATE_HOTEL: (id) => `${API_BASE_URL}/api/v1/users/${id}`,
     APPROVE_HOTEL: (id) => `${API_BASE_URL}/api/v1/users/${id}`,
@@ -761,43 +761,26 @@ function prepareRequestBody(body, endpoint) {
   if (typeof parsedBody !== "object" || parsedBody === null) return parsedBody;
 
   // 0. Special endpoint handlers matching Postman contract
-  // A. Subscription plans (Postman: Plan JSON uses camelCase)
-  if (typeof endpoint === "string" && endpoint.includes("/subscription-plans")) {
-    const planPayload = { ...parsedBody };
-    if (planPayload.billing_cycle !== undefined && planPayload.billingCycle === undefined) {
-      planPayload.billingCycle = planPayload.billing_cycle;
-    }
-    if (planPayload.discount_percent !== undefined && planPayload.discountPercent === undefined) {
-      planPayload.discountPercent = planPayload.discount_percent;
-    }
-    if (planPayload.max_rooms !== undefined && planPayload.maxRooms === undefined) {
-      planPayload.maxRooms = planPayload.max_rooms;
-    }
-    if (planPayload.is_popular !== undefined && planPayload.isPopular === undefined) {
-      planPayload.isPopular = planPayload.is_popular;
-    }
-    if (planPayload.is_active !== undefined && planPayload.isActive === undefined) {
-      planPayload.isActive = planPayload.is_active;
-    }
-    if (planPayload.display_order !== undefined && planPayload.displayOrder === undefined) {
-      planPayload.displayOrder = planPayload.display_order;
-    }
-    if (planPayload.billingCycle) {
-      planPayload.billingCycle = String(planPayload.billingCycle).toUpperCase();
-    }
-    if (planPayload.price !== undefined) planPayload.price = Number(planPayload.price);
-    if (planPayload.discountPercent !== undefined) planPayload.discountPercent = Number(planPayload.discountPercent);
-    if (planPayload.maxRooms !== undefined) planPayload.maxRooms = Number(planPayload.maxRooms);
-    if (planPayload.displayOrder !== undefined) planPayload.displayOrder = Number(planPayload.displayOrder);
-    if (planPayload.isPopular !== undefined) planPayload.isPopular = Boolean(planPayload.isPopular);
-    if (planPayload.isActive !== undefined) planPayload.isActive = Boolean(planPayload.isActive);
-    delete planPayload.billing_cycle;
-    delete planPayload.discount_percent;
-    delete planPayload.max_rooms;
-    delete planPayload.is_popular;
-    delete planPayload.is_active;
-    delete planPayload.display_order;
-    return planPayload;
+  // A. Subscription plans: live API expects snake_case and rejects unknown keys such as badge.
+  if (typeof endpoint === "string" && endpoint.includes("/subscription-plans") && !endpoint.includes("/purchase")) {
+    const features = Array.isArray(parsedBody.features)
+      ? parsedBody.features.map((item) => String(item).trim()).filter(Boolean)
+      : String(parsedBody.featuresText || parsedBody.features || "")
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean);
+    return {
+      name: String(parsedBody.name || "").trim(),
+      billing_cycle: String(parsedBody.billing_cycle || parsedBody.billingCycle || "MONTHLY").toUpperCase(),
+      price: Number(parsedBody.price) || 0,
+      discount_percent: Number(parsedBody.discount_percent ?? parsedBody.discountPercent) || 0,
+      max_rooms: Number(parsedBody.max_rooms ?? parsedBody.maxRooms) || 0,
+      description: String(parsedBody.description || ""),
+      features,
+      is_popular: Boolean(parsedBody.is_popular ?? parsedBody.isPopular),
+      is_active: (parsedBody.is_active ?? parsedBody.isActive) !== false,
+      display_order: Number(parsedBody.display_order ?? parsedBody.displayOrder) || 1,
+    };
   }
 
   // B. Physical Room status: PATCH /api/v1/rooms/:id/status
@@ -1524,16 +1507,9 @@ async function executeApiRequest(endpoint, options = {}) {
     }
   }
 
-  // Candidate URLs: Live URL is primary (direct live request to Railway)
+  // Live Railway is the only target. A relative localhost URL hits this
+  // admin app (port 3001), which is not the API and returns 404.
   const candidateUrls = [fullUrl];
-  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
-    const relativeUrl = fullUrl.startsWith("http")
-      ? fullUrl.replace(/^(https?:\/\/[^/]+)/, "")
-      : fullUrl;
-    if (relativeUrl && relativeUrl.startsWith("/") && !candidateUrls.includes(relativeUrl)) {
-      candidateUrls.push(relativeUrl);
-    }
-  }
 
   let response;
   let lastError;
@@ -1566,7 +1542,7 @@ async function executeApiRequest(endpoint, options = {}) {
       !endpoint.includes("/auth/login") &&
       !endpoint.includes("/auth/refresh-token")
     ) {
-      const storedRefreshToken = localStorage.getItem("refreshToken");
+      const storedRefreshToken = localStorage.getItem("refreshToken") || getCookie("refreshToken");
       if (storedRefreshToken && !options._retry) {
         try {
           const refreshRes = await fetch(API_ENDPOINTS.AUTH.REFRESH_TOKEN, {
@@ -1577,9 +1553,19 @@ async function executeApiRequest(endpoint, options = {}) {
               refreshToken: storedRefreshToken,
             }),
           });
-          const refreshData = await refreshRes.json();
-          const newToken = refreshData.data?.accessToken || refreshData.accessToken || refreshData.token;
-          const newRefreshToken = refreshData.data?.refreshToken || refreshData.refreshToken;
+          const refreshData = await refreshRes.json().catch(() => ({}));
+          const newToken =
+            refreshData.data?.accessToken ||
+            refreshData.data?.access_token ||
+            refreshData.data?.token ||
+            refreshData.accessToken ||
+            refreshData.access_token ||
+            refreshData.token;
+          const newRefreshToken =
+            refreshData.data?.refreshToken ||
+            refreshData.data?.refresh_token ||
+            refreshData.refreshToken ||
+            refreshData.refresh_token;
 
           if (refreshRes.ok && newToken) {
             localStorage.setItem("token", newToken);
@@ -1596,7 +1582,7 @@ async function executeApiRequest(endpoint, options = {}) {
             });
           }
         } catch (refreshErr) {
-          console.error("Auto token refresh failed:", refreshErr);
+          console.warn("Auto token refresh failed:", refreshErr);
         }
       }
 

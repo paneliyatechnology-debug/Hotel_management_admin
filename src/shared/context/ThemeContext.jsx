@@ -171,11 +171,11 @@ export function buildMuiTheme(themeConfig, mode = "light") {
             color: themeConfig.textMuted,
             transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
             "&.Mui-selected": {
-              color: isDark ? "#FFFFFF" : themeConfig.primaryDark,
-              backgroundColor: isDark ? themeConfig.primaryDark : "#FFFFFF",
+              color: isDark ? themeConfig.accent : themeConfig.primaryDark,
+              backgroundColor: isDark ? themeConfig.bgElevated || themeConfig.bgCard : "#FFFFFF",
               boxShadow: isDark
-                ? "0 4px 12px rgba(0, 0, 0, 0.4)"
-                : "0 4px 12px rgba(12, 39, 59, 0.08), inset 0 1px 0 #FFFFFF",
+                ? "none"
+                : "0 4px 12px rgba(12, 39, 59, 0.08)",
             },
             "&:hover": {
               color: themeConfig.textMain,
@@ -266,10 +266,10 @@ export function buildMuiTheme(themeConfig, mode = "light") {
           },
           head: {
             fontWeight: 800,
-            color: themeConfig.textMain,
-            backgroundColor: isDark ? "rgba(20, 184, 166, 0.1)" : (themeConfig.champagne || "#F0FDFA"),
+            color: `${themeConfig.textMain} !important`,
+            backgroundColor: `${themeConfig.bgSoft || themeConfig.champagne} !important`,
             borderBottom: `1px solid ${themeConfig.border}`,
-            letterSpacing: "0.02em",
+            letterSpacing: 0,
           },
         },
       },

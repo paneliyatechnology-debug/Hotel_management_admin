@@ -65,31 +65,57 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
     if (!user || user.role !== "SUPER_ADMIN") return;
     try {
       setLoading(true);
-      const data = await apiRequest(API_ENDPOINTS.HOTELS.ALL);
+      const [data, usersRes] = await Promise.all([
+        apiRequest(API_ENDPOINTS.HOTELS.ALL),
+        apiRequest(API_ENDPOINTS.USERS.LIST("?page=1&limit=200")).catch(() => null),
+      ]);
       const payload = data?.data;
       const rawList = Array.isArray(payload)
         ? payload
         : Array.isArray(payload?.hotels)
           ? payload.hotels
           : [];
+      const userPayload = usersRes?.data;
+      const users = Array.isArray(userPayload)
+        ? userPayload
+        : Array.isArray(userPayload?.users)
+          ? userPayload.users
+          : [];
+      const text = (...values) => values.find((value) => value !== undefined && value !== null && String(value).trim() !== "") || "";
+      const person = (record) => (record && typeof record === "object" && !Array.isArray(record) ? record : {});
+
       setHotels(rawList.map((hotel) => {
         const active = hotel.is_active ?? hotel.isActive;
         const disabled = hotel.is_disabled ?? hotel.isDisabled;
         const status = String(
           hotel.status || (disabled || active === false ? "DISABLED" : "ACTIVE")
         ).toUpperCase();
-        const ownerName = hotel.ownerName || hotel.owner_name || hotel.admin?.name || "";
-        const ownerEmail = hotel.ownerEmail || hotel.owner_email || hotel.email || hotel.admin?.email || "";
-        const ownerPhone = hotel.ownerPhone || hotel.owner_phone || hotel.phone || hotel.admin?.phone || "";
+        const hotelId = String(hotel._id || hotel.id || "");
+        const linkedUser = users.find((entry) => {
+          const entryHotelId = String(entry.hotel_id || entry.hotelId || entry.hotel?.id || entry.hotel?._id || "");
+          const entryId = String(entry.id || entry._id || "");
+          return (hotelId && (entryHotelId === hotelId || entryId === String(hotel.user_id || hotel.userId || hotel.owner_id || hotel.ownerId || hotel.admin_id || hotel.adminId || "")))
+            || (entryHotelId && entryHotelId === hotelId);
+        });
+        const adminObj = person(hotel.admin);
+        const ownerObj = person(hotel.owner || hotel.user || hotel.manager || linkedUser);
+        const ownerName = text(adminObj.name, adminObj.full_name, hotel.ownerName, hotel.owner_name, ownerObj.name, ownerObj.full_name, linkedUser?.name);
+        const ownerEmail = text(adminObj.email, hotel.ownerEmail, hotel.owner_email, hotel.email, hotel.contact_email, hotel.contactEmail, ownerObj.email, linkedUser?.email);
+        const ownerPhone = text(adminObj.phone, adminObj.mobile, hotel.ownerPhone, hotel.owner_phone, hotel.phone, hotel.mobile, hotel.contact_phone, ownerObj.phone, ownerObj.mobile, linkedUser?.phone);
+        const totalRooms = Number(hotel.totalRooms ?? hotel.total_rooms ?? hotel.rooms_count ?? hotel.room_count ?? hotel.roomsCount ?? hotel.stats?.totalRooms ?? 0) || 0;
         return {
           ...hotel,
           _id: hotel._id || hotel.id,
           name: hotel.name || hotel.hotel_name || hotel.hotelName || "Hotel",
+          city: hotel.city || hotel.address?.city || "",
+          state: hotel.state || hotel.address?.state || "",
           ownerName,
           ownerEmail,
           ownerPhone,
+          totalRooms,
+          createdAt: hotel.createdAt || hotel.created_at || linkedUser?.createdAt || linkedUser?.created_at,
           status,
-          admin: hotel.admin || { name: ownerName, email: ownerEmail, phone: ownerPhone },
+          admin: { ...adminObj, name: ownerName, email: ownerEmail, phone: ownerPhone },
         };
       }));
     } catch (err) {

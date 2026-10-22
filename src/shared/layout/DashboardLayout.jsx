@@ -22,6 +22,7 @@ import {
   useMediaQuery,
   useTheme,
   Button,
+  ButtonBase,
   Paper,
   Tooltip,
 } from "@mui/material";
@@ -56,7 +57,7 @@ export default function DashboardLayout({
   onLogout,
   children,
 }) {
-  const { themeConfig, paletteKey, setPaletteKey, themePalettes, isDarkMode, toggleThemeMode } = useAppTheme();
+  const { themeConfig, paletteKey, setPaletteKey, themePalettes, isDarkMode, setThemeMode } = useAppTheme();
   const { isConnected } = usePresence();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -146,7 +147,7 @@ export default function DashboardLayout({
             width: DRAWER_WIDTH,
             borderRadius: 0,
             boxSizing: "border-box",
-            bgcolor: themeConfig.bgCard || (isDarkMode ? "#0F172A" : "#FFFFFF"),
+            bgcolor: themeConfig.bgCard,
             borderRight: `1px solid ${themeConfig.border}`,
             borderTop: "none",
             borderBottom: "none",
@@ -169,7 +170,7 @@ export default function DashboardLayout({
             alignItems: "center",
             justifyContent: "space-between",
             borderBottom: `1px solid ${themeConfig.border}`,
-            bgcolor: themeConfig.bgHeader || (isDarkMode ? "#0F172A" : "#FFFFFF"),
+            bgcolor: themeConfig.bgHeader,
             boxSizing: "border-box",
             borderRadius: 0,
           }}
@@ -275,6 +276,50 @@ export default function DashboardLayout({
         {/* User Mini Profile Card at Bottom (Clean - 3D Inset Surface) */}
         <Box sx={{ p: 2, bgcolor: themeConfig.bgMain }}>
           <Box
+            role="group"
+            aria-label="Theme"
+            sx={{
+              display: "flex",
+              gap: 0.5,
+              p: 0.5,
+              mb: 1.5,
+              borderRadius: "12px",
+              border: `1px solid ${themeConfig.border}`,
+              bgcolor: isDarkMode ? "rgba(255, 255, 255, 0.04)" : "rgba(32, 41, 35, 0.04)",
+            }}
+          >
+            {[
+              { mode: "light", label: "Light", icon: <LightMode sx={{ fontSize: 18 }} /> },
+              { mode: "dark", label: "Dark", icon: <DarkMode sx={{ fontSize: 18 }} /> },
+            ].map((option) => {
+              const active = (option.mode === "dark") === isDarkMode;
+              return (
+                <ButtonBase
+                  key={option.mode}
+                  onClick={() => setThemeMode(option.mode)}
+                  aria-pressed={active}
+                  sx={{
+                    flex: 1,
+                    gap: 0.75,
+                    py: 0.8,
+                    borderRadius: "9px",
+                    fontSize: "0.8rem",
+                    fontWeight: active ? 800 : 600,
+                    color: active ? (themeConfig.accent || themeConfig.primary) : themeConfig.textMuted,
+                    bgcolor: active ? (isDarkMode ? themeConfig.champagne : themeConfig.bgCard) : "transparent",
+                    boxShadow: active && !isDarkMode ? "0 1px 3px rgba(32, 41, 35, 0.1)" : "none",
+                    transition: "all 0.2s ease",
+                    "&:hover": { color: themeConfig.accent || themeConfig.primary },
+                  }}
+                >
+                  {option.icon}
+                  {option.label}
+                </ButtonBase>
+              );
+            })}
+          </Box>
+
+          <Box
             onClick={navigateToSettings}
             sx={{
               display: "flex",
@@ -284,9 +329,7 @@ export default function DashboardLayout({
               p: 1.2,
               borderRadius: "14px",
               border: `1px solid ${themeConfig.border}`,
-              background: isDarkMode
-                ? "linear-gradient(135deg, #162032 0%, #1E293B 100%)"
-                : "linear-gradient(135deg, #FFFFFF 0%, #F9FBFC 100%)",
+              background: themeConfig.bgCard,
               boxShadow: isDarkMode
                 ? "0 4px 14px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.05)"
                 : "0 4px 14px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
@@ -356,7 +399,7 @@ export default function DashboardLayout({
             height: HEADER_HEIGHT,
             minHeight: HEADER_HEIGHT,
             maxHeight: HEADER_HEIGHT,
-            bgcolor: isDarkMode ? "rgba(15, 23, 42, 0.92)" : "rgba(255, 255, 255, 0.96)",
+            bgcolor: themeConfig.bgHeader,
             backdropFilter: "blur(14px)",
             borderBottom: `1px solid ${themeConfig.border}`,
             borderTop: "none",
