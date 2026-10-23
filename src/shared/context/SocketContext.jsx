@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
 import { io } from "socket.io-client";
+import { API_BASE_URL } from "@/config/api";
 
 const SocketContext = createContext({
   socket: null,
@@ -13,10 +14,6 @@ const SocketContext = createContext({
   isHotelOnline: () => false,
   joinRoom: () => {},
 });
-
-// This app is the super-admin portal. Socket.IO talks to the live API, not the Vercel site.
-const SOCKET_URL = "https://hotelmanagementbackendnew-production.up.railway.app";
-const LOCAL_SOCKET_URL = "http://localhost:5000";
 
 export const SOCKET_ENABLED = true;
 
@@ -73,11 +70,7 @@ function eventsForRole(role) {
 }
 
 function socketUrl() {
-  if (typeof window !== "undefined") {
-    const mode = String(localStorage.getItem("API_ENVIRONMENT") || "").toUpperCase();
-    if (mode === "LOCAL") return LOCAL_SOCKET_URL;
-  }
-  return SOCKET_URL;
+  return API_BASE_URL;
 }
 
 const dummySocket = {

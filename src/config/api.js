@@ -1,8 +1,5 @@
 /**
- * 🛠️ API Environment Configuration
- * 
- * Connected to Hotel Management Backend (TradeNexa Architecture - MySQL Knex)
- * Live Base URL: https://accomplished-smile-dev.up.railway.app
+ * API configuration — base URL comes from NEXT_PUBLIC_API_URL.
  */
 
 import axios from "axios";
@@ -33,33 +30,8 @@ async function apiFetch(url, config = {}) {
   };
 }
 
-export const ENVIRONMENT = "LIVE"; // 👉 Toggle "LOCAL" or "LIVE" here
-
-export const LOCAL_API_URL = "http://localhost:5000";
-export const LIVE_API_URL = "https://hotelmanagementbackendnew-production.up.railway.app";
-
-export const LOCAL_ADMIN_URL = "http://localhost:3001";
-export const LIVE_ADMIN_URL = "https://hotel-management-admin-livid.vercel.app";
-
-// Active API Base URL (Case-insensitive check for LOCAL / LIVE)
 export const getApiBaseUrl = () => {
-  if (typeof window !== "undefined") {
-    const override = (localStorage.getItem("API_ENVIRONMENT") || "").trim().toUpperCase();
-    if (override === "LOCAL") return LOCAL_API_URL;
-  }
-  return LIVE_API_URL;
-};
-
-// Helper function to switch environment dynamically (ONLINE / OFFLINE)
-export const setApiEnvironment = (mode) => {
-  if (typeof window === "undefined") return;
-  const envMode = (mode || "").trim().toUpperCase();
-  if (envMode === "LIVE" || envMode === "LOCAL") {
-    localStorage.setItem("API_ENVIRONMENT", envMode);
-  } else {
-    localStorage.removeItem("API_ENVIRONMENT");
-  }
-  window.location.reload();
+  return String(process.env.NEXT_PUBLIC_API_URL || "").trim().replace(/\/+$/, "");
 };
 
 export const API_BASE_URL = getApiBaseUrl();
@@ -271,8 +243,8 @@ export const API_ENDPOINTS = createCaseFlexibleProxy({
   SETTINGS: {
     PUBLIC: `${API_BASE_URL}/api/v1/settings`,
   },
-  UPLOAD: `${LIVE_API_URL}/api/v1/upload`,
-  UPLOAD_MULTIPLE: `${LIVE_API_URL}/api/v1/upload/multiple`,
+  UPLOAD: `${API_BASE_URL}/api/v1/upload`,
+  UPLOAD_MULTIPLE: `${API_BASE_URL}/api/v1/upload/multiple`,
   TRIAL_REQUESTS: {
     SUBMIT: `${API_BASE_URL}/api/v1/super-admin/trial-requests`,
     SUPER_ADMIN_LIST: `${API_BASE_URL}/api/v1/super-admin/trial-requests`,
@@ -1500,7 +1472,7 @@ async function executeApiRequest(endpoint, options = {}) {
     cleanEndpoint = `${pathPart}?${newParams.toString()}`;
   }
 
-  const currentBase = (getApiBaseUrl() || LIVE_API_URL).replace(/\/+$/, "");
+  const currentBase = getApiBaseUrl();
   let fullUrl;
   if (cleanEndpoint.startsWith("http://") || cleanEndpoint.startsWith("https://")) {
     fullUrl = cleanEndpoint
@@ -1511,11 +1483,14 @@ async function executeApiRequest(endpoint, options = {}) {
     fullUrl = `${currentBase}/${cleanEndpoint.replace(/^\/+/, "")}`;
   }
 
-  // Safety guard: prevent any stale render or old dev domain from ever being contacted
-  if (fullUrl.includes("hotel-management-backend-9qf5.onrender.com") || fullUrl.includes("hotelmanagementbackend-dev.up.railway.app")) {
+  if (
+    currentBase &&
+    (fullUrl.includes("hotel-management-backend-9qf5.onrender.com") ||
+      fullUrl.includes("hotelmanagementbackend-dev.up.railway.app"))
+  ) {
     fullUrl = fullUrl
-      .replace("https://hotel-management-backend-9qf5.onrender.com", LIVE_API_URL)
-      .replace("https://hotelmanagementbackend-dev.up.railway.app", LIVE_API_URL);
+      .replace("https://hotel-management-backend-9qf5.onrender.com", currentBase)
+      .replace("https://hotelmanagementbackend-dev.up.railway.app", currentBase);
   }
 
   // Pre-flight check for /check-out: Ensure paid_amount matches booking due if 0 or empty was passed

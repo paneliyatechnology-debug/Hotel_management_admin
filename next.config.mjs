@@ -1,6 +1,4 @@
 /** @type {import('next').NextConfig} */
-const BACKEND_URL = process.env.BACKEND_PROXY_URL || "http://127.0.0.1:5000";
-
 const nextConfig = {
   allowedDevOrigins: [
     '192.168.1.101',
