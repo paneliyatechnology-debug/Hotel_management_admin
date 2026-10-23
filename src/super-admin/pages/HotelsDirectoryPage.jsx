@@ -59,10 +59,9 @@ import {
   ShieldOutlined,
   Bolt,
   Edit,
+  ArrowBack,
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
-import { usePresence } from "@/shared/context/SocketContext";
-import PresenceBadge from "@/shared/components/PresenceBadge";
 import EmptyState from "@/shared/components/EmptyState";
 import LoadingState from "@/shared/components/LoadingState";
 import { useLiveCountdown } from "@/shared/utils/countdown";
@@ -123,7 +122,6 @@ export default function HotelsDirectoryPage({
   onRefresh,
 }) {
   const { themeConfig, isDarkMode } = useAppTheme();
-  const { isHotelOnline } = usePresence();
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
@@ -298,6 +296,7 @@ export default function HotelsDirectoryPage({
       <Box sx={{ px: { xs: 1.5, sm: 3 }, py: { xs: 2, sm: 3 }, maxWidth: 760, mx: "auto", width: "100%" }}>
         <Button
           variant="text"
+          startIcon={<ArrowBack sx={{ fontSize: "18px !important" }} />}
           onClick={() => setAddOpen(false)}
           sx={{
             alignSelf: "flex-start",
@@ -310,10 +309,13 @@ export default function HotelsDirectoryPage({
             px: 0.5,
             minWidth: 0,
             mb: 0.5,
+            gap: 0.5,
+            lineHeight: 1.2,
+            "& .MuiButton-startIcon": { m: 0, display: "inline-flex", alignItems: "center" },
             "&:hover": { bgcolor: "transparent", color: themeConfig.primaryDark, boxShadow: "none", transform: "none" },
           }}
         >
-          ← Back to hotels
+          Back to hotels
         </Button>
         <Typography sx={{ fontWeight: 800, fontSize: "1.4rem", color: themeConfig.textMain }}>{editingId ? "Edit Hotel" : "Add Hotel"}</Typography>
         <Typography sx={{ color: themeConfig.textMuted, fontSize: "0.85rem", mb: 2.5 }}>Register a new property in three steps.</Typography>
@@ -432,6 +434,7 @@ export default function HotelsDirectoryPage({
       <Box sx={{ px: { xs: 1.5, sm: 3 }, py: { xs: 2, sm: 3 }, maxWidth: 760, mx: "auto", width: "100%" }}>
         <Button
           variant="text"
+          startIcon={<ArrowBack sx={{ fontSize: "18px !important" }} />}
           onClick={() => setDrawerOpen(false)}
           sx={{
             alignSelf: "flex-start",
@@ -444,10 +447,13 @@ export default function HotelsDirectoryPage({
             px: 0.5,
             minWidth: 0,
             mb: 0.5,
+            gap: 0.5,
+            lineHeight: 1.2,
+            "& .MuiButton-startIcon": { m: 0, display: "inline-flex", alignItems: "center" },
             "&:hover": { bgcolor: "transparent", color: themeConfig.primaryDark, boxShadow: "none", transform: "none" },
           }}
         >
-          ← Back to hotels
+          Back to hotels
         </Button>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2.5 }}>
           <Avatar sx={{ width: 48, height: 48, borderRadius: "14px", bgcolor: themeConfig.primary, color: themeConfig.onPrimary || "#fff", fontWeight: 800 }}>
@@ -658,12 +664,9 @@ export default function HotelsDirectoryPage({
                         {hotel.name?.charAt(0).toUpperCase()}
                       </Avatar>
                       <Box>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                            {hotel.name}
-                          </Typography>
-                          <PresenceBadge isOnline={isHotelOnline(hotel._id)} size="small" />
-                        </Box>
+                        <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
+                          {hotel.name}
+                        </Typography>
                         <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "flex", alignItems: "center", gap: 0.5 }}>
                           <LocationOn sx={{ fontSize: 12, color: themeConfig.primary }} />
                           {hotel.city ? `${hotel.city}${hotel.state ? `, ${hotel.state}` : ""}` : "Location N/A"} • {hotel.totalRooms ?? 0} Rooms
