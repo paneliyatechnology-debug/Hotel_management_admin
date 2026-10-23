@@ -27,6 +27,7 @@ import { API_ENDPOINTS, apiRequest } from "@/config/api";
 import { toast } from "@/shared/utils/toast";
 import EmptyState from "@/shared/components/EmptyState";
 import ConfirmDialog from "@/shared/components/ConfirmDialog";
+import StatusChip from "@/shared/components/StatusChip";
 
 function getInitialPlanForm(cycle = "ANNUAL") {
   return {
@@ -298,6 +299,7 @@ export default function SubscriptionPlansPage() {
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, gap: 2.5 }}>
           {currentPlans.map((plan, idx) => {
             const isPopular = Boolean(plan.isPopular || plan.badge === "MOST POPULAR");
+            const isActive = (plan.is_active ?? plan.isActive) !== false;
             const roomLabel = plan.maxRooms >= 9000 ? "Unlimited rooms" : `Up to ${plan.maxRooms} rooms`;
 
             return (
@@ -349,7 +351,9 @@ export default function SubscriptionPlansPage() {
                     </Box>
                   )}
 
-                  <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: "auto", pt: 2, borderTop: `1px solid ${themeConfig.border}` }}>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, mt: "auto", pt: 2, borderTop: `1px solid ${themeConfig.border}` }}>
+                    <StatusChip status={isActive ? "ACTIVE" : "DISABLED"} />
+                    <Box sx={{ display: "flex", gap: 1 }}>
                     <Tooltip title="Edit plan">
                       <IconButton
                         size="small"
@@ -380,6 +384,7 @@ export default function SubscriptionPlansPage() {
                         <Delete sx={{ fontSize: 17 }} />
                       </IconButton>
                     </Tooltip>
+                    </Box>
                   </Box>
                 </CardContent>
               </Card>
