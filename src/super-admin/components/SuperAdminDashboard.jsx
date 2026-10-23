@@ -38,6 +38,7 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
   const { themeConfig } = useAppTheme();
 
   const [hotels, setHotels] = useState([]);
+  const [staffCount, setStaffCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -67,7 +68,7 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
       setLoading(true);
       const [data, usersRes] = await Promise.all([
         apiRequest(API_ENDPOINTS.HOTELS.ALL),
-        apiRequest(API_ENDPOINTS.USERS.LIST("?page=1&limit=200")).catch(() => null),
+        apiRequest(API_ENDPOINTS.USERS.LIST("?page=1&limit=10")).catch(() => null),
       ]);
       const payload = data?.data;
       const rawList = Array.isArray(payload)
@@ -81,15 +82,13 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
         : Array.isArray(userPayload?.users)
           ? userPayload.users
           : [];
+      setStaffCount(Number(userPayload?.total ?? users.length) || 0);
       const text = (...values) => values.find((value) => value !== undefined && value !== null && String(value).trim() !== "") || "";
       const person = (record) => (record && typeof record === "object" && !Array.isArray(record) ? record : {});
 
       setHotels(rawList.map((hotel) => {
         const active = hotel.is_active ?? hotel.isActive;
-        const disabled = hotel.is_disabled ?? hotel.isDisabled;
-        const status = String(
-          hotel.status || (disabled || active === false ? "DISABLED" : "ACTIVE")
-        ).toUpperCase();
+        const status = active === false ? "DISABLED" : active === true ? "ACTIVE" : String(hotel.status || "ACTIVE").toUpperCase();
         const hotelId = String(hotel._id || hotel.id || "");
         const linkedUser = users.find((entry) => {
           const entryHotelId = String(entry.hotel_id || entry.hotelId || entry.hotel?.id || entry.hotel?._id || "");
@@ -125,13 +124,12 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
     }
   };
 
-  const handleStatusUpdate = async (hotelId, newStatus, reason = "") => {
+  const handleStatusUpdate = async (hotelId, newStatus) => {
     setActionLoading(true);
     try {
-      const isActive = newStatus === "ACTIVE";
       await apiRequest(API_ENDPOINTS.HOTELS.UPDATE_STATUS(hotelId), {
         method: "PATCH",
-        body: { is_active: isActive, is_disabled: !isActive, reason },
+        body: { is_active: newStatus === "ACTIVE" },
       });
       toast.success(`Hotel status updated to ${newStatus} successfully!`);
       setActionDialog({ open: false, type: null, hotel: null, reason: "" });
@@ -557,6 +555,7 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
       {activeNav === 0 && (
         <SuperAdminOverviewPage
           hotels={hotels}
+          staffCount={staffCount}
           onRefresh={fetchHotels}
           onTabChange={onTabChange}
         />

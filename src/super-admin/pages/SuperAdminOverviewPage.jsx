@@ -64,64 +64,22 @@ const formatCurrency = (val) => {
   return `₹${num.toLocaleString("en-IN")}`;
 };
 
-function pick(obj, keys) {
-  if (!obj || typeof obj !== "object") return undefined;
-  for (const key of keys) {
-    const value = obj[key];
-    if (value !== undefined && value !== null && value !== "") return value;
-  }
-  return undefined;
-}
-
 function asNumber(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
 }
 
-function mapDashboardBoxes(data) {
-  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
-  const kpis = data.kpis || {};
-  const planDistribution = data.plan_distribution || data.planDistribution || [];
-  const estimatedMrr = asNumber(pick(kpis, ["estimated_mrr", "estimatedMrr"]));
-  const bookingVolume = asNumber(pick(kpis, ["total_platform_booking_volume", "totalPlatformBookingVolume"]));
-  const bookingsThisMonth = asNumber(pick(kpis, ["total_bookings_this_month", "totalBookingsThisMonth"]));
-  const totalHotels = asNumber(pick(kpis, ["total_hotels", "totalHotels"]));
-  const activeHotels = asNumber(pick(kpis, ["active_hotels", "activeHotels"]));
-  const inactiveHotels = asNumber(pick(kpis, ["inactive_hotels", "inactiveHotels"]));
-  const trialHotels = asNumber(pick(kpis, ["trial_hotels", "trialHotels"]));
-  const expiredHotels = asNumber(pick(kpis, ["expired_hotels", "expiredHotels"]));
-  const totalRooms = asNumber(pick(kpis, ["total_platform_rooms", "totalPlatformRooms"]));
-  const staffUsers = asNumber(pick(kpis, ["total_staff_users", "totalStaffUsers"]));
-
-  return {
-    ...data,
-    kpis,
-    planDistribution: Array.isArray(planDistribution) ? planDistribution : [],
-    monthlyRevenue: estimatedMrr,
-    totalRevenue: bookingVolume,
-    totalOrders: bookingsThisMonth,
-    totalBookings: bookingsThisMonth,
-    totalRooms,
-    totalHotels,
-    activeSubscriptions: activeHotels,
-    inactiveHotels,
-    trialHotels,
-    expiredHotels,
-    totalGuests: staffUsers,
-    pendingPayments: expiredHotels,
-  };
-}
-
 export default function SuperAdminOverviewPage({
   hotels = [],
+  staffCount = 0,
   onRefresh,
   onTabChange,
 }) {
   const { themeConfig, isDarkMode } = useAppTheme();
 
-  const [dashboardData, setDashboardData] = useState(null);
+  const dashboardData = null;
   const [plans, setPlans] = useState([]);
-  const [loadingStats, setLoadingStats] = useState(true);
+  const [bookingStats, setBookingStats] = useState({ volume: 0, thisMonth: 0 });
 
   // Detail Modal State
   const [detailModal, setDetailModal] = useState({
@@ -133,34 +91,73 @@ export default function SuperAdminOverviewPage({
   const [staffLoading, setStaffLoading] = useState(false);
 
   useEffect(() => {
-    fetchDashboardStats();
+    let ignore = false;
     fetchPlans();
-  }, []);
 
-  const fetchDashboardStats = async () => {
-    try {
-      setLoadingStats(true);
-      const res = await apiRequest(API_ENDPOINTS.SUPER_ADMIN.DASHBOARD).catch(() => null);
-      if (res?.data) {
-        setDashboardData(mapDashboardBoxes(res.data));
-      } else if (res && typeof res === "object") {
-        setDashboardData(mapDashboardBoxes(res));
+    const readPage = (res) => {
+      const payload = res?.data;
+      const list = Array.isArray(payload?.bookings)
+        ? payload.bookings
+        : Array.isArray(payload)
+          ? payload
+          : [];
+      return {
+        list,
+        totalPages: Math.max(1, asNumber(payload?.totalPages || payload?.total_pages) || 1),
+      };
+    };
+
+    (async () => {
+      const seen = new Map();
+      const first = await apiRequest(API_ENDPOINTS.BOOKINGS.LIST("?page=1&limit=10")).catch(() => null);
+      const firstPage = readPage(first);
+      const pages = Math.min(firstPage.totalPages, 10);
+      const add = (list) => {
+        list.forEach((booking) => {
+          const id = booking.id || booking._id || booking.booking_number || booking.bookingNumber;
+          if (id !== undefined && id !== null) seen.set(String(id), booking);
+        });
+      };
+      add(firstPage.list);
+      for (let page = 2; page <= pages; page += 1) {
+        const next = await apiRequest(API_ENDPOINTS.BOOKINGS.LIST(`?page=${page}&limit=10`)).catch(() => null);
+        add(readPage(next).list);
       }
-    } catch (err) {
-      console.warn("Failed to fetch super admin dashboard stats:", err);
-    } finally {
-      setLoadingStats(false);
-    }
-  };
+      if (ignore) return;
+      const bookings = [...seen.values()];
+      const now = new Date();
+      const inThisMonth = (booking) => {
+        const raw = booking.created_at || booking.createdAt || booking.check_in_date || booking.checkInDate;
+        const date = raw ? new Date(raw) : null;
+        return date && !Number.isNaN(date.getTime()) && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+      };
+      const monthBookings = bookings.filter(inThisMonth);
+      const amountOf = (booking) => asNumber(
+        booking.total_amount ?? booking.totalAmount ?? booking.grand_total ?? booking.grandTotal ?? booking.base_amount ?? booking.baseAmount ?? booking.paid_amount ?? booking.paidAmount
+      );
+      setBookingStats({
+        volume: bookings.reduce((sum, booking) => sum + amountOf(booking), 0),
+        thisMonth: monthBookings.length || bookings.length,
+      });
+    })();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const fetchPlans = async () => {
     try {
-      const res = await apiRequest(API_ENDPOINTS.SUBSCRIPTION_PLANS.PUBLIC).catch(() => null);
-      if (res?.data?.all) {
-        setPlans(res.data.all);
-      } else if (Array.isArray(res?.data)) {
-        setPlans(res.data);
-      }
+      const res = await apiRequest(`${API_ENDPOINTS.SUBSCRIPTION_PLANS.PUBLIC}?page=1&limit=100`, { skipAuth: true }).catch(() => null);
+      const payload = res?.data;
+      const list = Array.isArray(payload?.plans)
+        ? payload.plans
+        : Array.isArray(payload?.all)
+          ? payload.all
+          : Array.isArray(payload)
+            ? payload
+            : [];
+      setPlans(list);
     } catch (err) {
       console.warn("Failed to fetch subscription plans:", err);
     }
@@ -174,30 +171,57 @@ export default function SuperAdminOverviewPage({
   const expiredHotels = dashboardData ? asNumber(kpis.expired_hotels ?? kpis.expiredHotels) : 0;
   const totalPending = expiredHotels;
   const totalDisabled = inactiveHotels;
-  const staffUsers = asNumber(kpis.total_staff_users ?? kpis.totalStaffUsers);
+  const staffUsers = staffCount || asNumber(kpis.total_staff_users ?? kpis.totalStaffUsers);
+  const estimatedMrr = hotels.reduce((sum, hotel) => {
+    if (hotel.status !== "ACTIVE") return sum;
+    const planId = hotel.subscription_plan_id ?? hotel.subscriptionPlanId ?? hotel.subscription?.plan_id ?? hotel.subscription?.planId;
+    const plan = plans.find((item) => String(item.id || item._id) === String(planId));
+    if (!plan) return sum;
+    const cycle = String(plan.billing_cycle || plan.billingCycle || "MONTHLY").toUpperCase();
+    const price = asNumber(plan.price);
+    const discount = asNumber(plan.discount_percent ?? plan.discountPercent);
+    const net = price * (1 - discount / 100);
+    if (String(plan.code || plan.name || "").toUpperCase().includes("TRIAL") || net <= 0) return sum;
+    return sum + (cycle === "ANNUAL" ? net / 12 : net);
+  }, 0);
 
-  const monthlyRevenue = dashboardData?.monthlyRevenue ?? asNumber(kpis.estimated_mrr ?? kpis.estimatedMrr);
-  const totalRevenue = dashboardData?.totalRevenue ?? asNumber(kpis.total_platform_booking_volume ?? kpis.totalPlatformBookingVolume);
-  const totalOrders = dashboardData?.totalOrders ?? asNumber(kpis.total_bookings_this_month ?? kpis.totalBookingsThisMonth);
+  const monthlyRevenue = estimatedMrr || dashboardData?.monthlyRevenue || asNumber(kpis.estimated_mrr ?? kpis.estimatedMrr);
+  const totalRevenue = bookingStats.volume || dashboardData?.totalRevenue || asNumber(kpis.total_platform_booking_volume ?? kpis.totalPlatformBookingVolume);
+  const totalOrders = bookingStats.thisMonth || dashboardData?.totalOrders || asNumber(kpis.total_bookings_this_month ?? kpis.totalBookingsThisMonth);
   const totalRoomsCount = dashboardData?.totalRooms ?? asNumber(kpis.total_platform_rooms ?? kpis.totalPlatformRooms);
-  const planDistribution = dashboardData?.planDistribution || dashboardData?.plan_distribution || [];
-
+  const planOfHotel = (hotel) => {
+    const planId = hotel.subscription_plan_id ?? hotel.subscriptionPlanId ?? hotel.subscription?.plan_id ?? hotel.subscription?.planId;
+    return plans.find((item) => String(item.id || item._id) === String(planId)) || null;
+  };
+  const isTrialPlan = (plan) => {
+    const label = String(plan?.code || plan?.name || "").toUpperCase();
+    return !plan || label.includes("TRIAL") || asNumber(plan.price) <= 0;
+  };
+  const monthlyNet = (plan) => {
+    const cycle = String(plan.billing_cycle || plan.billingCycle || "MONTHLY").toUpperCase();
+    const price = asNumber(plan.price);
+    const discount = asNumber(plan.discount_percent ?? plan.discountPercent);
+    const net = price * (1 - discount / 100);
+    return cycle === "ANNUAL" ? net / 12 : net;
+  };
   const tierBase = totalHotels || 1;
   const tierColors = [themeConfig.primary, "#10B981", "#8B5CF6", "#0B8EE0"];
-  const realTiers = (Array.isArray(planDistribution) ? planDistribution : []).map((plan, idx) => {
-    const count = asNumber(plan.active_hotels_count ?? plan.activeHotelsCount);
-    const revenue = asNumber(plan.monthly_revenue ?? plan.monthlyRevenue);
+  const paidPlans = plans.filter((plan) => !isTrialPlan(plan));
+  const realTiers = paidPlans.map((plan, idx) => {
+    const count = hotels.filter((hotel) => String(planOfHotel(hotel)?.id || planOfHotel(hotel)?._id) === String(plan.id || plan._id)).length;
+    const revenue = monthlyNet(plan);
     return {
-      name: `${plan.plan_name || plan.planName || "Plan"} • ₹${revenue.toLocaleString("en-IN")}/mo`,
+      name: `${plan.name || plan.code || "Plan"} • ₹${Math.round(revenue).toLocaleString("en-IN")}/mo`,
       count,
       percent: Math.round((count / tierBase) * 100),
       color: tierColors[idx % tierColors.length],
     };
   });
+  const trialFromPlans = hotels.filter((hotel) => isTrialPlan(planOfHotel(hotel))).length;
   realTiers.push({
     name: "Trial hotels",
-    count: trialHotelsCount,
-    percent: Math.round((trialHotelsCount / tierBase) * 100),
+    count: trialFromPlans,
+    percent: Math.round((trialFromPlans / tierBase) * 100),
     color: "#F59E0B",
   });
 
@@ -210,7 +234,7 @@ export default function SuperAdminOverviewPage({
   const loadStaff = async () => {
     setStaffLoading(true);
     try {
-      const res = await apiRequest(API_ENDPOINTS.USERS.LIST("?page=1&limit=200"));
+      const res = await apiRequest(API_ENDPOINTS.USERS.LIST("?page=1&limit=10"));
       const payload = res?.data;
       const list = Array.isArray(payload) ? payload : payload?.users || payload?.data || [];
       setStaffList(Array.isArray(list) ? list : []);
@@ -272,7 +296,6 @@ export default function SuperAdminOverviewPage({
             value={formatCurrency(monthlyRevenue)}
             icon={<TrendingUp />}
             color="#0B8EE0"
-            onClick={() => handleOpenDetailModal("MONTHLY_REVENUE")}
           />
 
           <StatCard
@@ -281,7 +304,6 @@ export default function SuperAdminOverviewPage({
             value={formatCurrency(totalRevenue)}
             icon={<AttachMoney />}
             color="#F59E0B"
-            onClick={() => handleOpenDetailModal("TOTAL_PLATFORM_REVENUE")}
           />
 
           <StatCard
@@ -290,7 +312,6 @@ export default function SuperAdminOverviewPage({
             value={totalOrders}
             icon={<ReceiptLong />}
             color="#8B5CF6"
-            onClick={() => handleOpenDetailModal("TOTAL_ORDERS")}
           />
 
           <StatCard
@@ -299,7 +320,6 @@ export default function SuperAdminOverviewPage({
             value={staffUsers}
             icon={<People />}
             color="#10B981"
-            onClick={() => handleOpenDetailModal("STAFF_USERS")}
           />
         </Box>
       </Box>

@@ -28,6 +28,10 @@ import {
   Tab,
   Grid,
   Switch,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import {
   Search,
@@ -37,6 +41,7 @@ import {
   HourglassEmpty,
   Visibility,
   Close,
+  WarningAmber,
   Email,
   Phone,
   LocationOn,
@@ -126,10 +131,13 @@ export default function HotelsDirectoryPage({
   const [addOpen, setAddOpen] = useState(false);
   const [hotelStep, setHotelStep] = useState(0);
   const [editingId, setEditingId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [savingHotel, setSavingHotel] = useState(false);
   const emptyHotel = {
     name: "",
     hotel_type: "",
+    custom_hotel_type: "",
     owner_name: "",
     owner_email: "",
     owner_phone: "",
@@ -152,7 +160,7 @@ export default function HotelsDirectoryPage({
     const phone = hotelForm.owner_phone.replace(/\D/g, "").slice(-10);
     const rooms = Number(hotelForm.total_rooms);
     const pin = hotelForm.pincode.replace(/\D/g, "");
-    if (!editingId && (!hotelForm.hotel_type.trim() || !ownerName || !email || phone.length !== 10)) {
+    if (!editingId && (!hotelForm.hotel_type.trim() || (hotelForm.hotel_type === "Custom" && !hotelForm.custom_hotel_type.trim()) || !ownerName || !email || phone.length !== 10)) {
       toast.error("Fill hotel type, owner name, email, and a 10-digit phone.");
       return;
     }
@@ -162,7 +170,7 @@ export default function HotelsDirectoryPage({
     }
     const body = {
       name,
-      hotel_type: hotelForm.hotel_type.trim(),
+      hotel_type: hotelForm.hotel_type === "Custom" ? hotelForm.custom_hotel_type.trim() : hotelForm.hotel_type.trim(),
       owner_name: ownerName,
       owner_email: email,
       owner_phone: phone,
@@ -205,9 +213,12 @@ export default function HotelsDirectoryPage({
   const openEdit = (hotel) => {
     setEditingId(hotel._id || hotel.id);
     setHotelStep(0);
+    const knownTypes = ["Luxury Boutique Hotel", "Boutique Hotel", "Luxury Resort", "Business Hotel", "Heritage Palace", "Bed & Breakfast"];
+    const currentType = hotel.hotel_type || hotel.hotelType || "";
     setHotelForm({
       name: hotel.name || "",
-      hotel_type: hotel.hotel_type || hotel.hotelType || "",
+      hotel_type: knownTypes.includes(currentType) || !currentType ? currentType : "Custom",
+      custom_hotel_type: knownTypes.includes(currentType) ? "" : currentType,
       owner_name: hotel.ownerName || hotel.admin?.name || "",
       owner_email: hotel.ownerEmail || hotel.admin?.email || hotel.email || "",
       owner_phone: hotel.ownerPhone || hotel.admin?.phone || hotel.phone || "",
@@ -223,16 +234,24 @@ export default function HotelsDirectoryPage({
     setAddOpen(true);
   };
 
-  const deleteHotel = async (hotel) => {
-    const id = hotel._id || hotel.id;
+  const deleteHotel = (hotel) => {
+    if (!(hotel._id || hotel.id)) return;
+    setDeleteTarget(hotel);
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteTarget?._id || deleteTarget?.id;
     if (!id) return;
-    if (!window.confirm(`Delete ${hotel.name || "this hotel"}?`)) return;
     try {
+      setDeleting(true);
       await apiRequest(API_ENDPOINTS.HOTELS.BY_ID(id), { method: "DELETE" });
       toast.success("Hotel deleted.");
+      setDeleteTarget(null);
       if (onRefresh) onRefresh();
     } catch (err) {
       toast.error(err?.message || "Could not delete the hotel.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -277,8 +296,24 @@ export default function HotelsDirectoryPage({
     ];
     return (
       <Box sx={{ px: { xs: 1.5, sm: 3 }, py: { xs: 2, sm: 3 }, maxWidth: 760, mx: "auto", width: "100%" }}>
-        <Button onClick={() => setAddOpen(false)} sx={{ textTransform: "none", fontWeight: 700, color: themeConfig.textMuted, mb: 0.5, px: 0 }}>
-          Back to hotels
+        <Button
+          variant="text"
+          onClick={() => setAddOpen(false)}
+          sx={{
+            alignSelf: "flex-start",
+            textTransform: "none",
+            fontWeight: 700,
+            color: themeConfig.primary,
+            bgcolor: "transparent",
+            boxShadow: "none",
+            border: "none",
+            px: 0.5,
+            minWidth: 0,
+            mb: 0.5,
+            "&:hover": { bgcolor: "transparent", color: themeConfig.primaryDark, boxShadow: "none", transform: "none" },
+          }}
+        >
+          ← Back to hotels
         </Button>
         <Typography sx={{ fontWeight: 800, fontSize: "1.4rem", color: themeConfig.textMain }}>{editingId ? "Edit Hotel" : "Add Hotel"}</Typography>
         <Typography sx={{ color: themeConfig.textMuted, fontSize: "0.85rem", mb: 2.5 }}>Register a new property in three steps.</Typography>
@@ -313,7 +348,30 @@ export default function HotelsDirectoryPage({
           {hotelStep === 0 && (
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
               <Box sx={{ gridColumn: "1 / -1" }}>{label("Hotel name", true)}<TextField fullWidth size="small" placeholder="JK Residency" value={hotelForm.name} onChange={(e) => setField("name", e.target.value)} sx={fieldSx} /></Box>
-              <Box>{label("Hotel type", true)}<TextField fullWidth size="small" placeholder="Hotel, resort, lodge" value={hotelForm.hotel_type} onChange={(e) => setField("hotel_type", e.target.value)} sx={fieldSx} /></Box>
+              <Box>
+                {label("Hotel type", true)}
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  value={hotelForm.hotel_type}
+                  onChange={(e) => setField("hotel_type", e.target.value)}
+                  sx={fieldSx}
+                  slotProps={{ select: { displayEmpty: true, renderValue: (selected) => selected === "Custom" ? "Custom hotel type" : selected || "Select hotel type" } }}
+                >
+                  <MenuItem value="">Select hotel type</MenuItem>
+                  <MenuItem value="Luxury Boutique Hotel">Luxury Boutique Hotel</MenuItem>
+                  <MenuItem value="Boutique Hotel">Boutique Hotel</MenuItem>
+                  <MenuItem value="Luxury Resort">Luxury Resort</MenuItem>
+                  <MenuItem value="Business Hotel">Business Hotel</MenuItem>
+                  <MenuItem value="Heritage Palace">Heritage Palace</MenuItem>
+                  <MenuItem value="Bed & Breakfast">Bed & Breakfast</MenuItem>
+                  <MenuItem value="Custom">Custom hotel type</MenuItem>
+                </TextField>
+                {hotelForm.hotel_type === "Custom" && (
+                  <TextField fullWidth size="small" placeholder="Enter your hotel type" value={hotelForm.custom_hotel_type} onChange={(e) => setField("custom_hotel_type", e.target.value)} sx={{ ...fieldSx, mt: 1.25 }} />
+                )}
+              </Box>
               <Box>{label("Total rooms", true)}<TextField fullWidth size="small" placeholder="24" value={hotelForm.total_rooms} onChange={(e) => setField("total_rooms", e.target.value)} sx={fieldSx} /></Box>
               <Box sx={{ gridColumn: "1 / -1" }}>{label("Website")}<TextField fullWidth size="small" placeholder="https://hotel.com" value={hotelForm.website} onChange={(e) => setField("website", e.target.value)} sx={fieldSx} /></Box>
             </Box>
@@ -345,6 +403,74 @@ export default function HotelsDirectoryPage({
             ) : (
               <Button variant="contained" disabled={savingHotel} onClick={saveHotel} sx={{ minHeight: 40, px: 3, textTransform: "none", borderRadius: "10px", fontWeight: 800, bgcolor: themeConfig.primary, boxShadow: "none" }}>{savingHotel ? "Saving..." : editingId ? "Save changes" : "Register hotel"}</Button>
             )}
+          </Box>
+        </Paper>
+      </Box>
+    );
+  }
+
+  if (drawerOpen && selectedHotel) {
+    const hotel = selectedHotel;
+    const facts = [
+      ["Hotel", hotel.name],
+      ["Type", hotel.hotel_type || hotel.hotelType],
+      ["Owner", hotel.ownerName || hotel.admin?.name],
+      ["Email", hotel.ownerEmail || hotel.admin?.email || hotel.email],
+      ["Phone", hotel.ownerPhone || hotel.admin?.phone || hotel.phone],
+      ["Rooms", hotel.totalRooms ?? hotel.total_rooms],
+      ["City", [hotel.city, hotel.state].filter(Boolean).join(", ")],
+      ["Pincode", hotel.pincode],
+      ["Address", typeof hotel.address === "string" ? hotel.address : ""],
+      ["GST", hotel.gstNumber || hotel.gst_number],
+      ["PAN", hotel.panNumber || hotel.pan_number],
+      ["Website", hotel.website],
+      ["Status", hotel.status],
+      ["Plan", hotel.subscription?.plan || hotel.subscriptionPlan || "Trial"],
+      ["Registered", formatDate(hotel.createdAt || hotel.created_at)],
+    ];
+    return (
+      <Box sx={{ px: { xs: 1.5, sm: 3 }, py: { xs: 2, sm: 3 }, maxWidth: 760, mx: "auto", width: "100%" }}>
+        <Button
+          variant="text"
+          onClick={() => setDrawerOpen(false)}
+          sx={{
+            alignSelf: "flex-start",
+            textTransform: "none",
+            fontWeight: 700,
+            color: themeConfig.primary,
+            bgcolor: "transparent",
+            boxShadow: "none",
+            border: "none",
+            px: 0.5,
+            minWidth: 0,
+            mb: 0.5,
+            "&:hover": { bgcolor: "transparent", color: themeConfig.primaryDark, boxShadow: "none", transform: "none" },
+          }}
+        >
+          ← Back to hotels
+        </Button>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2.5 }}>
+          <Avatar sx={{ width: 48, height: 48, borderRadius: "14px", bgcolor: themeConfig.primary, color: themeConfig.onPrimary || "#fff", fontWeight: 800 }}>
+            {(hotel.name || "H").charAt(0).toUpperCase()}
+          </Avatar>
+          <Box>
+            <Typography sx={{ fontWeight: 800, fontSize: "1.4rem", color: themeConfig.textMain, lineHeight: 1.2 }}>{hotel.name}</Typography>
+            <Typography sx={{ color: themeConfig.textMuted, fontSize: "0.85rem" }}>{hotel.city || "Hotel details"}</Typography>
+          </Box>
+        </Box>
+        <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, borderRadius: "20px", border: `1px solid ${themeConfig.border}`, bgcolor: themeConfig.bgCard }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.5 }}>
+            {facts.map(([name, value]) => (
+              <Box key={name} sx={{ p: 1.5, borderRadius: "12px", border: `1px solid ${themeConfig.border}`, bgcolor: themeConfig.bgSubtle || themeConfig.bgMain, gridColumn: name === "Address" ? "1 / -1" : undefined }}>
+                <Typography sx={{ color: themeConfig.textMuted, fontSize: "0.72rem", fontWeight: 700 }}>{name}</Typography>
+                <Typography sx={{ color: themeConfig.textMain, fontWeight: 700, fontSize: "0.95rem", wordBreak: "break-word" }}>{value || "—"}</Typography>
+              </Box>
+            ))}
+          </Box>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2.5 }}>
+            <Button variant="outlined" onClick={() => { setDrawerOpen(false); openEdit(hotel); }} sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700, borderColor: themeConfig.border, color: themeConfig.textMain }}>
+              Edit
+            </Button>
           </Box>
         </Paper>
       </Box>
@@ -752,257 +878,53 @@ export default function HotelsDirectoryPage({
         </Paper>
       </Box>
 
-      {/* 3D Slide-Over Dossier Drawer */}
-      <Drawer
-        anchor="right"
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        maxWidth="xs"
+        fullWidth
         slotProps={{
           paper: {
             sx: {
-              width: { xs: "100%", sm: 540, md: 620 },
-              p: 0,
-              bgcolor: themeConfig.bgMain,
-              boxShadow: "-10px 0 35px rgba(12, 39, 59, 0.15)",
+              borderRadius: "16px",
+              border: `1px solid ${themeConfig.border}`,
+              bgcolor: themeConfig.bgCard,
+              overflow: "hidden",
+              backgroundImage: "none",
             },
           },
         }}
       >
-        {selectedHotel && (
-          <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-            {/* Drawer Header */}
-            <Box
-              sx={{
-                p: 3,
-                bgcolor: themeConfig.bgCard,
-                color: themeConfig.textMain,
-                borderBottom: `1px solid ${themeConfig.border}`,
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                position: "relative",
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <Avatar
-                  sx={{
-                    width: 54,
-                    height: 54,
-                    borderRadius: "14px",
-                    bgcolor: themeConfig.bgSubtle || themeConfig.champagne,
-                    color: themeConfig.accent || themeConfig.primary,
-                    fontWeight: 900,
-                    fontSize: "1.4rem",
-                    boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
-                  }}
-                >
-                  {selectedHotel.name?.charAt(0).toUpperCase()}
-                </Avatar>
-                <Box>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, lineHeight: 1.2 }}>
-                      {selectedHotel.name}
-                    </Typography>
-                    <PresenceBadge isOnline={isHotelOnline(selectedHotel._id)} size="small" sx={{ bgcolor: "rgba(255,255,255,0.15)", px: 0.8, py: 0.2, borderRadius: "6px" }} />
-                  </Box>
-                  <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "flex", alignItems: "center", gap: 0.5, mt: 0.3 }}>
-                    <LocationOn sx={{ fontSize: 13 }} />
-                    {selectedHotel.city ? `${selectedHotel.city}${selectedHotel.state ? `, ${selectedHotel.state}` : ""}` : "Location N/A"} • Code: <strong>{selectedHotel.code || selectedHotel.slug?.toUpperCase() || "PMS"}</strong>
-                  </Typography>
-                </Box>
+        <DialogTitle component="div" sx={{ p: 0 }}>
+          <Box sx={{ px: 2.5, py: 2, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5, bgcolor: themeConfig.bgSoft, borderBottom: `1px solid ${themeConfig.border}` }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
+              <Box sx={{ width: 40, height: 40, borderRadius: "12px", display: "grid", placeItems: "center", color: themeConfig.primary, bgcolor: themeConfig.bgCard, border: `1px solid ${themeConfig.border}` }}>
+                <WarningAmber sx={{ fontSize: 20 }} />
               </Box>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    bgcolor: selectedHotel.status === "ACTIVE" ? "rgba(16, 185, 129, 0.2)" : "rgba(220, 38, 38, 0.2)",
-                    px: 1.2,
-                    py: 0.4,
-                    borderRadius: "10px",
-                    border: "1px solid rgba(255,255,255,0.25)",
-                  }}
-                >
-                  <Typography variant="caption" sx={{ fontWeight: 800, fontSize: "0.72rem", color: themeConfig.textMain, mr: 0.5 }}>
-                    {selectedHotel.status === "ACTIVE" ? "ACTIVE" : "DISABLED"}
-                  </Typography>
-                  <Switch
-                    size="small"
-                    checked={selectedHotel.status === "ACTIVE"}
-                    onChange={() => onOpenActionDialog(selectedHotel.status === "ACTIVE" ? "DISABLE" : "ACTIVE", selectedHotel)}
-                    color="success"
-                    sx={{
-                      "& .MuiSwitch-switchBase.Mui-checked": {
-                        color: "#10B981",
-                      },
-                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                        backgroundColor: "#10B981",
-                      },
-                    }}
-                  />
-                </Box>
-                <IconButton onClick={() => setDrawerOpen(false)} sx={{ color: themeConfig.textMain, bgcolor: themeConfig.bgSubtle, "&:hover": { bgcolor: themeConfig.champagne } }}>
-                  <Close fontSize="small" />
-                </IconButton>
+              <Box>
+                <Typography sx={{ color: themeConfig.primary, fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.04em" }}>HOTELS</Typography>
+                <Typography sx={{ fontWeight: 700, color: themeConfig.textMain, fontSize: "1.05rem", lineHeight: 1.3 }}>Delete {deleteTarget?.name || "hotel"}</Typography>
               </Box>
             </Box>
-
-            {/* Dossier Tabs */}
-            <Box sx={{ borderBottom: `1px solid ${themeConfig.border}`, bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"), px: 2 }}>
-              <Tabs
-                value={drawerTab}
-                onChange={(e, v) => setDrawerTab(v)}
-                variant="scrollable"
-                scrollButtons="auto"
-                allowScrollButtonsMobile
-                sx={{
-                  "& .MuiTab-root": { textTransform: "none", fontWeight: 700, fontSize: "0.85rem", minHeight: 48 },
-                  "& .Mui-selected": { color: themeConfig.primary },
-                  "& .MuiTabs-indicator": { bgcolor: themeConfig.primary, height: 3 },
-                }}
-              >
-                <Tab label="Overview & KYC" />
-                <Tab label="Subscription Plan" />
-                <Tab label="Staff & Security" />
-              </Tabs>
-            </Box>
-
-            {/* Drawer Body */}
-            <Box sx={{ flex: 1, p: 3, overflowY: "auto" }}>
-              {drawerTab === 0 && (
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-                  <Card className="card-3d" sx={{ borderRadius: "16px", border: `1px solid ${themeConfig.border}` }}>
-                    <CardContent sx={{ p: 2.5 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 1.5, display: "flex", alignItems: "center", gap: 1 }}>
-                        <Security fontSize="small" sx={{ color: themeConfig.primary }} /> Legal &amp; Ownership Verification
-                      </Typography>
-                      <Grid container spacing={1.5} sx={{ fontSize: "0.85rem" }}>
-                        <Grid size={{ xs: 6 }}>
-                          <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Owner / Applicant:</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedHotel.admin?.name || selectedHotel.ownerName || "Property Admin"}</Typography>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                          <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Contact Email:</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedHotel.admin?.email || selectedHotel.ownerEmail || "N/A"}</Typography>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                          <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Phone Number:</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedHotel.phone || selectedHotel.ownerPhone || selectedHotel.admin?.phone || "N/A"}</Typography>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                          <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>GST / Tax Number:</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedHotel.taxId || selectedHotel.gstNumber || selectedHotel.settings?.gstin || selectedHotel.panNumber || "N/A"}</Typography>
-                        </Grid>
-                      </Grid>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="card-3d" sx={{ borderRadius: "16px", border: `1px solid ${themeConfig.border}` }}>
-                    <CardContent sx={{ p: 2.5 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 1.5, display: "flex", alignItems: "center", gap: 1 }}>
-                        <CloudDone fontSize="small" sx={{ color: themeConfig.success }} /> Multi-Tenant PMS Capacity
-                      </Typography>
-                      <Grid container spacing={1.5}>
-                        <Grid size={{ xs: 4 }}>
-                          <Paper sx={{ p: 1.5, textAlign: "center", borderRadius: "12px", bgcolor: themeConfig.bgMain }}>
-                            <MeetingRoom fontSize="small" sx={{ color: themeConfig.primary }} />
-                            <Typography variant="h6" sx={{ fontWeight: 800 }}>{selectedHotel.stats?.totalRooms ?? selectedHotel.totalRooms ?? 0}</Typography>
-                            <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Inventory Rooms</Typography>
-                          </Paper>
-                        </Grid>
-                        <Grid size={{ xs: 4 }}>
-                          <Paper sx={{ p: 1.5, textAlign: "center", borderRadius: "12px", bgcolor: themeConfig.bgMain }}>
-                            <People fontSize="small" sx={{ color: themeConfig.secondary }} />
-                            <Typography variant="h6" sx={{ fontWeight: 800 }}>{selectedHotel.stats?.staffCount ?? selectedHotel.staffCount ?? 1}</Typography>
-                            <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Staff Logins</Typography>
-                          </Paper>
-                        </Grid>
-                        <Grid size={{ xs: 4 }}>
-                          <Paper sx={{ p: 1.5, textAlign: "center", borderRadius: "12px", bgcolor: themeConfig.bgMain }}>
-                            <Dns fontSize="small" sx={{ color: themeConfig.primaryDark }} />
-                            <Box sx={{ display: "flex", justifyContent: "center", my: 0.5 }}>
-                              <PresenceBadge isOnline={isHotelOnline(selectedHotel._id)} size="small" />
-                            </Box>
-                            <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>Node Health</Typography>
-                          </Paper>
-                        </Grid>
-                      </Grid>
-                    </CardContent>
-                  </Card>
-                </Box>
-              )}
-
-              {drawerTab === 1 && (
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-                  <Card className="card-3d" sx={{ borderRadius: "16px", border: `1.5px solid ${themeConfig.primary}` }}>
-                    <CardContent sx={{ p: 2.5 }}>
-                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: themeConfig.primaryDark }}>
-                          {((selectedHotel.subscription?.plan || selectedHotel.subscriptionPlan || "TRIAL") + " PLAN").toUpperCase()}
-                        </Typography>
-                        <Chip
-                          label={selectedHotel.status || "ACTIVE"}
-                          color={selectedHotel.status === "ACTIVE" ? "success" : "warning"}
-                          size="small"
-                          sx={{ fontWeight: 800, borderRadius: "6px" }}
-                        />
-                      </Box>
-                      <Typography variant="body2" sx={{ color: themeConfig.textMuted, mb: 2 }}>
-                        Commercial License valid through <strong>{formatDate(selectedHotel.subscription?.trialEndDate || selectedHotel.trialEndsAt || selectedHotel.subscription?.subscriptionEndDate || selectedHotel.createdAt)}</strong>. Includes full hotel operational management, multi-lingual bills, &amp; 24/7 priority support.
-                      </Typography>
-                      <Divider sx={{ my: 1.5 }} />
-                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMuted }}>
-                          Monthly Renewal Fee: <strong>{selectedHotel.subscription?.plan === "PREMIUM" ? "₹7,999 / mo" : selectedHotel.subscription?.plan === "STANDARD" ? "₹4,999 / mo" : selectedHotel.subscription?.plan === "BASIC" ? "₹1,999 / mo" : "₹4,999 / mo"}</strong>
-                        </Typography>
-                        <Button
-                          size="small"
-                          variant="contained"
-                          onClick={() => onExtendTrial(selectedHotel._id, 30)}
-                          className="btn-3d"
-                          sx={{
-                            borderRadius: "8px",
-                            fontWeight: 800,
-                            fontSize: "0.75rem",
-                            bgcolor: themeConfig.primary,
-                            "&:hover": { bgcolor: themeConfig.primaryDark },
-                          }}
-                        >
-                          +30 Days Extension
-                        </Button>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Box>
-              )}
-
-              {drawerTab === 2 && (
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-                  <Card className="card-3d" sx={{ borderRadius: "16px", border: `1px solid ${themeConfig.border}` }}>
-                    <CardContent sx={{ p: 2.5 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 1.5, display: "flex", alignItems: "center", gap: 1 }}>
-                        <Key fontSize="small" sx={{ color: themeConfig.primary }} /> Security &amp; Tenant Credentials
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: themeConfig.textMuted, display: "block", mb: 2 }}>
-                        Super Admin can trigger an emergency one-time password reset or issue system revocation tokens for this property.
-                      </Typography>
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        color="warning"
-                        startIcon={<Key />}
-                        sx={{ borderRadius: "10px", fontWeight: 700, py: 1 }}
-                      >
-                        Issue Temporary Admin Credentials
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Box>
-              )}
-            </Box>
+            <IconButton onClick={() => setDeleteTarget(null)} disabled={deleting} aria-label="Close" sx={{ width: 36, height: 36, borderRadius: "10px", border: `1px solid ${themeConfig.border}`, color: themeConfig.textMuted }}>
+              <Close fontSize="small" />
+            </IconButton>
           </Box>
-        )}
-      </Drawer>
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, py: 2.75 }}>
+          <Typography sx={{ color: themeConfig.textMain, fontSize: "0.95rem", lineHeight: 1.6 }}>
+            {deleteTarget?.name || "This hotel"} will be removed from the list. The owner and staff will not be able to sign in. Rooms and bookings stay saved.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 2.5, py: 1.75, borderTop: `1px solid ${themeConfig.border}`, bgcolor: isDarkMode ? themeConfig.bgSubtle : "#F8FAFC" }}>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleting} variant="outlined" sx={{ minWidth: 104, height: 40, borderRadius: "10px", textTransform: "none", fontWeight: 700, color: themeConfig.textMain, borderColor: themeConfig.border, bgcolor: isDarkMode ? "transparent" : "#FFFFFF" }}>
+            Cancel
+          </Button>
+          <Button variant="contained" disabled={deleting} onClick={confirmDelete} sx={{ minWidth: 104, height: 40, borderRadius: "10px", textTransform: "none", fontWeight: 700, boxShadow: "none", bgcolor: themeConfig.danger || "#DC2626", color: "#FFFFFF", "&:hover": { bgcolor: "#B91C1C", boxShadow: "none" } }}>
+            {deleting ? "Please wait…" : "Delete hotel"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

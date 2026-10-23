@@ -79,7 +79,7 @@ export default function SubscriptionPlansPage() {
   const fetchPlans = async () => {
     try {
       setLoading(true);
-      const res = await apiRequest(API_ENDPOINTS.SUBSCRIPTION_PLANS.ADMIN_ALL);
+      const res = await apiRequest(`${API_ENDPOINTS.SUBSCRIPTION_PLANS.ADMIN_ALL}?page=1&limit=100`, { skipAuth: true });
       if (res?.data) {
         const planList = Array.isArray(res.data) ? res.data : (res.data.plans || []);
         setPlans(planList);

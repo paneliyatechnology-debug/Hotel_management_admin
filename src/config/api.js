@@ -5,7 +5,33 @@
  * Live Base URL: https://accomplished-smile-dev.up.railway.app
  */
 
+import axios from "axios";
+import { toast } from "../shared/utils/toast.js";
 import { getCookie, setCookie, clearAuthCookies, getActiveHotelId } from '../shared/utils/cookieAuth.js';
+
+const http = axios.create({ validateStatus: () => true });
+
+async function apiFetch(url, config = {}) {
+  const headers = { ...(config.headers || {}) };
+  let data = config.body;
+  if (typeof FormData !== "undefined" && data instanceof FormData) {
+    delete headers["Content-Type"];
+    delete headers["content-type"];
+  }
+  const res = await http.request({
+    url,
+    method: config.method || "GET",
+    headers,
+    data,
+    withCredentials: config.credentials === "include",
+  });
+  return {
+    ok: res.status >= 200 && res.status < 300,
+    status: res.status,
+    statusText: res.statusText || "",
+    json: async () => (res.data === undefined || res.data === "" ? {} : res.data),
+  };
+}
 
 export const ENVIRONMENT = "LIVE"; // 👉 Toggle "LOCAL" or "LIVE" here
 
@@ -275,7 +301,9 @@ export function clearApiCache() {
  */
 export async function apiRequest(endpoint, options = {}) {
   const method = (options.method || "GET").toUpperCase();
-  const authToken = options.token || (typeof window !== "undefined" ? (localStorage.getItem("token") || getCookie("accessToken") || getCookie("token")) : null);
+  const authToken = options.skipAuth
+    ? null
+    : options.token || (typeof window !== "undefined" ? (localStorage.getItem("token") || getCookie("accessToken") || getCookie("token")) : null);
   const normalizedEp = normalizeEndpointKey(endpoint);
   const cacheKey = `${authToken || "anon"}:${normalizedEp}`;
 
@@ -818,6 +846,15 @@ function prepareRequestBody(body, endpoint) {
     return accPayload;
   }
 
+  // Hotel on/off: PATCH /api/v1/hotels/:id/active-status accepts only is_active.
+  if (typeof endpoint === "string" && /\/hotels\/[^/]+\/active-status(\?.*)?$/.test(endpoint)) {
+    const isActive = parsedBody.is_active ?? parsedBody.isActive;
+    if (isActive === undefined && parsedBody.status !== undefined) {
+      return { is_active: String(parsedBody.status).toUpperCase() === "ACTIVE" };
+    }
+    return { is_active: Boolean(isActive) };
+  }
+
   // E. Checkout: POST /api/v1/bookings/:id/check-out
   if (typeof endpoint === "string" && /\/bookings\/\d+\/check-out(\?.*)?$/.test(endpoint)) {
     let resolvedPaidAmount = Number(
@@ -1327,8 +1364,14 @@ function normalizeApiResponse(res) {
 }
 
 async function executeApiRequest(endpoint, options = {}) {
-  const { method = "GET", body, headers = {}, token, ...rest } = options;
-  const authToken = token || (typeof window !== "undefined" ? (localStorage.getItem("token") || getCookie("accessToken") || getCookie("token")) : null);
+  const { method = "GET", body, headers = {}, token, skipAuth = false, ...rest } = options;
+  const isPublicPlanList = String(method || "GET").toUpperCase() === "GET"
+    && typeof endpoint === "string"
+    && /\/subscription-plans(\?|$)/.test(endpoint);
+  const publicRead = skipAuth || isPublicPlanList;
+  const authToken = publicRead
+    ? null
+    : token || (typeof window !== "undefined" ? (localStorage.getItem("token") || getCookie("accessToken") || getCookie("token")) : null);
 
   const normalizedEp = normalizeEndpointKey(endpoint);
 
@@ -1381,21 +1424,28 @@ async function executeApiRequest(endpoint, options = {}) {
   const isFormData = typeof FormData !== "undefined" && preparedBody instanceof FormData;
   const reqHeaders = { ...headers };
 
-  if (!isFormData && !reqHeaders["Content-Type"]) {
+  if (!isFormData && !reqHeaders["Content-Type"] && String(method || "GET").toUpperCase() !== "GET" && String(method || "GET").toUpperCase() !== "HEAD") {
     reqHeaders["Content-Type"] = "application/json";
   }
   if (isFormData && reqHeaders["Content-Type"]) {
     delete reqHeaders["Content-Type"]; // Allow browser fetch to set multipart boundary
   }
 
-  if (authToken) {
+  if (authToken && !publicRead) {
     reqHeaders["Authorization"] = `Bearer ${authToken}`;
+  }
+  delete reqHeaders.Authorization;
+  delete reqHeaders.authorization;
+  if (authToken && !publicRead) {
+    reqHeaders.Authorization = `Bearer ${authToken}`;
   }
 
   // Automatic HTTP method correction matching Postman collection contracts
   let effectiveMethod = (method || "GET").toUpperCase();
   if (typeof endpoint === "string") {
-    if (/\/rooms\/\d+\/status(\?.*)?$/.test(endpoint)) {
+    if (/\/hotels\/[^/]+\/active-status(\?.*)?$/.test(endpoint)) {
+      effectiveMethod = "PATCH";
+    } else if (/\/rooms\/\d+\/status(\?.*)?$/.test(endpoint)) {
       effectiveMethod = "PATCH";
     } else if (/\/bookings\/\d+\/status(\?.*)?$/.test(endpoint)) {
       effectiveMethod = "PATCH";
@@ -1413,8 +1463,8 @@ async function executeApiRequest(endpoint, options = {}) {
   const config = {
     method: effectiveMethod,
     headers: reqHeaders,
-    credentials: "include", // Automatically send & receive secure httpOnly cookies
     ...rest,
+    credentials: publicRead ? "omit" : "include",
   };
 
   if (body) {
@@ -1484,7 +1534,7 @@ async function executeApiRequest(endpoint, options = {}) {
     if ((!payloadObj.paid_amount || Number(payloadObj.paid_amount) === 0) && bId) {
       try {
         const fetchUrl = `${currentBase}/api/v1/bookings/${bId}`;
-        const checkRes = await fetch(fetchUrl, {
+        const checkRes = await apiFetch(fetchUrl, {
           method: "GET",
           headers: reqHeaders,
           credentials: "include",
@@ -1516,7 +1566,7 @@ async function executeApiRequest(endpoint, options = {}) {
 
   for (const targetUrl of candidateUrls) {
     try {
-      response = await fetch(targetUrl, config);
+      response = await apiFetch(targetUrl, config);
       if (response && response.status < 500) break;
       if (response && response.ok) break;
     } catch (netErr) {
@@ -1545,7 +1595,7 @@ async function executeApiRequest(endpoint, options = {}) {
       const storedRefreshToken = localStorage.getItem("refreshToken") || getCookie("refreshToken");
       if (storedRefreshToken && !options._retry) {
         try {
-          const refreshRes = await fetch(API_ENDPOINTS.AUTH.REFRESH_TOKEN, {
+          const refreshRes = await apiFetch(API_ENDPOINTS.AUTH.REFRESH_TOKEN, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1581,7 +1631,14 @@ async function executeApiRequest(endpoint, options = {}) {
               _retry: true,
             });
           }
+          if (refreshRes.status !== 401 && refreshRes.status !== 403) {
+            const error = new Error(refreshData?.message || "Unable to refresh the session.");
+            error.status = response.status;
+            error.data = data;
+            throw error;
+          }
         } catch (refreshErr) {
+          if (refreshErr?.status) throw refreshErr;
           console.warn("Auto token refresh failed:", refreshErr);
         }
       }
@@ -1622,6 +1679,27 @@ async function executeApiRequest(endpoint, options = {}) {
           });
         }
       }
+    }
+
+    if (
+      response.status === 403 &&
+      typeof window !== "undefined" &&
+      /deactivat/i.test(String(firstErrorMessage || ""))
+    ) {
+      try {
+        const stored = JSON.parse(localStorage.getItem("user") || "{}");
+        if (stored?.role && stored.role !== "SUPER_ADMIN") {
+          localStorage.removeItem("token");
+          localStorage.removeItem("refreshToken");
+          localStorage.removeItem("user");
+          clearAuthCookies();
+          window.dispatchEvent(new Event("auth-unauthorized"));
+        }
+      } catch {}
+    }
+
+    if (response.status >= 500 && typeof window !== "undefined") {
+      toast.error(firstErrorMessage || "Server error. Please try again.", { toastId: "server-error" });
     }
 
     const error = new Error(firstErrorMessage || `API Error: ${response.statusText} (${response.status})`);

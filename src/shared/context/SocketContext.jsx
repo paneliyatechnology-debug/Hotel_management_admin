@@ -135,7 +135,8 @@ export function SocketProvider({ children }) {
     if (!SOCKET_ENABLED || typeof window === "undefined") return undefined;
 
     const { token } = readSession();
-    const socket = io(socketUrl(), {
+    const existing = socketRef.current && socketRef.current !== dummySocket ? socketRef.current : null;
+    const socket = existing || io(socketUrl(), {
       transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: Infinity,
@@ -200,8 +201,17 @@ export function SocketProvider({ children }) {
     return () => {
       window.removeEventListener("auth-state-changed", handleAuthChange);
       window.removeEventListener("storage", handleAuthChange);
-      socket.disconnect();
-      socketRef.current = dummySocket;
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("ONLINE_PRESENCE_STATE");
+      socket.off("HOTEL_ONLINE");
+      socket.off("HOTEL_OFFLINE");
+      socket.off("USER_ONLINE");
+      socket.off("USER_OFFLINE");
+      socket.off("PRESENCE_SYNC");
+      ALL_EVENTS.forEach((evtName) => socket.off(evtName));
+      // Keep the connection. React Strict Mode runs this cleanup immediately
+      // and socket.disconnect() prints a close error for a socket that reconnects.
     };
   }, [joinRoom]);
 
