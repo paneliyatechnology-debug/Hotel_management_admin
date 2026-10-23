@@ -36,12 +36,10 @@ import {
   AttachMoney,
   ReceiptLong,
   CalendarToday,
-  Payments,
   ArrowForward,
   Speed,
   CloudDone,
   Security,
-  Dns,
   CreditCard,
   Shield,
   Settings,
@@ -131,6 +129,8 @@ export default function SuperAdminOverviewPage({
     type: null,
   });
   const [modalSearch, setModalSearch] = useState("");
+  const [staffList, setStaffList] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(false);
 
   useEffect(() => {
     fetchDashboardStats();
@@ -201,11 +201,24 @@ export default function SuperAdminOverviewPage({
     color: "#F59E0B",
   });
 
-  const recentHotels = hotels.slice(0, 5);
-
   const handleOpenDetailModal = (type) => {
     setModalSearch("");
     setDetailModal({ open: true, type });
+    if (type === "STAFF_USERS") loadStaff();
+  };
+
+  const loadStaff = async () => {
+    setStaffLoading(true);
+    try {
+      const res = await apiRequest(API_ENDPOINTS.USERS.LIST("?page=1&limit=200"));
+      const payload = res?.data;
+      const list = Array.isArray(payload) ? payload : payload?.users || payload?.data || [];
+      setStaffList(Array.isArray(list) ? list : []);
+    } catch (err) {
+      setStaffList([]);
+    } finally {
+      setStaffLoading(false);
+    }
   };
 
   const handleCloseDetailModal = () => {
@@ -242,38 +255,6 @@ export default function SuperAdminOverviewPage({
       {/* SECTION 1: FINANCIAL & ORDER METRICS */}
       {/* ========================================================================= */}
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, alignItems: { xs: "flex-start", sm: "center" }, justifyContent: "space-between", gap: 1.5, mb: 2, flexWrap: "wrap" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
-            <Avatar
-              sx={{
-                bgcolor: themeConfig.champagne,
-                color: themeConfig.primaryDark,
-                width: 32,
-                height: 32,
-                borderRadius: "8px",
-              }}
-            >
-              <Payments sx={{ fontSize: 18 }} />
-            </Avatar>
-            <Typography variant="h6" sx={{ fontWeight: 900, color: themeConfig.textMain, fontSize: { xs: "0.95rem", sm: "1.05rem" } }}>
-              Financial &amp; Commercial Orders Telemetry
-            </Typography>
-          </Box>
-          <Chip
-            label="Live Database API • Click box for details"
-            size="small"
-            sx={{
-              fontWeight: 800,
-              fontSize: "0.68rem",
-              borderRadius: "8px",
-              bgcolor: themeConfig.champagne,
-              color: themeConfig.primaryDark,
-              border: `1px solid ${themeConfig.border}`,
-              maxWidth: "100%",
-            }}
-          />
-        </Box>
-
         <Box
           sx={{
             display: "grid",
@@ -318,7 +299,7 @@ export default function SuperAdminOverviewPage({
             value={staffUsers}
             icon={<People />}
             color="#10B981"
-            onClick={() => handleOpenDetailModal("TOTAL_ORDERS")}
+            onClick={() => handleOpenDetailModal("STAFF_USERS")}
           />
         </Box>
       </Box>
@@ -377,7 +358,6 @@ export default function SuperAdminOverviewPage({
             value={totalHotels}
             icon={<Business />}
             color={themeConfig.primary}
-            onClick={() => handleOpenDetailModal("TOTAL_HOTELS")}
           />
 
           <StatCard
@@ -386,7 +366,6 @@ export default function SuperAdminOverviewPage({
             value={totalActive}
             icon={<CheckCircle />}
             color={themeConfig.success}
-            onClick={() => handleOpenDetailModal("ACTIVE_HOTELS")}
           />
 
           <StatCard
@@ -395,7 +374,6 @@ export default function SuperAdminOverviewPage({
             value={trialHotelsCount}
             icon={<HourglassEmpty />}
             color={themeConfig.warning}
-            onClick={() => handleOpenDetailModal("PENDING_APPROVALS")}
           />
 
           <StatCard
@@ -404,7 +382,6 @@ export default function SuperAdminOverviewPage({
             value={inactiveHotels}
             icon={<Block />}
             color={themeConfig.danger}
-            onClick={() => handleOpenDetailModal("DISABLED_HOTELS")}
           />
         </Box>
       </Box>
@@ -415,10 +392,7 @@ export default function SuperAdminOverviewPage({
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            md: "repeat(2, 1fr)",
-          },
+          gridTemplateColumns: "1fr",
           gap: 3,
         }}
       >
@@ -498,118 +472,7 @@ export default function SuperAdminOverviewPage({
             </Box>
           </Card>
         </Box>
-
-        {/* Quick Hub & Recent Hotel Applications */}
-        <Box>
-          <Card
-            className="card-3d"
-            sx={{
-              borderRadius: "22px",
-              border: `1.5px solid ${themeConfig.border}`,
-              bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
-              boxShadow: isDarkMode ? "none" : "0 10px 28px -6px rgba(12, 39, 59, 0.06), inset 0 1px 0 #FFFFFF",
-              height: "100%",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-            }}
-          >
-            <CardContent sx={{ p: 3.5 }}>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2.5 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                  <Avatar sx={{ bgcolor: themeConfig.champagne, color: themeConfig.primaryDark, width: 38, height: 38, borderRadius: "10px" }}>
-                    <Dns sx={{ fontSize: 20 }} />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 900, color: themeConfig.textMain }}>
-                      Recent Hotel Applications
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
-                      Latest registered database properties
-                    </Typography>
-                  </Box>
-                </Box>
-                <Button
-                  size="small"
-                  onClick={() => onTabChange && onTabChange(1)}
-                  sx={{ fontWeight: 800, fontSize: "0.78rem", color: themeConfig.warning }}
-                >
-                  Pending ({totalPending}) →
-                </Button>
-              </Box>
-
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1.2 }}>
-                {recentHotels.length === 0 ? (
-                  <Typography variant="caption" sx={{ color: themeConfig.textMuted, py: 2, textAlign: "center" }}>
-                    No hotel properties registered in database yet.
-                  </Typography>
-                ) : (
-                  recentHotels.map((hotel) => (
-                    <Box
-                      key={hotel._id || hotel.id}
-                      onClick={() => onTabChange && onTabChange(1)}
-                      sx={{
-                        p: 1.5,
-                        borderRadius: "14px",
-                        bgcolor: themeConfig.bgMain,
-                        border: `1px solid ${themeConfig.border}`,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
-                        "&:hover": {
-                          bgcolor: themeConfig.champagne,
-                          transform: "translateY(-1px)",
-                        },
-                      }}
-                    >
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                        <Avatar sx={{ width: 32, height: 32, borderRadius: "8px", bgcolor: themeConfig.primary, fontSize: "0.85rem", fontWeight: 800 }}>
-                          {(hotel.name || "H").charAt(0).toUpperCase()}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 800, color: themeConfig.textMain }}>
-                            {hotel.name}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
-                            {hotel.city ? `${hotel.city}${hotel.state ? `, ${hotel.state}` : ""}` : "Location N/A"} • {hotel.admin?.email || hotel.ownerEmail || "N/A"}
-                          </Typography>
-                        </Box>
-                      </Box>
-                      <Chip
-                        label={hotel.status || "ACTIVE"}
-                        size="small"
-                        sx={{
-                          fontWeight: 800,
-                          fontSize: "0.68rem",
-                          borderRadius: "6px",
-                          bgcolor: hotel.status === "ACTIVE" ? "rgba(16, 185, 129, 0.15)" : hotel.status === "PENDING" || hotel.status === "PENDING_APPROVAL" ? "rgba(245, 158, 11, 0.15)" : "rgba(220, 38, 38, 0.15)",
-                          color: hotel.status === "ACTIVE" ? "#10B981" : hotel.status === "PENDING" || hotel.status === "PENDING_APPROVAL" ? "#F59E0B" : "#EF4444",
-                        }}
-                      />
-                    </Box>
-                  ))
-                )}
-              </Box>
-            </CardContent>
-
-            {/* Quick Navigation Icons */}
-            <Box sx={{ p: 2, px: { xs: 2, sm: 3.5 }, bgcolor: themeConfig.bgMain, borderTop: `1px solid ${themeConfig.border}`, display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, gap: 1, borderRadius: "0 0 22px 22px" }}>
-              <Typography variant="caption" sx={{ color: themeConfig.textMuted, fontWeight: 700 }}>
-                Jump to:
-              </Typography>
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Chip label="Hotels" clickable size="small" onClick={() => onTabChange && onTabChange(1)} sx={{ fontWeight: 700, borderRadius: "6px" }} />
-                <Chip label="Plans" clickable size="small" onClick={() => onTabChange && onTabChange(2)} sx={{ fontWeight: 700, borderRadius: "6px" }} />
-                <Chip label="Audit Logs" clickable size="small" onClick={() => onTabChange && onTabChange(3)} sx={{ fontWeight: 700, borderRadius: "6px" }} />
-                <Chip label="Settings" clickable size="small" onClick={() => onTabChange && onTabChange(4)} sx={{ fontWeight: 700, borderRadius: "6px" }} />
-              </Box>
-            </Box>
-          </Card>
-        </Box>
       </Box>
-
       {/* ========================================================================= */}
       {/* COMPREHENSIVE INTERACTIVE DETAIL MODAL DIALOG */}
       {/* ========================================================================= */}
@@ -671,6 +534,7 @@ export default function SuperAdminOverviewPage({
                 boxShadow: "0 6px 14px rgba(0,0,0,0.15)",
               }}
             >
+              {detailModal.type === "STAFF_USERS" && <People />}
               {detailModal.type === "TODAY_REVENUE" && <CalendarToday />}
               {detailModal.type === "MONTHLY_REVENUE" && <TrendingUp />}
               {detailModal.type === "TOTAL_ORDERS" && <ReceiptLong />}
@@ -683,6 +547,7 @@ export default function SuperAdminOverviewPage({
 
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 900, color: themeConfig.textMain, lineHeight: 1.2 }}>
+                {detailModal.type === "STAFF_USERS" && "Staff Users"}
                 {detailModal.type === "TODAY_REVENUE" && "Today's Revenue Telemetry & Settlements"}
                 {detailModal.type === "MONTHLY_REVENUE" && "Monthly Recurring Revenue (MRR) & SaaS Analytics"}
                 {detailModal.type === "TOTAL_ORDERS" && "Commercial Orders & Subscriptions Telemetry"}
@@ -693,6 +558,7 @@ export default function SuperAdminOverviewPage({
                 {detailModal.type === "DISABLED_HOTELS" && "Disabled & Suspended Compliance Holds"}
               </Typography>
               <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
+                {detailModal.type === "STAFF_USERS" && `${staffList.length || staffUsers} people on the platform`}
                 {detailModal.type === "TODAY_REVENUE" && "Real-time daily collection metrics, today's arrivals & settled folio dues from MongoDB API"}
                 {detailModal.type === "MONTHLY_REVENUE" && "Current calendar month performance, projected run rate & subscription growth"}
                 {detailModal.type === "TOTAL_ORDERS" && "Subscription invoicing orders, tier volume & SaaS conversions"}
@@ -860,6 +726,44 @@ export default function SuperAdminOverviewPage({
           {/* ======================================================== */}
           {/* 3. TOTAL ORDERS DETAIL VIEW */}
           {/* ======================================================== */}
+          {detailModal.type === "STAFF_USERS" && (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
+              {staffLoading && (
+                <Typography sx={{ color: themeConfig.textMuted }}>Loading staff...</Typography>
+              )}
+              {!staffLoading && staffList.length === 0 && (
+                <Typography sx={{ color: themeConfig.textMuted }}>No staff users found.</Typography>
+              )}
+              {staffList
+                .filter((person) => {
+                  const q = modalSearch.trim().toLowerCase();
+                  if (!q) return true;
+                  return [person.name, person.email, person.role, person.phone].filter(Boolean).join(" ").toLowerCase().includes(q);
+                })
+                .map((person) => (
+                  <Box
+                    key={person.id || person._id || person.email}
+                    sx={{
+                      p: 1.5,
+                      borderRadius: "14px",
+                      border: `1px solid ${themeConfig.border}`,
+                      bgcolor: themeConfig.bgMain,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 2,
+                      alignItems: "center",
+                    }}
+                  >
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 800, color: themeConfig.textMain }}>{person.name || "User"}</Typography>
+                      <Typography sx={{ color: themeConfig.textMuted, fontSize: "0.8rem" }}>{person.email || person.phone || "—"}</Typography>
+                    </Box>
+                    <Chip label={person.role || "STAFF"} size="small" sx={{ fontWeight: 800, bgcolor: themeConfig.bgSoft, color: themeConfig.accent || themeConfig.primary }} />
+                  </Box>
+                ))}
+            </Box>
+          )}
+
           {detailModal.type === "TOTAL_ORDERS" && (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
               {/* 4 Stat Tiles */}
@@ -1154,6 +1058,7 @@ export default function SuperAdminOverviewPage({
             Close Window
           </Button>
 
+          {detailModal.type !== "STAFF_USERS" && (
           <Button
             variant="contained"
             className="btn-3d"
@@ -1166,11 +1071,11 @@ export default function SuperAdminOverviewPage({
                 detailModal.type === "DISABLED_HOTELS" ||
                 detailModal.type === "TODAY_REVENUE"
               ) {
-                if (onTabChange) onTabChange(1); // Hotels Directory Tab
+                if (onTabChange) onTabChange(1);
               } else if (detailModal.type === "MONTHLY_REVENUE" || detailModal.type === "TOTAL_ORDERS") {
-                if (onTabChange) onTabChange(2); // Subscription Plans Tab
+                if (onTabChange) onTabChange(2);
               } else if (detailModal.type === "TOTAL_PLATFORM_REVENUE") {
-                if (onTabChange) onTabChange(3); // Audit Logs & Security Tab
+                if (onTabChange) onTabChange(3);
               }
             }}
             sx={{
@@ -1189,6 +1094,7 @@ export default function SuperAdminOverviewPage({
               ? "Open Security & Audit Logs →"
               : "Open Full Hotels Directory →"}
           </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Box>
