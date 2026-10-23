@@ -13,17 +13,14 @@ import {
   CardContent,
   Chip,
   Avatar,
-  Divider,
   Switch,
   Alert,
   Tooltip,
   Paper,
   MenuItem,
   FormControl,
-  InputLabel,
   Select,
   CircularProgress,
-  InputAdornment,
   IconButton,
   Dialog,
   DialogTitle,
@@ -33,7 +30,6 @@ import {
 import {
   Person,
   CheckCircle,
-  VpnKey,
   SupportAgent,
   Shield,
   Email,
@@ -46,9 +42,6 @@ import {
   WarningAmber,
   Public,
   CreditCard,
-  Visibility,
-  VisibilityOff,
-  Lock,
   Close,
 } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
@@ -84,12 +77,6 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
   // Profile Form State
   const [name, setName] = useState(user?.name || "");
   const [phone, setPhone] = useState(user?.phone || user?.hotel?.ownerPhone || "");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState({ show: false, message: "", severity: "success" });
   const [supportModalOpen, setSupportModalOpen] = useState(false);
@@ -135,111 +122,16 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
   const [timingsMsg, setTimingsMsg] = useState({ show: false, message: "", severity: "success" });
   const [savingTimings, setSavingTimings] = useState(false);
 
-  // System Settings / Free Trial State
-  const [freeTrialValue, setFreeTrialValue] = useState(30);
-  const [freeTrialUnit, setFreeTrialUnit] = useState("days");
-  const [savingTrial, setSavingTrial] = useState(false);
-  const [trialMsg, setTrialMsg] = useState({ show: false, message: "", severity: "success" });
-
-  useEffect(() => {
-    if (user?.role === "SUPER_ADMIN") {
-      apiRequest(API_ENDPOINTS.SETTINGS?.PUBLIC || "/api/v1/settings")
-        .then((res) => {
-          if (res?.settings) {
-            setFreeTrialValue(res.settings.freeTrialValue);
-            setFreeTrialUnit(res.settings.freeTrialUnit);
-          }
-        })
-        .catch((err) => console.log(err));
-    }
-  }, [user]);
-
-  const handleSaveTrial = async (e) => {
-    e.preventDefault();
-    setSavingTrial(true);
-    setTrialMsg({ show: false, message: "", severity: "success" });
-
-    try {
-      const res = await apiRequest(API_ENDPOINTS.SETTINGS?.UPDATE || "/api/v1/settings", {
-        method: "PUT",
-        body: JSON.stringify({
-          freeTrialValue: Number(freeTrialValue),
-          freeTrialUnit,
-        }),
-      });
-
-      if (res?.success) {
-        toast.success("Free trial settings updated successfully!");
-        setTrialMsg({
-          show: true,
-          message: "Free trial settings updated successfully!",
-          severity: "success",
-        });
-      } else {
-        toast.error(res?.message || "Failed to update free trial settings.");
-        setTrialMsg({
-          show: true,
-          message: res?.message || "Failed to update free trial settings.",
-          severity: "error",
-        });
-      }
-    } catch (err) {
-      toast.error(err.message || "An error occurred while updating settings.");
-      setTrialMsg({
-        show: true,
-        message: err.message || "An error occurred while updating settings.",
-        severity: "error",
-      });
-    } finally {
-      setSavingTrial(false);
-    }
-  };
-
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSavingProfile(true);
 
     try {
-      if (newPassword) {
-        if (!currentPassword) {
-          toast.error("Please enter your current password to change password.");
-          setProfileMsg({ show: true, message: "Please enter your current password to change password.", severity: "error" });
-          setSavingProfile(false);
-          return;
-        }
-        if (newPassword.length < 6) {
-          toast.error("New password must be at least 6 characters long.");
-          setProfileMsg({ show: true, message: "New password must be at least 6 characters long.", severity: "error" });
-          setSavingProfile(false);
-          return;
-        }
-        if (newPassword !== confirmPassword) {
-          toast.error("New passwords do not match!");
-          setProfileMsg({ show: true, message: "New passwords do not match!", severity: "error" });
-          setSavingProfile(false);
-          return;
-        }
-
-        await apiRequest(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, {
-          method: "PUT",
-          body: {
-            currentPassword,
-            newPassword,
-          },
-        });
-
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-      }
-
       if (onUpdateProfile) {
         onUpdateProfile({ name, phone });
       }
 
-      const successMsg = newPassword
-        ? "Profile and password updated successfully!"
-        : "Profile settings saved successfully!";
+      const successMsg = "Profile settings saved successfully!";
       toast.success(successMsg);
       setProfileMsg({
         show: true,
@@ -389,10 +281,8 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
   };
 
   const isHotelAdmin = user?.role === "HOTEL_ADMIN";
-  const isSuperAdmin = user?.role === "SUPER_ADMIN";
 
   const availableTabs = [
-    ...(isSuperAdmin ? [{ id: "freetrial", label: "Free Trial Settings", icon: <AccessTime fontSize="small" /> }] : []),
     ...(isHotelAdmin ? [{ id: "timings", label: "Hotel Timings & Operations", icon: <AccessTime fontSize="small" /> }] : []),
     { id: "profile", label: "My Profile & Security", icon: <Person fontSize="small" /> },
   ];
@@ -403,104 +293,36 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
 
   return (
     <Box sx={{ width: "100%", minWidth: 0, px: { xs: 1.5, sm: 2.5, md: 3 }, py: { xs: 1, sm: 1.5 }, pb: { xs: 10, sm: 4 } }}>
-      <Tabs
-        value={activeSubTab >= availableTabs.length ? 0 : activeSubTab}
-        onChange={(e, v) => setActiveSubTab(v)}
-        variant="scrollable"
-        scrollButtons="auto"
-        allowScrollButtonsMobile
-        sx={{
-          minHeight: 44,
-          mb: 2.5,
-          borderBottom: `1px solid ${themeConfig.border}`,
-          "& .MuiTab-root": {
-            textTransform: "none",
-            fontWeight: 700,
-            fontSize: "0.9rem",
+      {availableTabs.length > 1 && (
+        <Tabs
+          value={activeSubTab >= availableTabs.length ? 0 : activeSubTab}
+          onChange={(e, v) => setActiveSubTab(v)}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          sx={{
             minHeight: 44,
-            px: 2,
-            color: themeConfig.textMuted,
-            "&.Mui-selected": { color: themeConfig.accent || themeConfig.primary },
-          },
-          "& .MuiTabs-indicator": { height: 2, borderRadius: "2px", bgcolor: themeConfig.primary },
-        }}
-      >
-        {availableTabs.map((tab) => (
-          <Tab key={tab.id} label={tab.label} />
-        ))}
-      </Tabs>
+            mb: 2.5,
+            borderBottom: `1px solid ${themeConfig.border}`,
+            "& .MuiTab-root": {
+              textTransform: "none",
+              fontWeight: 700,
+              fontSize: "0.9rem",
+              minHeight: 44,
+              px: 2,
+              color: themeConfig.textMuted,
+              "&.Mui-selected": { color: themeConfig.accent || themeConfig.primary },
+            },
+            "& .MuiTabs-indicator": { height: 2, borderRadius: "2px", bgcolor: themeConfig.primary },
+          }}
+        >
+          {availableTabs.map((tab) => (
+            <Tab key={tab.id} label={tab.label} />
+          ))}
+        </Tabs>
+      )}
 
       <Box sx={{ maxWidth: 1000, width: "100%" }}>
-          {/* ========================================================================= */}
-          {/* TAB: FREE TRIAL SETTINGS (SUPER ADMIN) */}
-          {/* ========================================================================= */}
-          {currentTab === "freetrial" && isSuperAdmin && (
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 0.5 }}>
-                Global Free Trial Configuration
-              </Typography>
-              <Typography variant="body2" sx={{ color: themeConfig.textMuted, mb: 3 }}>
-                Configure the default free trial duration applied to all newly registered hotels. This will instantly reflect on the landing page.
-              </Typography>
-
-              {trialMsg.show && (
-                <Alert severity={trialMsg.severity} sx={{ mb: 3, borderRadius: "12px" }}>
-                  {trialMsg.message}
-                </Alert>
-              )}
-
-              <Box component="form" onSubmit={handleSaveTrial}>
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <TextField
-                      fullWidth
-                      label="Trial Duration Value"
-                      type="number"
-                      value={freeTrialValue}
-                      onChange={(e) => setFreeTrialValue(e.target.value)}
-                      required
-                      sx={{
-                        "& .MuiOutlinedInput-root": { borderRadius: "12px", bgcolor: themeConfig.bgCard },
-                      }}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <FormControl fullWidth>
-                      <InputLabel>Unit</InputLabel>
-                      <Select
-                        value={freeTrialUnit}
-                        label="Unit"
-                        onChange={(e) => setFreeTrialUnit(e.target.value)}
-                        sx={{ borderRadius: "12px", bgcolor: themeConfig.bgCard }}
-                      >
-                        <MenuItem value="hours">Hours</MenuItem>
-                        <MenuItem value="days">Days</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid size={{ xs: 12 }}>
-                    <Button
-                      type="submit"
-                      variant="contained"
-                      disabled={savingTrial}
-                      sx={{
-                        mt: 2,
-                        borderRadius: "12px",
-                        px: 4,
-                        py: 1.5,
-                        bgcolor: themeConfig.primary,
-                        fontWeight: 800,
-                        "&:hover": { bgcolor: themeConfig.primaryDark },
-                      }}
-                    >
-                      {savingTrial ? <CircularProgress size={24} color="inherit" /> : "Save Trial Configuration"}
-                    </Button>
-                  </Grid>
-                </Grid>
-              </Box>
-            </Box>
-          )}
-
           {/* ========================================================================= */}
           {/* TAB: HOTEL TIMINGS & OPERATIONS (HOTEL ADMIN ONLY) */}
           {/* ========================================================================= */}
@@ -1058,125 +880,6 @@ export default function SettingsView({ user, onUpdateProfile, onUpdateHotelSetti
                       sx={{
                         bgcolor: "rgba(0,0,0,0.02)",
                         "& .MuiOutlinedInput-root": { borderRadius: "12px" },
-                      }}
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
-
-              {/* 3D Security & Password Section */}
-              <Box sx={{ mb: 4 }}>
-                <Divider sx={{ my: 3.5, borderColor: themeConfig.border }} />
-                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: themeConfig.textMain, mb: 2.5, display: "flex", alignItems: "center", gap: 1 }}>
-                  <VpnKey fontSize="small" sx={{ color: themeConfig.primary }} /> Security &amp; Change Password
-                </Typography>
-
-                <Grid container spacing={2.5}>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                      Current Password
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      type={showCurrentPassword ? "text" : "password"}
-                      size="small"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="••••••••"
-                      sx={{
-                        bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF",
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: "12px",
-                          boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
-                        },
-                      }}
-                      slotProps={{
-                        input: {
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <Lock sx={{ color: themeConfig.textMuted, fontSize: 18 }} />
-                            </InputAdornment>
-                          ),
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              <IconButton onClick={() => setShowCurrentPassword(!showCurrentPassword)} edge="end" size="small">
-                                {showCurrentPassword ? <VisibilityOff sx={{ fontSize: 18 }} /> : <Visibility sx={{ fontSize: 18 }} />}
-                              </IconButton>
-                            </InputAdornment>
-                          ),
-                        },
-                      }}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                      New Password
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      type={showNewPassword ? "text" : "password"}
-                      size="small"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="••••••••"
-                      sx={{
-                        bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF",
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: "12px",
-                          boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
-                        },
-                      }}
-                      slotProps={{
-                        input: {
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <Lock sx={{ color: themeConfig.textMuted, fontSize: 18 }} />
-                            </InputAdornment>
-                          ),
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              <IconButton onClick={() => setShowNewPassword(!showNewPassword)} edge="end" size="small">
-                                {showNewPassword ? <VisibilityOff sx={{ fontSize: 18 }} /> : <Visibility sx={{ fontSize: 18 }} />}
-                              </IconButton>
-                            </InputAdornment>
-                          ),
-                        },
-                      }}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: themeConfig.textMain, mb: 0.8, display: "block" }}>
-                      Confirm Password
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      type={showConfirmPassword ? "text" : "password"}
-                      size="small"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
-                      sx={{
-                        bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : "#FFFFFF",
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: "12px",
-                          boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
-                        },
-                      }}
-                      slotProps={{
-                        input: {
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <Lock sx={{ color: themeConfig.textMuted, fontSize: 18 }} />
-                            </InputAdornment>
-                          ),
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end" size="small">
-                                {showConfirmPassword ? <VisibilityOff sx={{ fontSize: 18 }} /> : <Visibility sx={{ fontSize: 18 }} />}
-                              </IconButton>
-                            </InputAdornment>
-                          ),
-                        },
                       }}
                     />
                   </Grid>
