@@ -17,6 +17,7 @@ import {
   Button,
   Chip,
   TextField,
+  MenuItem,
   InputAdornment,
   Avatar,
   Drawer,
@@ -32,6 +33,7 @@ import {
   Search,
   CheckCircle,
   Block,
+  Delete,
   HourglassEmpty,
   Visibility,
   Close,
@@ -56,11 +58,11 @@ import {
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { usePresence } from "@/shared/context/SocketContext";
 import PresenceBadge from "@/shared/components/PresenceBadge";
-import StatusChip from "@/shared/components/StatusChip";
 import EmptyState from "@/shared/components/EmptyState";
 import LoadingState from "@/shared/components/LoadingState";
 import { useLiveCountdown } from "@/shared/utils/countdown";
-import HotelGuestsModal from "@/super-admin/components/HotelGuestsModal";
+import { API_ENDPOINTS, apiRequest } from "@/config/api";
+import { toast } from "@/shared/utils/toast";
 
 function TrialTimeCell({ trialEndDate, status, themeConfig }) {
   const countdown = useLiveCountdown(trialEndDate);
@@ -113,14 +115,126 @@ export default function HotelsDirectoryPage({
   onOpenActionDialog,
   onEditHotel,
   onExtendTrial,
+  onRefresh,
 }) {
   const { themeConfig, isDarkMode } = useAppTheme();
   const { isHotelOnline } = usePresence();
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [guestModalOpen, setGuestModalOpen] = useState(false);
-  const [guestModalHotel, setGuestModalHotel] = useState(null);
+  const [sortBy, setSortBy] = useState("NEWEST");
+  const [addOpen, setAddOpen] = useState(false);
+  const [hotelStep, setHotelStep] = useState(0);
+  const [editingId, setEditingId] = useState(null);
+  const [savingHotel, setSavingHotel] = useState(false);
+  const emptyHotel = {
+    name: "",
+    hotel_type: "",
+    owner_name: "",
+    owner_email: "",
+    owner_phone: "",
+    total_rooms: "",
+    website: "",
+    address: "",
+    city: "",
+    state: "",
+    pincode: "",
+    gst_number: "",
+    pan_number: "",
+  };
+  const [hotelForm, setHotelForm] = useState(emptyHotel);
+  const setField = (key, value) => setHotelForm((prev) => ({ ...prev, [key]: value }));
+
+  const saveHotel = async () => {
+    const name = hotelForm.name.trim();
+    const ownerName = hotelForm.owner_name.trim();
+    const email = hotelForm.owner_email.trim().toLowerCase();
+    const phone = hotelForm.owner_phone.replace(/\D/g, "").slice(-10);
+    const rooms = Number(hotelForm.total_rooms);
+    const pin = hotelForm.pincode.replace(/\D/g, "");
+    if (!editingId && (!hotelForm.hotel_type.trim() || !ownerName || !email || phone.length !== 10)) {
+      toast.error("Fill hotel type, owner name, email, and a 10-digit phone.");
+      return;
+    }
+    if (!name || !hotelForm.address.trim() || !hotelForm.city.trim() || !hotelForm.state.trim() || pin.length !== 6) {
+      toast.error("Fill hotel name, type, owner, email, 10-digit phone, rooms, address, city, state, and 6-digit pincode.");
+      return;
+    }
+    const body = {
+      name,
+      hotel_type: hotelForm.hotel_type.trim(),
+      owner_name: ownerName,
+      owner_email: email,
+      owner_phone: phone,
+      total_rooms: rooms,
+      website: hotelForm.website.trim(),
+      address: hotelForm.address.trim(),
+      city: hotelForm.city.trim(),
+      state: hotelForm.state.trim(),
+      country: "India",
+      pincode: pin,
+    };
+    if (editingId) {
+      delete body.owner_name;
+      delete body.owner_email;
+      delete body.owner_phone;
+    }
+    const gst = hotelForm.gst_number.trim().toUpperCase();
+    const pan = hotelForm.pan_number.trim().toUpperCase();
+    if (gst) body.gst_number = gst;
+    if (pan) body.pan_number = pan;
+    try {
+      setSavingHotel(true);
+      if (editingId) {
+        await apiRequest(API_ENDPOINTS.HOTELS.UPDATE(editingId), { method: "PUT", body });
+        toast.success("Hotel updated.");
+      } else {
+        await apiRequest(API_ENDPOINTS.HOTELS.ALL, { method: "POST", body });
+        toast.success("Hotel created.");
+      }
+      setAddOpen(false);
+      setEditingId(null);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      toast.error(err?.message || "Could not register the hotel.");
+    } finally {
+      setSavingHotel(false);
+    }
+  };
+
+  const openEdit = (hotel) => {
+    setEditingId(hotel._id || hotel.id);
+    setHotelStep(0);
+    setHotelForm({
+      name: hotel.name || "",
+      hotel_type: hotel.hotel_type || hotel.hotelType || "",
+      owner_name: hotel.ownerName || hotel.admin?.name || "",
+      owner_email: hotel.ownerEmail || hotel.admin?.email || hotel.email || "",
+      owner_phone: hotel.ownerPhone || hotel.admin?.phone || hotel.phone || "",
+      total_rooms: String(hotel.totalRooms ?? hotel.total_rooms ?? ""),
+      website: hotel.website || "",
+      address: typeof hotel.address === "string" ? hotel.address : "",
+      city: hotel.city || "",
+      state: hotel.state || "",
+      pincode: hotel.pincode || "",
+      gst_number: hotel.gst_number || hotel.gstNumber || "",
+      pan_number: hotel.pan_number || hotel.panNumber || "",
+    });
+    setAddOpen(true);
+  };
+
+  const deleteHotel = async (hotel) => {
+    const id = hotel._id || hotel.id;
+    if (!id) return;
+    if (!window.confirm(`Delete ${hotel.name || "this hotel"}?`)) return;
+    try {
+      await apiRequest(API_ENDPOINTS.HOTELS.BY_ID(id), { method: "DELETE" });
+      toast.success("Hotel deleted.");
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      toast.error(err?.message || "Could not delete the hotel.");
+    }
+  };
 
   const filteredHotels = hotels.filter((h) => {
     const matchSearch =
@@ -129,6 +243,11 @@ export default function HotelsDirectoryPage({
       h.city?.toLowerCase().includes(search.toLowerCase());
     if (statusFilter === "ALL") return matchSearch;
     return matchSearch && h.status === statusFilter;
+  }).slice().sort((a, b) => {
+    if (sortBy === "NAME") return String(a.name || "").localeCompare(String(b.name || ""));
+    const aTime = new Date(a.createdAt || a.created_at || 0).getTime() || 0;
+    const bTime = new Date(b.createdAt || b.created_at || 0).getTime() || 0;
+    return sortBy === "OLDEST" ? aTime - bTime : bTime - aTime;
   });
 
   const paginatedHotels = filteredHotels.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
@@ -136,6 +255,101 @@ export default function HotelsDirectoryPage({
   const totalActive = hotels.filter((h) => h.status === "ACTIVE").length;
   const totalPending = hotels.filter((h) => h.status === "PENDING").length;
   const totalDisabled = hotels.filter((h) => h.status === "DISABLED" || h.status === "SUSPENDED").length;
+
+  if (addOpen) {
+    const fieldSx = {
+      "& .MuiOutlinedInput-root": {
+        height: 42,
+        borderRadius: "10px",
+        bgcolor: isDarkMode ? "rgba(255,255,255,0.03)" : themeConfig.bgMain,
+      },
+    };
+    const label = (text, required) => (
+      <Typography sx={{ fontWeight: 700, color: themeConfig.textMain, fontSize: "0.8rem", mb: 0.6 }}>
+        {text}
+        {required ? <span style={{ color: themeConfig.danger }}> *</span> : null}
+      </Typography>
+    );
+    const stepCopy = [
+      ["Hotel details", "Name, type, and size of the property."],
+      ["Owner", "Who will sign in as the hotel admin."],
+      ["Address", "Where the hotel is, plus optional tax numbers."],
+    ];
+    return (
+      <Box sx={{ px: { xs: 1.5, sm: 3 }, py: { xs: 2, sm: 3 }, maxWidth: 760, mx: "auto", width: "100%" }}>
+        <Button onClick={() => setAddOpen(false)} sx={{ textTransform: "none", fontWeight: 700, color: themeConfig.textMuted, mb: 0.5, px: 0 }}>
+          Back to hotels
+        </Button>
+        <Typography sx={{ fontWeight: 800, fontSize: "1.4rem", color: themeConfig.textMain }}>{editingId ? "Edit Hotel" : "Add Hotel"}</Typography>
+        <Typography sx={{ color: themeConfig.textMuted, fontSize: "0.85rem", mb: 2.5 }}>Register a new property in three steps.</Typography>
+
+        <Paper elevation={0} sx={{ p: { xs: 2, sm: 3.5 }, borderRadius: "20px", border: `1px solid ${themeConfig.border}`, bgcolor: themeConfig.bgCard }}>
+          <Box sx={{ mb: 3.5 }}>
+            <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", position: "relative" }}>
+              <Box sx={{ position: "absolute", top: 18, left: "16%", right: "16%", height: 2, bgcolor: themeConfig.border, zIndex: 0 }}>
+                <Box sx={{ height: "100%", width: `${(hotelStep / 2) * 100}%`, bgcolor: themeConfig.primary, transition: "width 0.3s ease" }} />
+              </Box>
+              {["Hotel", "Owner", "Address"].map((name, index) => {
+                const done = hotelStep > index;
+                const current = hotelStep === index;
+                return (
+                  <Box key={name} sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", position: "relative", zIndex: 1 }}>
+                    <Box sx={{ width: 36, height: 36, borderRadius: "50%", display: "grid", placeItems: "center", mb: 0.75, fontWeight: 800, bgcolor: done ? themeConfig.primary : themeConfig.bgCard, color: done ? (themeConfig.onPrimary || "#fff") : current ? themeConfig.primary : themeConfig.textMuted, border: `2px solid ${done || current ? themeConfig.primary : themeConfig.border}`, boxShadow: current ? `0 0 0 4px ${themeConfig.primaryGlow}` : "none" }}>
+                      {index + 1}
+                    </Box>
+                    <Typography sx={{ fontSize: "0.68rem", color: themeConfig.textMuted }}>Step {index + 1}</Typography>
+                    <Typography sx={{ fontSize: "0.84rem", fontWeight: current ? 800 : 600, color: current || done ? themeConfig.textMain : themeConfig.textMuted }}>{name}</Typography>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
+
+          <Box sx={{ pb: 2, mb: 2.5, borderBottom: `1px solid ${themeConfig.border}` }}>
+            <Typography sx={{ fontWeight: 800, color: themeConfig.textMain, fontSize: "1rem" }}>{stepCopy[hotelStep][0]}</Typography>
+            <Typography sx={{ color: themeConfig.textMuted, fontSize: "0.8rem", mt: 0.25 }}>{stepCopy[hotelStep][1]}</Typography>
+          </Box>
+
+          {hotelStep === 0 && (
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
+              <Box sx={{ gridColumn: "1 / -1" }}>{label("Hotel name", true)}<TextField fullWidth size="small" placeholder="JK Residency" value={hotelForm.name} onChange={(e) => setField("name", e.target.value)} sx={fieldSx} /></Box>
+              <Box>{label("Hotel type", true)}<TextField fullWidth size="small" placeholder="Hotel, resort, lodge" value={hotelForm.hotel_type} onChange={(e) => setField("hotel_type", e.target.value)} sx={fieldSx} /></Box>
+              <Box>{label("Total rooms", true)}<TextField fullWidth size="small" placeholder="24" value={hotelForm.total_rooms} onChange={(e) => setField("total_rooms", e.target.value)} sx={fieldSx} /></Box>
+              <Box sx={{ gridColumn: "1 / -1" }}>{label("Website")}<TextField fullWidth size="small" placeholder="https://hotel.com" value={hotelForm.website} onChange={(e) => setField("website", e.target.value)} sx={fieldSx} /></Box>
+            </Box>
+          )}
+          {hotelStep === 1 && (
+            <Box sx={{ display: "grid", gap: 2 }}>
+              <Box>{label("Owner name", true)}<TextField fullWidth size="small" placeholder="Niraj Vekariya" value={hotelForm.owner_name} onChange={(e) => setField("owner_name", e.target.value)} sx={fieldSx} /></Box>
+              <Box>{label("Owner email", true)}<TextField fullWidth size="small" placeholder="owner@hotel.com" value={hotelForm.owner_email} onChange={(e) => setField("owner_email", e.target.value)} sx={fieldSx} /></Box>
+              <Box>{label("Owner phone", true)}<TextField fullWidth size="small" placeholder="10-digit mobile" value={hotelForm.owner_phone} onChange={(e) => setField("owner_phone", e.target.value)} sx={fieldSx} /></Box>
+            </Box>
+          )}
+          {hotelStep === 2 && (
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
+              <Box sx={{ gridColumn: "1 / -1" }}>{label("Address", true)}<TextField fullWidth size="small" placeholder="Street, area" value={hotelForm.address} onChange={(e) => setField("address", e.target.value)} sx={fieldSx} /></Box>
+              <Box>{label("City", true)}<TextField fullWidth size="small" value={hotelForm.city} onChange={(e) => setField("city", e.target.value)} sx={fieldSx} /></Box>
+              <Box>{label("State", true)}<TextField fullWidth size="small" value={hotelForm.state} onChange={(e) => setField("state", e.target.value)} sx={fieldSx} /></Box>
+              <Box>{label("Pincode", true)}<TextField fullWidth size="small" placeholder="6 digits" value={hotelForm.pincode} onChange={(e) => setField("pincode", e.target.value)} sx={fieldSx} /></Box>
+              <Box>{label("GST number")}<TextField fullWidth size="small" value={hotelForm.gst_number} onChange={(e) => setField("gst_number", e.target.value)} sx={fieldSx} /></Box>
+              <Box sx={{ gridColumn: { sm: "1 / -1" } }}>{label("PAN number")}<TextField fullWidth size="small" value={hotelForm.pan_number} onChange={(e) => setField("pan_number", e.target.value)} sx={fieldSx} /></Box>
+            </Box>
+          )}
+
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 3.5, pt: 2.5, borderTop: `1px solid ${themeConfig.border}` }}>
+            <Button variant="outlined" disabled={hotelStep === 0} onClick={() => setHotelStep((step) => step - 1)} sx={{ minHeight: 40, px: 2.5, textTransform: "none", borderRadius: "10px", fontWeight: 700, borderColor: themeConfig.border, color: themeConfig.textMain }}>
+              Back
+            </Button>
+            {hotelStep < 2 ? (
+              <Button variant="contained" onClick={() => setHotelStep((step) => step + 1)} sx={{ minHeight: 40, px: 3, textTransform: "none", borderRadius: "10px", fontWeight: 800, bgcolor: themeConfig.primary, boxShadow: "none" }}>Next</Button>
+            ) : (
+              <Button variant="contained" disabled={savingHotel} onClick={saveHotel} sx={{ minHeight: 40, px: 3, textTransform: "none", borderRadius: "10px", fontWeight: 800, bgcolor: themeConfig.primary, boxShadow: "none" }}>{savingHotel ? "Saving..." : editingId ? "Save changes" : "Register hotel"}</Button>
+            )}
+          </Box>
+        </Paper>
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -149,105 +363,97 @@ export default function HotelsDirectoryPage({
         boxSizing: "border-box",
       }}
     >
-      {/* 3D Filter & Inset Search Bar */}
-      <Paper
-        className="card-3d"
-        sx={{
-          p: { xs: 1.5, sm: 2 },
-          mb: 2,
-          flexShrink: 0,
-          borderRadius: { xs: "14px", sm: "18px" },
-          bgcolor: themeConfig.bgCard || (isDarkMode ? "#0E312C" : "#FFFFFF"),
-          border: `1.5px solid ${themeConfig.border}`,
-          boxShadow: isDarkMode ? "none" : "0 8px 24px -4px rgba(12, 39, 59, 0.04), inset 0 1px 0 #FFFFFF",
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          alignItems: { xs: "stretch", sm: "center" },
-          justifyContent: "space-between",
-          gap: 1.5,
-        }}
-      >
-        <TextField
-          size="small"
-          placeholder="Search by Hotel Name, Email, or City..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(0);
-          }}
-          sx={{
-            flex: 1,
-            width: "100%",
-            minWidth: { xs: "100%", sm: 240 },
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "12px",
-              bgcolor: themeConfig.bgMain,
-              boxShadow: "inset 0 1px 2px rgba(0,0,0,0.05)",
-            },
-          }}
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search fontSize="small" sx={{ color: themeConfig.textMuted }} />
-                </InputAdornment>
-              ),
-            },
-          }}
-        />
-
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", width: { xs: "100%", sm: "auto" } }}>
-          {["ALL", "ACTIVE", "PENDING", "DISABLED"].map((st) => {
-            const isSelected = statusFilter === st;
-            return (
-              <Chip
-                key={st}
-                label={st === "ALL" ? `All (${hotels.length})` : st === "ACTIVE" ? `Active (${totalActive})` : st === "PENDING" ? `Pending (${totalPending})` : `Disabled (${totalDisabled})`}
-                clickable
-                onClick={() => {
-                  setStatusFilter(st);
-                  setPage(0);
-                }}
-                sx={{
-                  flex: { xs: "1 1 calc(50% - 8px)", sm: "0 0 auto" },
-                  justifyContent: "center",
-                  fontWeight: 800,
-                  borderRadius: "10px",
-                  fontSize: "0.75rem",
-                  px: 1,
-                  bgcolor: isSelected ? themeConfig.primary : themeConfig.champagne,
-                  color: isSelected ? (themeConfig.onPrimary || "#FFFFFF") : themeConfig.textMain,
-                  border: `1px solid ${isSelected ? themeConfig.primary : themeConfig.border}`,
-                  boxShadow: isSelected ? `0 4px 10px ${themeConfig.primaryGlow}` : "none",
-                  transition: "all 0.2s ease",
-                  "&:hover": {
-                    bgcolor: themeConfig.primary,
-                    color: themeConfig.onPrimary || "#FFFFFF",
-                    transform: "translateY(-1px)",
-                  },
-                }}
-              />
-            );
-          })}
-        </Box>
-      </Paper>
-
-      {/* 3D Hotels Master Table Wrapper */}
       <Box sx={{ flex: 1, minHeight: 0, width: "100%", display: "flex", flexDirection: "column" }}>
         <Paper
-          className="card-3d"
+          elevation={0}
           sx={{
             flex: 1,
             minHeight: 0,
             display: "flex",
             flexDirection: "column",
+            p: { xs: 2, sm: 3 },
             borderRadius: "20px",
             border: `1.5px solid ${themeConfig.border}`,
-            boxShadow: isDarkMode ? "none" : "0 10px 28px -6px rgba(32, 41, 35, 0.08)",
             overflow: "hidden",
             bgcolor: themeConfig.bgCard,
+            "& .MuiTableContainer-root, & .MuiTablePagination-root": {
+              mx: { xs: -2, sm: -3 },
+              width: { xs: "calc(100% + 32px)", sm: "calc(100% + 48px)" },
+              maxWidth: "none",
+            },
           }}
         >
+        <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5, mb: 2 }}>
+          <TextField
+            size="small"
+            placeholder="Search hotel, email, or city"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(0);
+            }}
+            sx={{ flex: { xs: "1 1 100%", sm: "1 1 240px" }, maxWidth: { sm: 320 }, "& .MuiOutlinedInput-root": { height: 40, borderRadius: "10px", bgcolor: themeConfig.bgMain } }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search sx={{ fontSize: 18, color: themeConfig.textMuted }} />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          <TextField
+            select
+            size="small"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(0);
+            }}
+            sx={{ width: { xs: "100%", sm: 180 }, "& .MuiOutlinedInput-root": { height: 40, borderRadius: "10px", bgcolor: themeConfig.bgMain } }}
+          >
+            <MenuItem value="ALL">All statuses</MenuItem>
+            <MenuItem value="ACTIVE">Active</MenuItem>
+            <MenuItem value="PENDING">Pending</MenuItem>
+            <MenuItem value="DISABLED">Disabled</MenuItem>
+          </TextField>
+          <TextField
+            select
+            size="small"
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              setPage(0);
+            }}
+            sx={{ width: { xs: "100%", sm: 170 }, "& .MuiOutlinedInput-root": { height: 40, borderRadius: "10px", bgcolor: themeConfig.bgMain } }}
+          >
+            <MenuItem value="NEWEST">Newest</MenuItem>
+            <MenuItem value="OLDEST">Oldest</MenuItem>
+            <MenuItem value="NAME">Name (A-Z)</MenuItem>
+          </TextField>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setHotelForm(emptyHotel);
+              setEditingId(null);
+              setHotelStep(0);
+              setAddOpen(true);
+            }}
+            sx={{
+              ml: { sm: "auto" },
+              height: 40,
+              borderRadius: "10px",
+              textTransform: "none",
+              fontWeight: 800,
+              bgcolor: themeConfig.primary,
+              boxShadow: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Add Hotel
+          </Button>
+        </Box>
         <TableContainer
           sx={{
             flex: 1,
@@ -255,6 +461,10 @@ export default function HotelsDirectoryPage({
             overflowX: "auto",
             overflowY: "auto",
             maxWidth: "100%",
+            borderRadius: "0 !important",
+            border: "none",
+            boxShadow: "none",
+            "& .MuiTableCell-head": { borderRadius: "0 !important" },
           "&::-webkit-scrollbar": {
             height: 8,
             width: 8,
@@ -274,13 +484,11 @@ export default function HotelsDirectoryPage({
       >
         <Table stickyHeader sx={{ minWidth: 1080 }}>
           <TableHead>
-            <TableRow sx={{ bgcolor: themeConfig.bgSoft || themeConfig.champagne }}>
-              <TableCell sx={{ fontWeight: 800, py: 2, minWidth: 260, whiteSpace: "nowrap" }}>Hotel / Property</TableCell>
-              <TableCell sx={{ fontWeight: 800, minWidth: 220, whiteSpace: "nowrap" }}>General Manager</TableCell>
-              <TableCell sx={{ fontWeight: 800, minWidth: 220, whiteSpace: "nowrap" }}>Plan / Subscription</TableCell>
-              <TableCell sx={{ fontWeight: 800, minWidth: 160, whiteSpace: "nowrap" }}>Account Status</TableCell>
-              <TableCell sx={{ fontWeight: 800, minWidth: 140, whiteSpace: "nowrap" }}>Registered Date</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 800, minWidth: 200, whiteSpace: "nowrap" }}>Administrative Actions</TableCell>
+            <TableRow>
+              {["Hotel", "Manager", "Plan", "Status", "Registered"].map((heading) => (
+                <TableCell key={heading} sx={{ fontWeight: 800, whiteSpace: "nowrap" }}>{heading}</TableCell>
+              ))}
+              <TableCell align="center" sx={{ fontWeight: 800, textAlign: "center" }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -391,7 +599,6 @@ export default function HotelsDirectoryPage({
                           }}
                         />
                       </Tooltip>
-                      <StatusChip status={hotel.status} size="small" />
                     </Box>
                   </TableCell>
                   <TableCell sx={{ whiteSpace: "nowrap" }}>
@@ -399,7 +606,7 @@ export default function HotelsDirectoryPage({
                       {formatDate(hotel.createdAt)}
                     </Typography>
                   </TableCell>
-                  <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>
+                  <TableCell align="center" sx={{ whiteSpace: "nowrap", textAlign: "center" }}>
                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1.5 }}>
                       <Tooltip title="Inspect Hotel Dossier">
                         <IconButton
@@ -429,7 +636,7 @@ export default function HotelsDirectoryPage({
                       <Tooltip title="Edit Hotel & Trial Settings">
                         <IconButton
                           size="small"
-                          onClick={() => onEditHotel && onEditHotel(hotel)}
+                          onClick={() => openEdit(hotel)}
                           sx={{
                             width: 32,
                             height: 32,
@@ -446,28 +653,20 @@ export default function HotelsDirectoryPage({
                           <Edit fontSize="small" />
                         </IconButton>
                       </Tooltip>
-
-                      <Tooltip title={`View Guest Directory (${hotel.name})`}>
+                      <Tooltip title="Delete hotel">
                         <IconButton
                           size="small"
-                          onClick={() => {
-                            setGuestModalHotel(hotel);
-                            setGuestModalOpen(true);
-                          }}
+                          onClick={() => deleteHotel(hotel)}
                           sx={{
                             width: 32,
                             height: 32,
-                            color: "#10B981",
-                            bgcolor: isDarkMode ? "rgba(16,185,129,0.15)" : "#E6F4EA",
+                            color: themeConfig.danger || "#EF4444",
+                            bgcolor: isDarkMode ? "rgba(239,68,68,0.12)" : "#FEF2F2",
                             borderRadius: "10px",
-                            border: "1px solid rgba(16,185,129,0.3)",
-                            "&:hover": {
-                              borderColor: "#10B981",
-                              bgcolor: isDarkMode ? "rgba(16,185,129,0.25)" : "#CEEAD6",
-                            },
+                            border: "1px solid rgba(239,68,68,0.25)",
                           }}
                         >
-                          <People fontSize="small" />
+                          <Delete fontSize="small" />
                         </IconButton>
                       </Tooltip>
 
@@ -804,13 +1003,6 @@ export default function HotelsDirectoryPage({
           </Box>
         )}
       </Drawer>
-
-      {/* Super Admin Hotel Guests Master Directory Modal */}
-      <HotelGuestsModal
-        open={guestModalOpen}
-        onClose={() => setGuestModalOpen(false)}
-        hotel={guestModalHotel}
-      />
     </Box>
   );
 }
