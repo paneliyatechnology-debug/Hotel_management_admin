@@ -15,12 +15,13 @@ import {
   Chip,
   MenuItem,
   TextField,
+  InputAdornment,
   Dialog,
   DialogTitle,
   DialogContent,
   IconButton,
 } from "@mui/material";
-import { Close } from "@/shared/icons";
+import { Close, Search } from "@/shared/icons";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import EmptyState from "@/shared/components/EmptyState";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
@@ -61,7 +62,7 @@ function safeRequestData(data) {
 export default function AuditLogsPage({ hotels = [] }) {
   const { themeConfig } = useAppTheme();
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [hotelId, setHotelId] = useState("");
   const [action, setAction] = useState("");
   const [status, setStatus] = useState("");
@@ -146,23 +147,34 @@ export default function AuditLogsPage({ hotels = [] }) {
       sx={{
         px: { xs: 1.5, sm: 3 },
         py: { xs: 1.5, sm: 2 },
-        height: "auto",
+        height: { xs: "calc(100vh - 132px)", sm: "calc(100vh - 148px)", md: "calc(100vh - 108px)" },
         display: "flex",
         flexDirection: "column",
-        overflow: "visible",
-        pb: { xs: 12, sm: 3 },
+        minHeight: 0,
+        boxSizing: "border-box",
       }}
     >
-      <Box sx={{ mb: 1.5, flexShrink: 0 }}>
-        <Typography sx={{ fontWeight: 800, color: themeConfig.textMain, fontSize: "1.15rem" }}>
-          Audit Logs
-        </Typography>
-        <Typography sx={{ color: themeConfig.textMuted, fontSize: "0.8rem", mt: 0.25 }}>
-          Logins and hotel actions.
-        </Typography>
-      </Box>
-
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2, flexShrink: 0 }}>
+      <Box sx={{ flex: 1, minHeight: 0, width: "100%", display: "flex", flexDirection: "column" }}>
+        <Paper
+          elevation={0}
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+            p: { xs: 2, sm: 3 },
+            borderRadius: "20px",
+            border: `1.5px solid ${themeConfig.border}`,
+            overflow: "hidden",
+            bgcolor: themeConfig.bgCard,
+            "& .MuiTableContainer-root, & .MuiTablePagination-root": {
+              mx: { xs: -2, sm: -3 },
+              width: { xs: "calc(100% + 32px)", sm: "calc(100% + 48px)" },
+              maxWidth: "none",
+            },
+          }}
+        >
+        <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5, mb: 2 }}>
           <TextField
             size="small"
             placeholder="Search user, action, or IP"
@@ -171,7 +183,16 @@ export default function AuditLogsPage({ hotels = [] }) {
               setSearch(e.target.value);
               setPage(0);
             }}
-            sx={{ width: { xs: "100%", sm: 240 }, "& .MuiOutlinedInput-root": { height: 40, borderRadius: "10px", bgcolor: themeConfig.bgCard } }}
+            sx={{ flex: { xs: "1 1 100%", sm: "1 1 240px" }, maxWidth: { sm: 320 }, "& .MuiOutlinedInput-root": { height: 40, borderRadius: "10px", bgcolor: themeConfig.bgMain } }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search sx={{ fontSize: 18, color: themeConfig.textMuted }} />
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
           <TextField
             select
@@ -181,7 +202,7 @@ export default function AuditLogsPage({ hotels = [] }) {
               setAction(e.target.value);
               setPage(0);
             }}
-            sx={{ width: { xs: "100%", sm: 160 }, "& .MuiOutlinedInput-root": { height: 40, borderRadius: "10px", bgcolor: themeConfig.bgCard }, "& .MuiSelect-select": { color: themeConfig.textMain } }}
+            sx={{ width: { xs: "100%", sm: 180 }, "& .MuiOutlinedInput-root": { height: 40, borderRadius: "10px", bgcolor: themeConfig.bgMain }, "& .MuiSelect-select": { color: themeConfig.textMain } }}
             slotProps={{
               select: {
                 displayEmpty: true,
@@ -202,7 +223,7 @@ export default function AuditLogsPage({ hotels = [] }) {
               setStatus(e.target.value);
               setPage(0);
             }}
-            sx={{ width: { xs: "100%", sm: 150 }, "& .MuiOutlinedInput-root": { height: 40, borderRadius: "10px", bgcolor: themeConfig.bgCard }, "& .MuiSelect-select": { color: themeConfig.textMain } }}
+            sx={{ width: { xs: "100%", sm: 170 }, "& .MuiOutlinedInput-root": { height: 40, borderRadius: "10px", bgcolor: themeConfig.bgMain }, "& .MuiSelect-select": { color: themeConfig.textMain } }}
             slotProps={{
               select: {
                 displayEmpty: true,
@@ -222,7 +243,7 @@ export default function AuditLogsPage({ hotels = [] }) {
               setHotelId(e.target.value);
               setPage(0);
             }}
-            sx={{ width: { xs: "100%", sm: 220 }, "& .MuiOutlinedInput-root": { height: 40, borderRadius: "10px", bgcolor: themeConfig.bgCard }, "& .MuiSelect-select": { color: themeConfig.textMain } }}
+            sx={{ width: { xs: "100%", sm: 180 }, "& .MuiOutlinedInput-root": { height: 40, borderRadius: "10px", bgcolor: themeConfig.bgMain }, "& .MuiSelect-select": { color: themeConfig.textMain } }}
             slotProps={{
               select: {
                 displayEmpty: true,
@@ -242,28 +263,17 @@ export default function AuditLogsPage({ hotels = [] }) {
             ))}
           </TextField>
         </Box>
-
-      <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-        <Paper
-          className="card-3d"
-          sx={{
-            flex: 1,
-            minHeight: rowsPerPage * 68 + 56,
-            display: "flex",
-            flexDirection: "column",
-            borderRadius: "20px",
-            border: `1.5px solid ${themeConfig.border}`,
-            overflow: "hidden",
-            bgcolor: themeConfig.bgCard,
-          }}
-        >
       <TableContainer
         sx={{
           flex: 1,
-          minHeight: rowsPerPage * 68,
+          minHeight: 0,
           overflowX: "auto",
-          overflowY: "visible",
+          overflowY: "auto",
           maxWidth: "100%",
+          borderRadius: "0 !important",
+          border: "none",
+          boxShadow: "none",
+          "& .MuiTableCell-head": { borderRadius: "0 !important" },
         }}
       >
         <Table stickyHeader sx={{ width: "100%" }}>
