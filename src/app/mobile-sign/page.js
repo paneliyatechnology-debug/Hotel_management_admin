@@ -97,7 +97,7 @@ function MobileSignContent() {
           const socketBase = isLocal
             ? "http://localhost:5000"
             : isVercel
-            ? "https://hotelmanagementbackend-dev.up.railway.app"
+            ? "https://api.myownpms.com"
             : `http://${window.location.hostname}:5000`;
 
           const socket = io(socketBase, { transports: ["websocket", "polling"], timeout: 3000 });

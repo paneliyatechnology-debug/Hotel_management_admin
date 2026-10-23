@@ -109,7 +109,7 @@ npm install
 
 Create a `.env` file with the backend base URL (no `/api/v1` suffix):
 ```env
-NEXT_PUBLIC_API_URL=https://hotelmanagementbackendnew-production.up.railway.app
+NEXT_PUBLIC_API_URL=https://api.myownpms.com
 ```
 
 For local backend, set it to `http://localhost:5000`. Restart `npm run dev` after changing it.
