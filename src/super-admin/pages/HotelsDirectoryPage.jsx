@@ -103,13 +103,26 @@ const formatDate = (dateString) => {
   }
 };
 
+export const isHotelActive = (hotel) => {
+  if (!hotel) return false;
+  const rawActive = hotel.is_active !== undefined ? hotel.is_active : hotel.isActive;
+  if (rawActive === false || rawActive === 0 || String(rawActive).toLowerCase() === "false") return false;
+  if (rawActive === true || rawActive === 1 || String(rawActive).toLowerCase() === "true") return true;
+  return String(hotel.status || "").toUpperCase() === "ACTIVE";
+};
+
 export default function HotelsDirectoryPage({
   hotels = [],
+  totalHotels = 0,
   loading,
   search,
   setSearch,
   statusFilter,
   setStatusFilter,
+  page = 0,
+  setPage,
+  rowsPerPage = 10,
+  setRowsPerPage,
   selectedHotel,
   setSelectedHotel,
   drawerOpen,
@@ -123,9 +136,6 @@ export default function HotelsDirectoryPage({
 }) {
   const { themeConfig, isDarkMode } = useAppTheme();
 
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [sortBy, setSortBy] = useState("NEWEST");
   const [addOpen, setAddOpen] = useState(false);
   const [hotelStep, setHotelStep] = useState(0);
   const [editingId, setEditingId] = useState(null);
@@ -253,25 +263,7 @@ export default function HotelsDirectoryPage({
     }
   };
 
-  const filteredHotels = hotels.filter((h) => {
-    const matchSearch =
-      h.name?.toLowerCase().includes(search.toLowerCase()) ||
-      h.admin?.email?.toLowerCase().includes(search.toLowerCase()) ||
-      h.city?.toLowerCase().includes(search.toLowerCase());
-    if (statusFilter === "ALL") return matchSearch;
-    return matchSearch && h.status === statusFilter;
-  }).slice().sort((a, b) => {
-    if (sortBy === "NAME") return String(a.name || "").localeCompare(String(b.name || ""));
-    const aTime = new Date(a.createdAt || a.created_at || 0).getTime() || 0;
-    const bTime = new Date(b.createdAt || b.created_at || 0).getTime() || 0;
-    return sortBy === "OLDEST" ? aTime - bTime : bTime - aTime;
-  });
 
-  const paginatedHotels = filteredHotels.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-
-  const totalActive = hotels.filter((h) => h.status === "ACTIVE").length;
-  const totalPending = hotels.filter((h) => h.status === "PENDING").length;
-  const totalDisabled = hotels.filter((h) => h.status === "DISABLED" || h.status === "SUSPENDED").length;
 
   if (addOpen) {
     const fieldSx = {
@@ -426,7 +418,7 @@ export default function HotelsDirectoryPage({
       ["GST", hotel.gstNumber || hotel.gst_number],
       ["PAN", hotel.panNumber || hotel.pan_number],
       ["Website", hotel.website],
-      ["Status", hotel.status],
+      ["Status", isHotelActive(hotel) ? "ACTIVE" : "DISABLED"],
       ["Plan", hotel.subscription?.plan || hotel.subscriptionPlan || "Trial"],
       ["Registered", formatDate(hotel.createdAt || hotel.created_at)],
     ];
@@ -521,10 +513,9 @@ export default function HotelsDirectoryPage({
             placeholder="Search hotel, email, or city"
             value={search}
             onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(0);
+              if (setSearch) setSearch(e.target.value);
             }}
-            sx={{ flex: { xs: "1 1 100%", sm: "1 1 240px" }, maxWidth: { sm: 320 }, "& .MuiOutlinedInput-root": { height: 40, borderRadius: "10px", bgcolor: themeConfig.bgMain } }}
+            sx={{ flex: { xs: "1 1 100%", sm: "1 1 280px" }, maxWidth: { sm: 360 }, "& .MuiOutlinedInput-root": { height: 40, borderRadius: "10px", bgcolor: themeConfig.bgMain } }}
             slotProps={{
               input: {
                 startAdornment: (
@@ -540,29 +531,13 @@ export default function HotelsDirectoryPage({
             size="small"
             value={statusFilter}
             onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(0);
+              if (setStatusFilter) setStatusFilter(e.target.value);
             }}
             sx={{ width: { xs: "100%", sm: 180 }, "& .MuiOutlinedInput-root": { height: 40, borderRadius: "10px", bgcolor: themeConfig.bgMain } }}
           >
             <MenuItem value="ALL">All statuses</MenuItem>
             <MenuItem value="ACTIVE">Active</MenuItem>
-            <MenuItem value="PENDING">Pending</MenuItem>
-            <MenuItem value="DISABLED">Disabled</MenuItem>
-          </TextField>
-          <TextField
-            select
-            size="small"
-            value={sortBy}
-            onChange={(e) => {
-              setSortBy(e.target.value);
-              setPage(0);
-            }}
-            sx={{ width: { xs: "100%", sm: 170 }, "& .MuiOutlinedInput-root": { height: 40, borderRadius: "10px", bgcolor: themeConfig.bgMain } }}
-          >
-            <MenuItem value="NEWEST">Newest</MenuItem>
-            <MenuItem value="OLDEST">Oldest</MenuItem>
-            <MenuItem value="NAME">Name (A-Z)</MenuItem>
+            <MenuItem value="DISABLED">Deactive</MenuItem>
           </TextField>
           <Button
             variant="contained"
@@ -617,7 +592,7 @@ export default function HotelsDirectoryPage({
         <Table stickyHeader sx={{ minWidth: 1080 }}>
           <TableHead>
             <TableRow>
-              {["Hotel", "Manager", "Plan", "Status", "Registered"].map((heading) => (
+              {["Hotel", "Manager", "Plan", "Active", "Registered"].map((heading) => (
                 <TableCell key={heading} sx={{ fontWeight: 800, whiteSpace: "nowrap" }}>{heading}</TableCell>
               ))}
               <TableCell align="center" sx={{ fontWeight: 800, textAlign: "center" }}>Actions</TableCell>
@@ -630,14 +605,14 @@ export default function HotelsDirectoryPage({
                   <LoadingState message="Fetching hotel property network..." />
                 </TableCell>
               </TableRow>
-            ) : filteredHotels.length === 0 ? (
+            ) : hotels.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} sx={{ py: 6 }}>
                   <EmptyState title="No Hotels Found" description="No hotel properties matching the current filter criteria." />
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedHotels.map((hotel) => (
+              hotels.map((hotel) => (
                 <TableRow
                   key={hotel._id}
                   sx={{
@@ -712,11 +687,11 @@ export default function HotelsDirectoryPage({
                   </TableCell>
                   <TableCell sx={{ whiteSpace: "nowrap" }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <Tooltip title={hotel.status === "ACTIVE" ? "Toggle to Suspend / Disable Hotel" : "Toggle to Activate Hotel"}>
+                      <Tooltip title={isHotelActive(hotel) ? "Toggle to Suspend / Deactivate Hotel" : "Toggle to Activate Hotel"}>
                         <Switch
                           size="small"
-                          checked={hotel.status === "ACTIVE"}
-                          onChange={() => onOpenActionDialog(hotel.status === "ACTIVE" ? "DISABLE" : "ACTIVE", hotel)}
+                          checked={isHotelActive(hotel)}
+                          onChange={() => onOpenActionDialog(isHotelActive(hotel) ? "DISABLE" : "ACTIVE", hotel)}
                           color="success"
                           sx={{
                             "& .MuiSwitch-switchBase.Mui-checked": {
@@ -798,50 +773,6 @@ export default function HotelsDirectoryPage({
                           <Delete fontSize="small" />
                         </IconButton>
                       </Tooltip>
-
-                      {hotel.status === "ACTIVE" ? (
-                        <Tooltip title="Suspend Hotel Operational Access">
-                          <IconButton
-                            size="small"
-                            onClick={() => onOpenActionDialog("DISABLE", hotel)}
-                            sx={{
-                              width: 32,
-                              height: 32,
-                              color: themeConfig.danger || "#EF4444",
-                              bgcolor: isDarkMode ? "rgba(239,68,68,0.15)" : "#FCE8E6",
-                              borderRadius: "10px",
-                              border: "1px solid rgba(239,68,68,0.3)",
-                              "&:hover": {
-                                borderColor: themeConfig.danger || "#EF4444",
-                                bgcolor: isDarkMode ? "rgba(239,68,68,0.25)" : "#F8D7DA",
-                              },
-                            }}
-                          >
-                            <Block fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      ) : (
-                        <Tooltip title="Activate Hotel Operational Access">
-                          <IconButton
-                            size="small"
-                            onClick={() => onOpenActionDialog("ACTIVE", hotel)}
-                            sx={{
-                              width: 32,
-                              height: 32,
-                              color: "#10B981",
-                              bgcolor: isDarkMode ? "rgba(16,185,129,0.15)" : "#E6F4EA",
-                              borderRadius: "10px",
-                              border: "1px solid rgba(16,185,129,0.3)",
-                              "&:hover": {
-                                borderColor: "#10B981",
-                                bgcolor: isDarkMode ? "rgba(16,185,129,0.25)" : "#CEEAD6",
-                              },
-                            }}
-                          >
-                            <CheckCircle fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
                     </Box>
                   </TableCell>
                 </TableRow>
@@ -851,15 +782,14 @@ export default function HotelsDirectoryPage({
         </Table>
       </TableContainer>
         <TablePagination
-            rowsPerPageOptions={[5, 10, 25, 50]}
+            rowsPerPageOptions={[10, 25, 50, 100]}
             component="div"
-            count={filteredHotels.length}
+            count={Number(totalHotels || hotels.length)}
             rowsPerPage={rowsPerPage}
             page={page}
-            onPageChange={(e, newPage) => setPage(newPage)}
+            onPageChange={(e, newPage) => setPage && setPage(newPage)}
             onRowsPerPageChange={(e) => {
-              setRowsPerPage(parseInt(e.target.value, 10));
-              setPage(0);
+              if (setRowsPerPage) setRowsPerPage(parseInt(e.target.value, 10));
             }}
             sx={{
               flexShrink: 0,

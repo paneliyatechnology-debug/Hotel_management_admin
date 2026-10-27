@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import {
   Box,
-  Alert,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -13,12 +12,14 @@ import {
   Typography,
   Button,
   Chip,
+  IconButton,
 } from "@mui/material";
-import { WarningAmber, CheckCircle } from "@/shared/icons";
+import { WarningAmber, CheckCircle, Close } from "@/shared/icons";
 import { API_ENDPOINTS, apiRequest } from "@/config/api";
 import { useSocket } from "@/shared/context/SocketContext";
 import { useAppTheme } from "@/shared/context/ThemeContext";
 import { toast } from "@/shared/utils/toast";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 import dynamic from "next/dynamic";
 import { CircularProgress } from "@mui/material";
 
@@ -38,10 +39,14 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
   const { themeConfig } = useAppTheme();
 
   const [hotels, setHotels] = useState([]);
+  const [totalHotels, setTotalHotels] = useState(0);
   const [staffCount, setStaffCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const debouncedSearch = useDebounce(search, 350);
   const [selectedHotel, setSelectedHotel] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState(0);
@@ -54,7 +59,7 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
     if (user?.role === "SUPER_ADMIN" && (activeNav === 0 || activeNav === 1)) {
       fetchHotels();
     }
-  }, [user, activeNav]);
+  }, [user, activeNav, page, rowsPerPage, debouncedSearch, statusFilter]);
 
   useSocket(["HOTEL_REGISTERED", "HOTEL_STATUS_UPDATED", "SUBSCRIPTION_UPDATED", "DASHBOARD_SYNC"], () => {
     if (user?.role === "SUPER_ADMIN") {
@@ -66,45 +71,78 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
     if (!user || user.role !== "SUPER_ADMIN") return;
     try {
       setLoading(true);
-      const [data, usersRes] = await Promise.all([
-        apiRequest(API_ENDPOINTS.HOTELS.ALL),
-        apiRequest(API_ENDPOINTS.USERS.LIST("?page=1&limit=10")).catch(() => null),
-      ]);
-      const payload = data?.data;
-      const rawList = Array.isArray(payload)
-        ? payload
-        : Array.isArray(payload?.hotels)
-          ? payload.hotels
-          : [];
-      const userPayload = usersRes?.data;
-      const users = Array.isArray(userPayload)
-        ? userPayload
-        : Array.isArray(userPayload?.users)
-          ? userPayload.users
-          : [];
-      setStaffCount(Number(userPayload?.total ?? users.length) || 0);
+
+      const params = new URLSearchParams();
+      params.set("page", String(page + 1));
+      params.set("limit", String(rowsPerPage));
+
+      if (debouncedSearch && debouncedSearch.trim()) {
+        params.set("search", debouncedSearch.trim());
+      }
+
+      if (statusFilter === "ACTIVE") {
+        params.set("is_active", "true");
+      } else if (statusFilter === "DISABLED" || statusFilter === "DEACTIVE") {
+        params.set("is_active", "false");
+      }
+
+      const queryString = params.toString() ? `?${params.toString()}` : "";
+      const data = await apiRequest(API_ENDPOINTS.HOTELS.LIST(queryString));
+
+      const rawList = Array.isArray(data?.data?.hotels)
+        ? data.data.hotels
+        : Array.isArray(data?.hotels)
+          ? data.hotels
+          : Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data)
+              ? data
+              : [];
+
+      const totalCount =
+        Number(
+          data?.total ??
+          data?.data?.total ??
+          data?.pagination?.total ??
+          data?.data?.pagination?.total ??
+          data?.total_count ??
+          data?.data?.total_count ??
+          rawList.length
+        ) || rawList.length;
+
+      setTotalHotels(totalCount);
+
       const text = (...values) => values.find((value) => value !== undefined && value !== null && String(value).trim() !== "") || "";
       const person = (record) => (record && typeof record === "object" && !Array.isArray(record) ? record : {});
 
       setHotels(rawList.map((hotel) => {
-        const active = hotel.is_active ?? hotel.isActive;
-        const status = active === false ? "DISABLED" : active === true ? "ACTIVE" : String(hotel.status || "ACTIVE").toUpperCase();
+        // Resolve is_active from API — strictly check boolean, string, or number
+        const rawActive = hotel.is_active !== undefined ? hotel.is_active : hotel.isActive;
+        const isHotelActive =
+          rawActive === false || rawActive === 0 || String(rawActive).toLowerCase() === "false"
+            ? false
+            : rawActive === true || rawActive === 1 || String(rawActive).toLowerCase() === "true"
+            ? true
+            : hotel.status
+            ? String(hotel.status).toUpperCase() === "ACTIVE"
+            : true;
+
+        const status = isHotelActive ? "ACTIVE" : "DISABLED";
         const hotelId = String(hotel._id || hotel.id || "");
-        const linkedUser = users.find((entry) => {
-          const entryHotelId = String(entry.hotel_id || entry.hotelId || entry.hotel?.id || entry.hotel?._id || "");
-          const entryId = String(entry.id || entry._id || "");
-          return (hotelId && (entryHotelId === hotelId || entryId === String(hotel.user_id || hotel.userId || hotel.owner_id || hotel.ownerId || hotel.admin_id || hotel.adminId || "")))
-            || (entryHotelId && entryHotelId === hotelId);
-        });
         const adminObj = person(hotel.admin);
-        const ownerObj = person(hotel.owner || hotel.user || hotel.manager || linkedUser);
-        const ownerName = text(adminObj.name, adminObj.full_name, hotel.ownerName, hotel.owner_name, ownerObj.name, ownerObj.full_name, linkedUser?.name);
-        const ownerEmail = text(adminObj.email, hotel.ownerEmail, hotel.owner_email, hotel.email, hotel.contact_email, hotel.contactEmail, ownerObj.email, linkedUser?.email);
-        const ownerPhone = text(adminObj.phone, adminObj.mobile, hotel.ownerPhone, hotel.owner_phone, hotel.phone, hotel.mobile, hotel.contact_phone, ownerObj.phone, ownerObj.mobile, linkedUser?.phone);
+        const ownerObj = person(hotel.owner || hotel.user || hotel.manager);
+        const ownerName = text(hotel.ownerName, hotel.owner_name, adminObj.name, adminObj.full_name, ownerObj.name, ownerObj.full_name);
+        const ownerEmail = text(hotel.ownerEmail, hotel.owner_email, adminObj.email, hotel.email, hotel.contact_email, hotel.contactEmail, ownerObj.email);
+        const ownerPhone = text(hotel.ownerPhone, hotel.owner_phone, adminObj.phone, adminObj.mobile, hotel.phone, hotel.mobile, hotel.contact_phone, ownerObj.phone, ownerObj.mobile);
         const totalRooms = Number(hotel.totalRooms ?? hotel.total_rooms ?? hotel.rooms_count ?? hotel.room_count ?? hotel.roomsCount ?? hotel.stats?.totalRooms ?? 0) || 0;
+
         return {
           ...hotel,
           _id: hotel._id || hotel.id,
+          id: hotel.id || hotel._id,
+          is_active: isHotelActive,
+          isActive: isHotelActive,
+          status,
           name: hotel.name || hotel.hotel_name || hotel.hotelName || "Hotel",
           city: hotel.city || hotel.address?.city || "",
           state: hotel.state || hotel.address?.state || "",
@@ -112,8 +150,7 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
           ownerEmail,
           ownerPhone,
           totalRooms,
-          createdAt: hotel.createdAt || hotel.created_at || linkedUser?.createdAt || linkedUser?.created_at,
-          status,
+          createdAt: hotel.createdAt || hotel.created_at,
           admin: { ...adminObj, name: ownerName, email: ownerEmail, phone: ownerPhone },
         };
       }));
@@ -124,17 +161,42 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
     }
   };
 
-  const handleStatusUpdate = async (hotelId, newStatus) => {
+  const handleStatusUpdate = async (hotelId, newStatus, reason) => {
+    // newStatus: "ACTIVE" or "DISABLED"
+    // API: PATCH /api/v1/hotels/:id/active-status  Body: { is_active: true | false }
+    const isActivating = newStatus === "ACTIVE";
     setActionLoading(true);
     try {
       await apiRequest(API_ENDPOINTS.HOTELS.UPDATE_STATUS(hotelId), {
         method: "PATCH",
-        body: { is_active: newStatus === "ACTIVE" },
+        body: { is_active: isActivating },
       });
-      toast.success(`Hotel status updated to ${newStatus} successfully!`);
+      toast.success(
+        isActivating
+          ? "Hotel activated successfully!"
+          : "Hotel suspended successfully!"
+      );
       setActionDialog({ open: false, type: null, hotel: null, reason: "" });
-      if (selectedHotel && selectedHotel._id === hotelId) {
-        setSelectedHotel((prev) => ({ ...prev, status: newStatus }));
+      setHotels((prev) =>
+        prev.map((h) => {
+          if (String(h._id || h.id) === String(hotelId)) {
+            return {
+              ...h,
+              is_active: isActivating,
+              isActive: isActivating,
+              status: isActivating ? "ACTIVE" : "DISABLED",
+            };
+          }
+          return h;
+        })
+      );
+      if (selectedHotel && String(selectedHotel._id || selectedHotel.id) === String(hotelId)) {
+        setSelectedHotel((prev) => ({
+          ...prev,
+          is_active: isActivating,
+          isActive: isActivating,
+          status: isActivating ? "ACTIVE" : "DISABLED",
+        }));
       }
       fetchHotels();
     } catch (err) {
@@ -240,142 +302,102 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
   return (
     <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, bgcolor: themeConfig.bgMain, minHeight: "100%" }}>
 
-      {/* Confirmation & Remarks Dialog for Suspend / Activate */}
+      {/* Confirmation Dialog for Suspend / Activate */}
       <Dialog
         open={actionDialog.open}
-        onClose={() => setActionDialog({ open: false, type: null, hotel: null, reason: "" })}
-        maxWidth="sm"
+        onClose={() => !actionLoading && setActionDialog({ open: false, type: null, hotel: null, reason: "" })}
+        maxWidth="xs"
         fullWidth
         slotProps={{
           paper: {
             sx: {
-              borderRadius: "22px",
-              p: 1.5,
+              borderRadius: "16px",
               border: `1px solid ${themeConfig.border}`,
-              boxShadow: "0 24px 48px -12px rgba(12, 39, 59, 0.22), inset 0 1px 1px rgba(255,255,255,0.95)",
+              bgcolor: themeConfig.bgCard,
+              overflow: "hidden",
+              backgroundImage: "none",
             },
           },
         }}
       >
-        <DialogTitle component="div" sx={{ fontWeight: 800, color: themeConfig.textMain, display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 38,
-              height: 38,
-              borderRadius: "10px",
-              bgcolor: actionDialog.type === "DISABLE" ? themeConfig.dangerBg : themeConfig.successBg,
-              color: actionDialog.type === "DISABLE" ? themeConfig.danger : themeConfig.success,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: actionDialog.type === "DISABLE" ? "0 2px 8px rgba(220, 38, 38, 0.2)" : "0 2px 8px rgba(22, 163, 74, 0.2)",
-            }}
-          >
-            {actionDialog.type === "DISABLE" ? <WarningAmber sx={{ fontSize: 22 }} /> : <CheckCircle sx={{ fontSize: 22 }} />}
-          </Box>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 800, color: themeConfig.textMain, lineHeight: 1.1 }}>
-              {actionDialog.type === "DISABLE" ? "Suspend Hotel Property" : "Activate Hotel Property"}
-            </Typography>
-            <Typography variant="caption" sx={{ color: themeConfig.textMuted }}>
-              Target Hotel: <strong>{actionDialog.hotel?.name}</strong>
-            </Typography>
+        <DialogTitle component="div" sx={{ p: 0 }}>
+          <Box sx={{ px: 2.5, py: 2, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5, bgcolor: themeConfig.bgSoft, borderBottom: `1px solid ${themeConfig.border}` }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: "12px",
+                  display: "grid",
+                  placeItems: "center",
+                  color: actionDialog.type === "DISABLE" ? themeConfig.danger || "#EF4444" : themeConfig.success || "#10B981",
+                  bgcolor: themeConfig.bgCard,
+                  border: `1px solid ${themeConfig.border}`,
+                }}
+              >
+                {actionDialog.type === "DISABLE" ? <WarningAmber sx={{ fontSize: 20 }} /> : <CheckCircle sx={{ fontSize: 20 }} />}
+              </Box>
+              <Box>
+                <Typography sx={{ color: actionDialog.type === "DISABLE" ? themeConfig.danger || "#EF4444" : themeConfig.success || "#10B981", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.04em" }}>
+                  HOTELS
+                </Typography>
+                <Typography sx={{ fontWeight: 700, color: themeConfig.textMain, fontSize: "1.05rem", lineHeight: 1.3 }}>
+                  {actionDialog.type === "DISABLE" ? "Suspend Hotel" : "Activate Hotel"}
+                </Typography>
+              </Box>
+            </Box>
+            <IconButton
+              onClick={() => setActionDialog({ open: false, type: null, hotel: null, reason: "" })}
+              disabled={actionLoading}
+              aria-label="Close"
+              sx={{ width: 36, height: 36, borderRadius: "10px", border: `1px solid ${themeConfig.border}`, color: themeConfig.textMuted }}
+            >
+              <Close fontSize="small" />
+            </IconButton>
           </Box>
         </DialogTitle>
 
-        <DialogContent sx={{ pt: 1.5 }}>
-          <Typography variant="body2" sx={{ color: themeConfig.textMuted, mb: 2 }}>
+        <DialogContent sx={{ px: 3, py: 2.75 }}>
+          <Typography sx={{ color: themeConfig.textMain, fontSize: "0.95rem", lineHeight: 1.6 }}>
             {actionDialog.type === "DISABLE"
-              ? `Are you sure you want to suspend access for '${actionDialog.hotel?.name}'? Front desk check-ins, guest reservations, and staff logins will be locked immediately.`
-              : `Are you sure you want to activate access for '${actionDialog.hotel?.name}'? The hotel property will be brought online with active PMS operational capabilities.`}
+              ? `Are you sure you want to suspend "${actionDialog.hotel?.name}"? Front desk check-ins, guest reservations, and staff logins will be locked immediately.`
+              : `Are you sure you want to activate "${actionDialog.hotel?.name}"? The hotel will be brought back online with full PMS access.`}
           </Typography>
-
-          {/* Quick Pre-Set Remark Suggestions */}
-          <Typography variant="caption" sx={{ fontWeight: 800, color: themeConfig.textMain, display: "block", mb: 0.8 }}>
-            {actionDialog.type === "DISABLE" ? "Select or write suspension remark *:" : "Activation remarks / notes (optional):"}
-          </Typography>
-
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.8, mb: 1.5 }}>
-            {(actionDialog.type === "DISABLE"
-              ? ["Payment Overdue", "GST Compliance Pending", "Police / KYC Hold", "Policy Violation", "License Expired", "Temporary Maintenance"]
-              : ["KYC Documents Approved", "Commercial Plan Active", "Payment Received", "Compliance Verified", "Reactivated by Admin"]
-            ).map((tag) => (
-              <Chip
-                key={tag}
-                label={tag}
-                size="small"
-                clickable
-                onClick={() => setActionDialog((prev) => ({ ...prev, reason: tag }))}
-                sx={{
-                  fontSize: "0.72rem",
-                  fontWeight: 700,
-                  borderRadius: "8px",
-                  bgcolor: actionDialog.reason === tag ? themeConfig.primary : themeConfig.champagne,
-                  color: actionDialog.reason === tag ? "#FFFFFF" : themeConfig.primaryDark,
-                  border: `1px solid ${actionDialog.reason === tag ? themeConfig.primary : themeConfig.border}`,
-                  transition: "all 0.15s ease",
-                  "&:hover": {
-                    bgcolor: themeConfig.primary,
-                    color: "#FFFFFF",
-                  },
-                }}
-              />
-            ))}
-          </Box>
-
-          <TextField
-            label={actionDialog.type === "DISABLE" ? "Reason / Remark *" : "Reason / Remark (Optional)"}
-            fullWidth
-            multiline
-            rows={3}
-            required={actionDialog.type === "DISABLE"}
-            value={actionDialog.reason}
-            onChange={(e) => setActionDialog({ ...actionDialog, reason: e.target.value })}
-            placeholder={
-              actionDialog.type === "DISABLE"
-                ? "State exact reason for suspension (sent to hotel owner email and saved in audit logs)..."
-                : "Optional note for audit logging..."
-            }
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: "12px",
-                bgcolor: themeConfig.bgMain,
-              },
-            }}
-          />
         </DialogContent>
 
-        <DialogActions sx={{ p: 2, px: 3, gap: 1 }}>
-          <Button onClick={() => setActionDialog({ open: false, type: null, hotel: null, reason: "" })} sx={{ borderRadius: "10px", fontWeight: 700, color: themeConfig.textMuted }}>
+        <DialogActions sx={{ px: 2.5, py: 1.75, borderTop: `1px solid ${themeConfig.border}`, bgcolor: themeConfig.bgSoft }}>
+          <Button
+            onClick={() => setActionDialog({ open: false, type: null, hotel: null, reason: "" })}
+            disabled={actionLoading}
+            variant="outlined"
+            sx={{ minWidth: 104, height: 40, borderRadius: "10px", textTransform: "none", fontWeight: 700, color: themeConfig.textMain, borderColor: themeConfig.border, bgcolor: themeConfig.bgCard }}
+          >
             Cancel
           </Button>
           <Button
             variant="contained"
-            disabled={actionLoading || (actionDialog.type === "DISABLE" && !actionDialog.reason?.trim())}
-            onClick={() => handleStatusUpdate(actionDialog.hotel?._id, actionDialog.type === "DISABLE" ? "DISABLED" : "ACTIVE", actionDialog.reason)}
-            className="btn-3d"
+            disabled={actionLoading}
+            onClick={() => handleStatusUpdate(actionDialog.hotel?._id, actionDialog.type === "DISABLE" ? "DISABLED" : "ACTIVE")}
             sx={{
-              background: actionDialog.type === "DISABLE"
-                ? `linear-gradient(135deg, ${themeConfig.danger} 0%, #B91C1C 100%)`
-                : `linear-gradient(135deg, ${themeConfig.success} 0%, #15803D 100%)`,
+              minWidth: 104,
+              height: 40,
+              borderRadius: "10px",
+              textTransform: "none",
+              fontWeight: 700,
+              boxShadow: "none",
+              bgcolor: actionDialog.type === "DISABLE" ? themeConfig.danger || "#DC2626" : themeConfig.success || "#16A34A",
               color: "#FFFFFF",
-              fontWeight: 800,
-              borderRadius: "12px",
-              px: 3,
-              py: 1,
-              boxShadow: actionDialog.type === "DISABLE"
-                ? "0 4px 14px rgba(220, 38, 38, 0.3)"
-                : "0 4px 14px rgba(22, 163, 74, 0.3)",
               "&:hover": {
-                transform: "translateY(-1px)",
+                bgcolor: actionDialog.type === "DISABLE" ? "#B91C1C" : "#15803D",
+                boxShadow: "none",
               },
             }}
           >
             {actionLoading
-              ? "Processing..."
+              ? "Please wait…"
               : actionDialog.type === "DISABLE"
-              ? "Confirm & Send Suspension"
-              : "Confirm & Activate Hotel"}
+              ? "Confirm Suspension"
+              : "Confirm Activation"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -565,11 +587,25 @@ export default function SuperAdminDashboard({ user, activeNav = 0, onTabChange }
       {activeNav === 1 && (
         <HotelsDirectoryPage
           hotels={hotels}
+          totalHotels={totalHotels}
           loading={loading}
           search={search}
-          setSearch={setSearch}
+          setSearch={(val) => {
+            setSearch(val);
+            setPage(0);
+          }}
           statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
+          setStatusFilter={(val) => {
+            setStatusFilter(val);
+            setPage(0);
+          }}
+          page={page}
+          setPage={setPage}
+          rowsPerPage={rowsPerPage}
+          setRowsPerPage={(val) => {
+            setRowsPerPage(val);
+            setPage(0);
+          }}
           selectedHotel={selectedHotel}
           setSelectedHotel={setSelectedHotel}
           drawerOpen={drawerOpen}

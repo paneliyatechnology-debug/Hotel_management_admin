@@ -97,6 +97,7 @@ export const API_ENDPOINTS = createCaseFlexibleProxy({
   },
   HOTELS: {
     ALL: `${API_BASE_URL}/api/v1/hotels`,
+    LIST: (params = "") => `${API_BASE_URL}/api/v1/hotels${params ? (params.startsWith("?") ? params : `?${params}`) : ""}`,
     REGISTER: `${API_BASE_URL}/api/v1/hotels/register`,
     BY_ID: (id) => `${API_BASE_URL}/api/v1/hotels/${id}`,
     UPDATE: (id) => `${API_BASE_URL}/api/v1/hotels/${id}`,
